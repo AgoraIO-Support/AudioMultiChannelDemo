@@ -1,0 +1,10 @@
+@Alan Zeng This is the mapping that we discussed in Call . Please verify again
+
+[abhi_audio_order_mapping.jpg]
+
+
+Synced up with @Abhishek , the audio layout is like below
+[alan_audio_order_mapping.png]
+
+
+Confirmed that it should be correct.

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title
+    data-title-zh="Linux SDK 音频多声道（multiopus）文档"
+    data-title-en="Linux SDK Audio Multi-Channel (multiopus) Docs"
+  >Linux SDK 音频多声道（multiopus）文档</title>
+  <link rel="stylesheet" href="assets/style.css?v=20260820-135222">
+  <meta name="build-id" content="20260820-135222">
+  </head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html">Agora Multi-Channel Docs</a>
+      <nav class="header-nav">
+        <a href="index.html">Home</a>
+        <a href="web-sdk-multichannel.html">Web SDK</a>
+        <a href="../"><span data-lang="zh">在线 Demo</span><span data-lang="en">Live Demo</span></a>
+        <button id="lang-toggle" type="button">EN</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ==================== 中文 ==================== -->
+    <div data-lang="zh">
+      <h1>Linux SDK 音频多声道（multiopus）</h1>
+      <p class="subtitle">适用版本：Agora Linux SDK v4.2.32 / v4.4.30.x（x86_64 与 aarch64，C++）</p>
+
+      <!-- ================= 功能说明 ================= -->
+      <h2>一、功能说明</h2>
+
+      <h3>1.1 OPUSMC 编码原理</h3>
+      <p>
+        多声道编码使用 Opus 编码器的多流（multistream）模式：每两个声道由一个 Opus 编码器实例编码
+        （一个 coupled stream），奇数声道时剩余一路单独成流，因此 8 声道需要 4 个 Opus 编码器实例。
+        编码能力来源于 SDK 的 Ambisonic 空间音频项目。<strong>多声道编解码仅支持 48 kHz 采样率</strong>
+        （编码/解码均是），非 48 kHz 素材须先重采样。
+      </p>
+      <p>
+        由于多声道码率明显高于普通 Opus，弱网或高丢包场景下可能需要对拥塞控制（CC）策略进行适配，
+        以保证传输稳定。
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>payload type</th>
+            <th>声道数</th>
+            <th>采样率</th>
+            <th>channel_mapping</th>
+            <th>coupled_streams</th>
+            <th>num_streams</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>123</td><td>3</td><td>48000</td><td>0,1,2</td><td>1</td><td>2</td></tr>
+          <tr><td>123</td><td>4</td><td>48000</td><td>0,1,2,3</td><td>2</td><td>2</td></tr>
+          <tr><td>124</td><td>5</td><td>48000</td><td>0,1,2,3,4</td><td>2</td><td>3</td></tr>
+          <tr><td>124</td><td>6</td><td>48000</td><td>0,1,2,3,4,5</td><td>3</td><td>3</td></tr>
+          <tr><td>125</td><td>7</td><td>48000</td><td>0,1,2,3,4,5,6</td><td>3</td><td>4</td></tr>
+          <tr><td>125</td><td>8</td><td>48000</td><td>0,1,2,3,4,5,6,7</td><td>4</td><td>4</td></tr>
+        </tbody>
+      </table>
+      <p>
+        其中 coupled stream 指两个声道编码为一条流，num_streams 为总流数；123 默认 4 声道、
+        124 默认 6 声道、125 默认 8 声道，3/5/7 声道需额外设置
+        <code>che.audio.custom_channel_num</code>。
+      </p>
+
+      <h3>1.2 发送：三条输入路径</h3>
+      <table>
+        <thead>
+          <tr><th>路径</th><th>接口</th><th>格式要求</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>raw PCM 发送</td>
+            <td><code>IAudioPcmDataSender::sendAudioPcmData</code></td>
+            <td>3~8 声道、48 kHz、16bit 有符号小端、逐样本交错；10 ms/帧（samplesPerChannel = 480）</td>
+          </tr>
+          <tr>
+            <td>WAV 文件发送</td>
+            <td>同上（先解析 RIFF 头）</td>
+            <td>16bit 直发；24bit 逐样本转 16bit（右移 8bit）后发；其他位深报错；须为 48 kHz</td>
+          </tr>
+          <tr>
+            <td>预编码 Opus 发送</td>
+            <td><code>IAudioEncodedFrameSender::sendEncodedAudioFrame</code></td>
+            <td>8 声道 48 kHz Opus 裸帧流（非 ogg 封装），固定 640 字节/帧 = 20 ms；custom audio track 以 <code>MIX_DISABLED</code> 创建</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        PCM 与编码帧两条发送路径互斥（同一条 custom audio track 二选一）；自定义发送路径不经过 3A。
+      </p>
+      <p>
+        注：旧版参考代码（如 v4.2.32 的 <code>sample_send_opus8</code>）可能使用
+        <code>AUDIO_CODEC_OPUS8C</code>；在 v4.4.30.x 多声道版本中请使用
+        <code>AUDIO_CODEC_OPUSMC</code>，并同步设置 <code>che.audio.custom_sample_rate=48000</code>。
+      </p>
+
+      <h3>1.3 接收：三条获取路径</h3>
+      <table>
+        <thead>
+          <tr><th>路径</th><th>接口</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>按用户解码 PCM 回调</td>
+            <td><code>onPlaybackAudioFrameBeforeMixing</code> + <code>setPlaybackAudioFrameBeforeMixingParameters</code></td>
+            <td>按远端用户回调解码后的多声道 PCM（16bit 交错，10ms 帧）；回调声道数须与发送端一致才能拿到完整多声道</td>
+          </tr>
+          <tr>
+            <td>编码帧回调</td>
+            <td><code>audioRecvEncodedFrame</code> + <code>onEncodedAudioFrameReceived</code></td>
+            <td>不解码不播放，直接拿到 OPUSMC 编码帧，用于转发或自行解码；需 <code>enableAudioRecordingOrPlayout=false</code>，与播放路径互斥</td>
+          </tr>
+          <tr>
+            <td>混音输出</td>
+            <td><code>onPlaybackAudioFrame</code> / <code>onMixedAudioFrame</code></td>
+            <td>混音输出<strong>恒为 2 声道</strong>：奇数声道混一路、偶数声道混一路；不支持 N 声道直接播放</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>1.4 能力协商与回退</h3>
+      <ul>
+        <li>OPUSMC 通过能力协商机制确定可用性；<strong>Linux 发送时</strong>，若不支持多声道的端加入频道，发送端编解码回退为普通 Opus（OPUSFB），多声道能力失效（设计文档对回退目标的表述不一致——Linux 侧记为单声道、Web 侧记为双声道，以实际版本行为为准）。</li>
+        <li><code>PUnsupportedAudioCodec</code> 广播：Web 端加入会触发 VOS 广播该包；SDK 收到后若当前 codec 为多声道则<strong>不执行回退</strong>（该包仅用于关闭 DTX）。</li>
+        <li><strong>强制不回退</strong>：设置私参 <code>"che.audio.codec_unfallback": [123, 124, 125]</code> 后，整个频道强制使用多声道能力，即使个别参与者不支持，其余参与者仍保持多声道收发。该参数的设置位置有特殊要求，见下文集成指南。</li>
+        <li>声道数大于 4 时，发送端与接收端的声道数配置必须一致；Web 端仅支持偶数声道解码。</li>
+      </ul>
+
+      <h3>1.5 4×stereo → 8 声道布局映射</h3>
+      <p>
+        广播制作中常见的一类源端布局：8 声道内容以 <strong>4 条双声道（stereo）音轨</strong>承载
+        （如 4 × AC-3、44.1 kHz 的封装），PCM 按 <strong>track 块序</strong>排列
+        （<code>[T1L,T1R]×N [T2L,T2R]×N [T3L,T3R]×N [T4L,T4R]×N</code>），<strong>不能直接</strong>喂给
+        <code>sendAudioPcmData</code>。需在业务侧先重排为 Agora 8 声道<strong>逐样本交错</strong>布局：
+      </p>
+      <pre><code>声道顺序：CH1=T1L, CH2=T1R, CH3=T2L, CH4=T2R, CH5=T3L, CH6=T3R, CH7=T4L, CH8=T4R
+缓冲区按 [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] 每样本重复排列</code></pre>
+      <ul>
+        <li>声道对 (0,1)(2,3)(4,5)(6,7) 分别对应轨 1~4，与 8 声道 OPUSMC 4 个 coupled stream 的配对一致；这种 8 声道为 4 个独立立体声对，<strong>非 7.1 环绕布局</strong>。</li>
+        <li>若源端单次写入 15360 字节（= 8 声道 × 16bit × 960 样本 = 20 ms @ 48 kHz），送入 SDK 前需拆分为 10 ms 帧。</li>
+        <li>源为 44.1 kHz 时必须先重采样到 48 kHz；重采样与重排顺序无关，但都须在 <code>sendAudioPcmData</code> 之前完成。</li>
+        <li>某些源端提供 4 条 AC-3 stereo track，各轨采样率可能为 44.1 kHz 且时长存在细微差异；解码后须先统一重采样到 48 kHz，再按上述布局重排成交错 PCM。</li>
+        <li>常见集成错误：把逐样本交错数据按平面块序（LLL…RRR…）读取，会导致接收端杂音。</li>
+      </ul>
+
+      <!-- ================= 集成指南 ================= -->
+      <h2 id="integration">二、集成指南</h2>
+
+      <h3>2.1 私参与设置时机（重要）</h3>
+      <table>
+        <thead>
+          <tr><th>私参</th><th>设置位置</th><th>时机</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>che.audio.custom_payload_type</code><br><code>che.audio.custom_channel_num</code><br><code>che.audio.custom_sample_rate</code></td>
+            <td>connection 级：<code>connection-&gt;getAgoraParameter()</code></td>
+            <td><code>createRtcConnection</code> 之后、<code>connect()</code> 之前；connect 之后设置不生效</td>
+          </tr>
+          <tr>
+            <td><code>che.audio.codec_unfallback</code>（JSON 数组，如 <code>[123,124,125]</code>）</td>
+            <td>service 级：<code>service-&gt;getAgoraParameter()</code></td>
+            <td><strong><code>createRtcConnection()</code> 之前</strong>；设在 connection 级不生效（CSE 实测）</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        发送端必须设置 payload type 系列参数；接收端在 123/124/125 协商机制下无需设置
+        <code>che.audio.custom_payload_type</code>，但 PCM 回调声道数须与发送端一致。
+      </p>
+
+      <h3>2.2 关键 API 调用顺序（发送 PCM）</h3>
+      <pre><code>// 1. service 级（createRtcConnection 之前）：强制不回退（可选）
+service-&gt;getAgoraParameter()-&gt;setArray("che.audio.codec_unfallback", "[123,124,125]");
+
+// 2. 创建 connection 后、connect 之前：开启多声道编码（以 8 声道为例）
+auto p = connection-&gt;getAgoraParameter();
+p-&gt;setInt("che.audio.custom_payload_type", 125);
+p-&gt;setInt("che.audio.custom_channel_num", 8);
+p-&gt;setInt("che.audio.custom_sample_rate", 48000);
+connection-&gt;connect(token, channelId, userId);
+
+// 3. 创建 PCM sender 与 custom audio track 并发布
+auto factory = service-&gt;createMediaNodeFactory();
+auto sender = factory-&gt;createAudioPcmDataSender();
+auto track = service-&gt;createCustomAudioTrack(sender);
+connection-&gt;getLocalUser()-&gt;publishAudio(track);
+
+// 4. 以 10ms 节奏发送交错 PCM（samplesPerChannel = 48000/100）
+sender-&gt;sendAudioPcmData(frameBuf, 0, 0, 480,
+                         agora::rtc::TWO_BYTES_PER_SAMPLE, 8, 48000);</code></pre>
+
+      <h3>2.3 预编码 Opus 发送（8 声道）</h3>
+      <pre><code>// track 以 MIX_DISABLED 创建（预编码发送不经 3A / 混音）
+auto track = service-&gt;createCustomAudioTrack(audioFrameSender,
+                                             agora::base::MIX_DISABLED);
+
+// 每 20ms 发送一帧（640 字节裸 Opus 帧）
+agora::rtc::EncodedAudioFrameInfo info;
+info.codec = agora::rtc::AUDIO_CODEC_TYPE::AUDIO_CODEC_OPUSMC;
+info.numberOfChannels = 8;
+info.sampleRateHz = 48000;
+info.samplesPerChannel = 960;  // 20 ms @ 48 kHz
+audioFrameSender-&gt;sendEncodedAudioFrame(frameBuf, sizeof(frameBuf), info);</code></pre>
+
+      <h3>2.4 接收（按用户解码 PCM）</h3>
+      <pre><code>// 回调声道数必须与发送端一致才能拿到完整多声道
+connection-&gt;getLocalUser()
+    -&gt;setPlaybackAudioFrameBeforeMixingParameters(8, 48000);
+
+// 在 IAudioFrameObserverBase 回调中按远端用户获取解码 PCM：
+// onPlaybackAudioFrameBeforeMixing(channelId, userId, audioFrame)
+//   audioFrame.channels == 8，buffer 为 16bit 交错 PCM，可落盘或后处理</code></pre>
+
+      <h3>2.5 本仓库 Demo 与运行示例</h3>
+      <p>
+        <code>Demo/linux/</code> 提供 5 个 sample（发送 3 个 + 接收 2 个），构建与详细参数见其 README：
+      </p>
+      <pre><code>cd Demo/linux
+./build.sh x86_64        # 或 aarch64；产物在 out/ 下
+
+# 发送 8 声道 WAV（16bit）
+./sample_send_wav_multiopus --channelId &lt;name&gt; --token &lt;token&gt; \
+    --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" \
+    --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
+
+# 发送预编码 8 声道 Opus 裸流
+./sample_send_opus8 --channelId &lt;name&gt; --token &lt;token&gt; --audioFile "public/8ch_2.opus"
+
+# 接收多声道 PCM（按用户回调 + 落盘）
+./sample_receive_pcm_multiopus --channelId &lt;name&gt; --token &lt;token&gt; \
+    --numOfChannels 8 --sampleRate 48000 --audioFile received_8ch.pcm
+
+# 所有发送 sample 支持 --codecUnfallback 开启强制不回退</code></pre>
+
+      <h3>2.6 验证方法</h3>
+      <ul>
+        <li>
+          <strong>编码器日志</strong>：配置生效判据为日志出现
+          <code>MultistreamEncoder channel num:N rate:48000 coupled:M channel_mapping:... bitrate:...</code>，例如
+          <code>MultistreamEncoder channel num:4 rate:48000 coupled:2 channel_mapping:0 1 2 3 bitrate:128000</code>。
+        </li>
+        <li>
+          <strong>PCM 落盘回放</strong>：接收落盘文件为 48 kHz / N 声道 / 16bit 小端交错裸 PCM，可用 ffplay 直接验证：
+          <pre><code>ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例</code></pre>
+        </li>
+        <li>
+          <strong>配合 Web demo</strong>：用 <a href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">在线 Web 验证 Demo</a>（或本仓库 <code>Demo/web/</code>）订阅同一频道，
+          <code>getVolumeLevels()</code> 数组长度应等于声道数、codec 显示 <code>multiopus</code>；
+          发送 Channel ID 素材可逐声道试听核对布局映射。详见
+          <a href="web-sdk-multichannel.html">Web SDK 文档</a>。
+        </li>
+        <li>
+          <strong>dump 文件</strong>：日志目录放置名为 <code>multi_channel.pcm</code> 的素材（声道数与
+          <code>custom_channel_num</code> 一致）可喂入编码器；可生成 <code>before_encoded.pcm</code>（解码后，声道数与编码前一致）与
+          <code>mixed_output.pcm</code>（混音后，恒 2 声道）。
+        </li>
+      </ul>
+
+      <h2>三、SDK 下载</h2>
+      <p>
+        多声道验证推荐使用 <code>v4.4.30.149</code>（x86_64 / aarch64），与 Demo/linux 当前适配版本一致：
+      </p>
+      <ul>
+        <li>
+          x86_64：
+          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz" target="_blank" rel="noopener">
+            Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
+          </a>
+        </li>
+        <li>
+          aarch64：
+          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz" target="_blank" rel="noopener">
+            Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz
+          </a>
+        </li>
+      </ul>
+      <p>
+        注：本仓库发送 sample 已移除参考 sample（<code>sample_send_h264_pcm_multiopus*.cpp</code>）中的 H264 视频发送逻辑，仅保留音频多声道演示。
+      </p>
+    </div>
+
+    <!-- ==================== English ==================== -->
+    <div data-lang="en">
+      <h1>Linux SDK Audio Multi-Channel (multiopus)</h1>
+      <p class="subtitle">Applies to: Agora Linux SDK v4.2.32 / v4.4.30.x (x86_64 and aarch64, C++)</p>
+
+      <!-- ================= Feature description ================= -->
+      <h2>1. Feature Description</h2>
+
+      <h3>1.1 OPUSMC encoding</h3>
+      <p>
+        Multi-channel encoding uses the multistream mode of the Opus encoder: every two channels
+        are encoded by one Opus encoder instance (one coupled stream), and with an odd channel
+        count the remaining channel forms its own stream — so 8 channels require 4 Opus encoder
+        instances. The capability originates from the SDK's Ambisonic spatial audio project.
+        <strong>Multi-channel encoding and decoding only support 48 kHz</strong>; material at
+        other sample rates must be resampled first.
+      </p>
+      <p>
+        Because multi-channel audio has a significantly higher bitrate than plain Opus, congestion
+        control (CC) may need to be tuned under weak-network or high-packet-loss conditions to keep
+        transmission stable.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>payload type</th>
+            <th>channels</th>
+            <th>sample rate</th>
+            <th>channel_mapping</th>
+            <th>coupled_streams</th>
+            <th>num_streams</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>123</td><td>3</td><td>48000</td><td>0,1,2</td><td>1</td><td>2</td></tr>
+          <tr><td>123</td><td>4</td><td>48000</td><td>0,1,2,3</td><td>2</td><td>2</td></tr>
+          <tr><td>124</td><td>5</td><td>48000</td><td>0,1,2,3,4</td><td>2</td><td>3</td></tr>
+          <tr><td>124</td><td>6</td><td>48000</td><td>0,1,2,3,4,5</td><td>3</td><td>3</td></tr>
+          <tr><td>125</td><td>7</td><td>48000</td><td>0,1,2,3,4,5,6</td><td>3</td><td>4</td></tr>
+          <tr><td>125</td><td>8</td><td>48000</td><td>0,1,2,3,4,5,6,7</td><td>4</td><td>4</td></tr>
+        </tbody>
+      </table>
+      <p>
+        A coupled stream encodes two channels into one stream; num_streams is the total stream
+        count. Payload types 123/124/125 default to 4/6/8 channels; 3/5/7 channels require an
+        explicit <code>che.audio.custom_channel_num</code>.
+      </p>
+
+      <h3>1.2 Sending: three input paths</h3>
+      <table>
+        <thead>
+          <tr><th>Path</th><th>API</th><th>Format requirements</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Raw PCM</td>
+            <td><code>IAudioPcmDataSender::sendAudioPcmData</code></td>
+            <td>3–8 channels, 48 kHz, 16-bit signed little-endian, sample-interleaved; 10 ms per frame (samplesPerChannel = 480)</td>
+          </tr>
+          <tr>
+            <td>WAV file</td>
+            <td>Same as above (parse the RIFF header first)</td>
+            <td>16-bit sent directly; 24-bit converted to 16-bit per sample (shift right by 8); other bit depths are rejected; must be 48 kHz</td>
+          </tr>
+          <tr>
+            <td>Pre-encoded Opus</td>
+            <td><code>IAudioEncodedFrameSender::sendEncodedAudioFrame</code></td>
+            <td>8-channel 48 kHz raw Opus frame stream (not ogg), fixed 640 bytes per 20 ms frame; the custom audio track must be created with <code>MIX_DISABLED</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        The PCM path and the encoded-frame path are mutually exclusive (choose one per custom
+        audio track); custom send paths do not go through 3A processing.
+      </p>
+      <p>
+        Note: older reference code (for example the v4.2.32 <code>sample_send_opus8</code>) may use
+        <code>AUDIO_CODEC_OPUS8C</code>. In the v4.4.30.x multi-channel build use
+        <code>AUDIO_CODEC_OPUSMC</code> and set <code>che.audio.custom_sample_rate=48000</code>
+        accordingly.
+      </p>
+
+      <h3>1.3 Receiving: three paths</h3>
+      <table>
+        <thead>
+          <tr><th>Path</th><th>API</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Per-user decoded PCM callback</td>
+            <td><code>onPlaybackAudioFrameBeforeMixing</code> + <code>setPlaybackAudioFrameBeforeMixingParameters</code></td>
+            <td>Delivers decoded multi-channel PCM per remote user (16-bit interleaved, 10 ms frames); the callback channel count must match the sender to recover the full multi-channel data</td>
+          </tr>
+          <tr>
+            <td>Encoded frame callback</td>
+            <td><code>audioRecvEncodedFrame</code> + <code>onEncodedAudioFrameReceived</code></td>
+            <td>Receives OPUSMC encoded frames without decoding or playback, for forwarding or custom decoding; requires <code>enableAudioRecordingOrPlayout=false</code> and is mutually exclusive with the playback path</td>
+          </tr>
+          <tr>
+            <td>Mixed output</td>
+            <td><code>onPlaybackAudioFrame</code> / <code>onMixedAudioFrame</code></td>
+            <td>Mixed output is <strong>always 2 channels</strong>: odd channels are mixed into one stream and even channels into the other; direct N-channel playback is not supported</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>1.4 Capability negotiation and fallback</h3>
+      <ul>
+        <li>OPUSMC availability is decided through capability negotiation. <strong>When Linux is sending</strong>, an endpoint without multi-channel support joining the channel makes the sender fall back to plain Opus (OPUSFB) and multi-channel stops working (the design docs disagree on the fallback target — the Linux doc says mono, the Web doc says dual-channel; defer to actual version behavior).</li>
+        <li><code>PUnsupportedAudioCodec</code> broadcast: a Web client joining triggers this VOS broadcast; when the SDK receives it and the current codec is multi-channel, it does <strong>not</strong> fall back (the packet is only used to disable DTX).</li>
+        <li><strong>Forced no-fallback</strong>: setting the private parameter <code>"che.audio.codec_unfallback": [123, 124, 125]</code> forces the entire channel to use multi-channel — even if some participants do not support it, the others keep multi-channel send/receive. This parameter has a special placement requirement; see the integration guide below.</li>
+        <li>When the channel count is greater than 4, the sender and receiver channel-count configurations must match; the Web SDK only decodes even channel counts.</li>
+      </ul>
+
+      <h3>1.5 4×stereo → 8-channel layout mapping</h3>
+      <p>
+        A common source layout in broadcast production: 8-channel content is carried as
+        <strong>four stereo tracks</strong> (for example, a package with 4 × AC-3 at 44.1 kHz).
+        The PCM is arranged in <strong>track-block order</strong>
+        (<code>[T1L,T1R]×N [T2L,T2R]×N [T3L,T3R]×N [T4L,T4R]×N</code>) and <strong>cannot</strong> be
+        fed directly to <code>sendAudioPcmData</code>. It must first be reordered on the
+        application side into Agora's 8-channel <strong>sample-interleaved</strong> layout:
+      </p>
+      <pre><code>Channel order: CH1=T1L, CH2=T1R, CH3=T2L, CH4=T2R, CH5=T3L, CH6=T3R, CH7=T4L, CH8=T4R
+The buffer repeats [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] for every sample</code></pre>
+      <ul>
+        <li>Channel pairs (0,1)(2,3)(4,5)(6,7) correspond to tracks 1–4, matching the pairing of the 4 coupled streams in 8-channel OPUSMC; these 8 channels are 4 independent stereo pairs, <strong>not a 7.1 surround layout</strong>.</li>
+        <li>If the source writes 15360 bytes per write (= 8 channels × 16-bit × 960 samples = 20 ms @ 48 kHz), split it into 10 ms frames before sending to the SDK.</li>
+        <li>A 44.1 kHz source must be resampled to 48 kHz first; resampling and reordering can happen in either order, but both must finish before <code>sendAudioPcmData</code>.</li>
+        <li>Some sources provide four AC-3 stereo tracks. The tracks may be 44.1 kHz and have slightly different durations; after decoding they must all be resampled to 48 kHz and then reordered into the interleaved PCM layout above.</li>
+        <li>A common integration mistake is reading sample-interleaved data as planar block order (LLL…RRR…), which causes noise at the receiver.</li>
+      </ul>
+
+      <!-- ================= Integration guide ================= -->
+      <h2 id="integration">2. Integration Guide</h2>
+
+      <h3>2.1 Private parameters and timing (important)</h3>
+      <table>
+        <thead>
+          <tr><th>Private parameter</th><th>Set on</th><th>Timing</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>che.audio.custom_payload_type</code><br><code>che.audio.custom_channel_num</code><br><code>che.audio.custom_sample_rate</code></td>
+            <td>Connection level: <code>connection-&gt;getAgoraParameter()</code></td>
+            <td>After <code>createRtcConnection</code>, before <code>connect()</code>; setting after connect has no effect</td>
+          </tr>
+          <tr>
+            <td><code>che.audio.codec_unfallback</code> (JSON array, e.g. <code>[123,124,125]</code>)</td>
+            <td>Service level: <code>service-&gt;getAgoraParameter()</code></td>
+            <td><strong>Before <code>createRtcConnection()</code></strong>; setting it at connection level does not work (verified by CSE)</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        The sender must set the payload-type family of parameters; the receiver does not need
+        <code>che.audio.custom_payload_type</code> under the 123/124/125 negotiation mechanism,
+        but the PCM callback channel count must match the sender.
+      </p>
+
+      <h3>2.2 Key API call sequence (sending PCM)</h3>
+      <pre><code>// 1. Service level (before createRtcConnection): force no-fallback (optional)
+service-&gt;getAgoraParameter()-&gt;setArray("che.audio.codec_unfallback", "[123,124,125]");
+
+// 2. After creating the connection, before connect: enable multi-channel (8ch example)
+auto p = connection-&gt;getAgoraParameter();
+p-&gt;setInt("che.audio.custom_payload_type", 125);
+p-&gt;setInt("che.audio.custom_channel_num", 8);
+p-&gt;setInt("che.audio.custom_sample_rate", 48000);
+connection-&gt;connect(token, channelId, userId);
+
+// 3. Create the PCM sender and a custom audio track, then publish
+auto factory = service-&gt;createMediaNodeFactory();
+auto sender = factory-&gt;createAudioPcmDataSender();
+auto track = service-&gt;createCustomAudioTrack(sender);
+connection-&gt;getLocalUser()-&gt;publishAudio(track);
+
+// 4. Send interleaved PCM at a 10 ms cadence (samplesPerChannel = 48000/100)
+sender-&gt;sendAudioPcmData(frameBuf, 0, 0, 480,
+                         agora::rtc::TWO_BYTES_PER_SAMPLE, 8, 48000);</code></pre>
+
+      <h3>2.3 Sending pre-encoded Opus (8 channels)</h3>
+      <pre><code>// Create the track with MIX_DISABLED (pre-encoded sending bypasses 3A / mixing)
+auto track = service-&gt;createCustomAudioTrack(audioFrameSender,
+                                             agora::base::MIX_DISABLED);
+
+// Send one frame every 20 ms (640-byte raw Opus frames)
+agora::rtc::EncodedAudioFrameInfo info;
+info.codec = agora::rtc::AUDIO_CODEC_TYPE::AUDIO_CODEC_OPUSMC;
+info.numberOfChannels = 8;
+info.sampleRateHz = 48000;
+info.samplesPerChannel = 960;  // 20 ms @ 48 kHz
+audioFrameSender-&gt;sendEncodedAudioFrame(frameBuf, sizeof(frameBuf), info);</code></pre>
+
+      <h3>2.4 Receiving (per-user decoded PCM)</h3>
+      <pre><code>// The callback channel count must match the sender to recover all channels
+connection-&gt;getLocalUser()
+    -&gt;setPlaybackAudioFrameBeforeMixingParameters(8, 48000);
+
+// Receive decoded PCM per remote user in the IAudioFrameObserverBase callback:
+// onPlaybackAudioFrameBeforeMixing(channelId, userId, audioFrame)
+//   audioFrame.channels == 8, buffer is 16-bit interleaved PCM, ready to dump or process</code></pre>
+
+      <h3>2.5 Demos in this repo and run examples</h3>
+      <p>
+        <code>Demo/linux/</code> provides 5 samples (3 senders + 2 receivers). See its README for
+        build details and full parameter lists:
+      </p>
+      <pre><code>cd Demo/linux
+./build.sh x86_64        # or aarch64; binaries land in out/
+
+# Send an 8-channel WAV (16-bit)
+./sample_send_wav_multiopus --channelId &lt;name&gt; --token &lt;token&gt; \
+    --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" \
+    --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
+
+# Send a pre-encoded 8-channel raw Opus stream
+./sample_send_opus8 --channelId &lt;name&gt; --token &lt;token&gt; --audioFile "public/8ch_2.opus"
+
+# Receive multi-channel PCM (per-user callback + dump to file)
+./sample_receive_pcm_multiopus --channelId &lt;name&gt; --token &lt;token&gt; \
+    --numOfChannels 8 --sampleRate 48000 --audioFile received_8ch.pcm
+
+# All sender samples support --codecUnfallback to force no-fallback</code></pre>
+
+      <h3>2.6 Verification</h3>
+      <ul>
+        <li>
+          <strong>Encoder log</strong>: the configuration is in effect when the log shows
+          <code>MultistreamEncoder channel num:N rate:48000 coupled:M channel_mapping:... bitrate:...</code>, for example
+          <code>MultistreamEncoder channel num:4 rate:48000 coupled:2 channel_mapping:0 1 2 3 bitrate:128000</code>.
+        </li>
+        <li>
+          <strong>PCM dump playback</strong>: the received dump file is 48 kHz / N-channel / 16-bit
+          little-endian interleaved raw PCM and can be verified directly with ffplay:
+          <pre><code>ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8-channel example</code></pre>
+        </li>
+        <li>
+          <strong>With the Web demo</strong>: subscribe to the same channel with the
+          <a href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">online Web verification demo</a>
+          (or <code>Demo/web/</code> in this repo). <code>getVolumeLevels()</code> should return an array whose
+          length equals the channel count, and the codec should show <code>multiopus</code>. Send Channel ID
+          material to listen channel by channel and check the layout mapping. See the
+          <a href="web-sdk-multichannel.html">Web SDK doc</a>.
+        </li>
+        <li>
+          <strong>Dump files</strong>: placing material named <code>multi_channel.pcm</code> (channel count matching
+          <code>custom_channel_num</code>) in the log directory feeds it into the encoder;
+          <code>before_encoded.pcm</code> (decoded data, same channel count as the encoder input) and
+          <code>mixed_output.pcm</code> (mixed data, always 2 channels) can be generated.
+        </li>
+      </ul>
+
+      <h2>3. SDK Download</h2>
+      <p>
+        For multi-channel verification we recommend <code>v4.4.30.149</code> (x86_64 / aarch64), which is
+        the version currently matched by <code>Demo/linux</code>:
+      </p>
+      <ul>
+        <li>
+          x86_64:
+          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz" target="_blank" rel="noopener">
+            Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
+          </a>
+        </li>
+        <li>
+          aarch64:
+          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz" target="_blank" rel="noopener">
+            Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz
+          </a>
+        </li>
+      </ul>
+      <p>
+        Note: the sender samples in this repo have removed the H264 video-sending logic that exists in
+        the reference samples (<code>sample_send_h264_pcm_multiopus*.cpp</code>) and keep only the
+        audio multi-channel demonstration.
+      </p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span data-lang="zh">内容依据：Linux 多声道设计文档（ExT-1485178709）与 Spec/linux_sdk_audio_multichannel_spec.md；示例代码取自 Demo/linux。</span>
+      <span data-lang="en">Sources: Linux multi-channel design doc (ExT-1485178709) and Spec/linux_sdk_audio_multichannel_spec.md; code samples are taken from Demo/linux.</span>
+    </div>
+  </footer>
+
+  <script src="assets/i18n.js?v=20260820-135222"></script>
+</body>
+</html>

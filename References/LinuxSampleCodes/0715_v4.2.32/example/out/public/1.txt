@@ -1,0 +1,1 @@
+./sample_send_h264_pcm_multiopus_8ch_wav  --channelId "test_4_2_32_0723a” --token "43f818097c124394821bd44598b7ca9d" --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000

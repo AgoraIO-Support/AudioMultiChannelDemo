@@ -1,0 +1,264 @@
+/* Agora 音频多声道文档站 —— 共享样式（浅色技术文档风格） */
+
+:root {
+  --max-width: 900px;
+  --text: #1f2329;
+  --text-secondary: #5a6069;
+  --accent: #165dff;
+  --accent-soft: #eaf1ff;
+  --border: #e2e5ea;
+  --bg: #ffffff;
+  --bg-soft: #f6f7f9;
+  --code-bg: #f3f4f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---------- 头部与语言切换 ---------- */
+
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+}
+
+.brand {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--accent);
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-nav a {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.header-nav a:hover {
+  color: var(--accent);
+}
+
+#lang-toggle {
+  font-size: 13px;
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+#lang-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- 正文 ---------- */
+
+main.container {
+  padding-top: 32px;
+  padding-bottom: 64px;
+}
+
+h1 {
+  font-size: 28px;
+  line-height: 1.35;
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-size: 22px;
+  margin: 40px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+h3 {
+  font-size: 17px;
+  margin: 28px 0 8px;
+}
+
+p {
+  margin: 12px 0;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin-top: 0;
+}
+
+a {
+  color: var(--accent);
+}
+
+ul,
+ol {
+  padding-left: 24px;
+}
+
+li {
+  margin: 4px 0;
+}
+
+/* ---------- 代码 ---------- */
+
+code {
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.875em;
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  font-size: 13px;
+}
+
+/* ---------- 表格 ---------- */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: var(--bg-soft);
+  font-weight: 600;
+}
+
+/* ---------- 卡片（首页快捷链接） ---------- */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.card {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 10px rgba(22, 93, 255, 0.08);
+}
+
+.card .card-title {
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--accent);
+}
+
+.card .card-desc {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ---------- 提示块 ---------- */
+
+.note {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 16px;
+  margin: 16px 0;
+  font-size: 14.5px;
+}
+
+.note p {
+  margin: 4px 0;
+}
+
+/* ---------- 页脚 ---------- */
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  padding: 20px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ---------- 响应式 ---------- */
+
+@media (max-width: 640px) {
+  h1 {
+    font-size: 23px;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+}

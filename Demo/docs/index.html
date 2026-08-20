@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title
+    data-title-zh="Agora 音频多声道（multiopus）文档"
+    data-title-en="Agora Audio Multi-Channel (multiopus) Docs"
+  >Agora 音频多声道（multiopus）文档</title>
+  <link rel="stylesheet" href="assets/style.css?v=20260820-135222">
+  <meta name="build-id" content="20260820-135222">
+  </head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html">Agora Multi-Channel Docs</a>
+      <nav class="header-nav">
+        <a href="linux-sdk-multichannel.html">Linux SDK</a>
+        <a href="web-sdk-multichannel.html">Web SDK</a>
+        <a href="../"><span data-lang="zh">在线 Demo</span><span data-lang="en">Live Demo</span></a>
+        <button id="lang-toggle" type="button">EN</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ==================== 中文 ==================== -->
+    <div data-lang="zh">
+      <h1>Agora 音频多声道（multiopus）</h1>
+      <p class="subtitle">功能总述 · 集成指南 · 端到端验证（Linux SDK + Web SDK）</p>
+
+      <h2>什么是音频多声道</h2>
+      <p>
+        音频多声道功能基于 <strong>Opus 多流编码（OPUSMC）</strong>，在一路 RTC 音频流中传输
+        <strong>3~8 个声道</strong>的音频：发送端（如 Linux SDK）将多声道素材编码为 OPUSMC 流，
+        经 SD-RTN 分发后，接收端（Web / Native / Linux）可按声道选择播放或做进一步处理。
+      </p>
+      <ul>
+        <li>多声道流使用专用 <strong>payload type 123 / 124 / 125</strong>（codec 类型 OPUSMC）；</li>
+        <li>编解码<strong>仅支持 48 kHz</strong> 采样率，非 48 kHz 素材须先重采样；</li>
+        <li>支持 3/4/5/6/7/8 声道；其中 Web 端仅支持偶数声道（4/6/8）解码。</li>
+      </ul>
+
+      <h2>应用场景</h2>
+      <p>
+        本功能适用于<strong>广电 / 媒体制作</strong>等需要多声道音频传输的场景：<strong>Linux 服务器端</strong>（x86_64 / aarch64）
+        将 4/6/8 声道音频素材（raw PCM、WAV、预编码 Opus）注入 RTC 频道。广播行业常见的一类源端布局是
+        以 4 条双声道（stereo）音轨承载 8 声道内容，送入 SDK 前需按既定映射重排为逐样本交错的 8 声道流；
+        <strong>Web 端（Chrome）</strong>作为监听与验证端订阅多声道流，逐声道查看音量并试听，
+        确认声道布局与内容正确。
+      </p>
+
+      <h2>能力边界要点</h2>
+      <ul>
+        <li><strong>Web 仅偶数声道解码</strong>：4/6/8 可用；3/5/7 声道流对 Web 端不适用。</li>
+        <li><strong>最多 8 声道</strong>：本功能支持 3~8 声道，16 声道及以上不支持。</li>
+        <li><strong>浏览器要求</strong>：Chrome 96+（推荐 110+）；Safari / Firefox 不支持，加入多声道频道行为未定义（可能无声或仅立体声）。</li>
+        <li><strong>不支持端回退规则</strong>：Linux 发送时，不支持多声道的端加入会触发发送端回退为普通 Opus（可用私参 <code>che.audio.codec_unfallback</code> 强制不回退）；Web 发送时不回退，该不支持端无声。使用多声道时应保证频道内所有参与者均支持多声道。</li>
+      </ul>
+
+      <h2>快捷链接</h2>
+      <div class="card-grid">
+        <a class="card" href="linux-sdk-multichannel.html">
+          <p class="card-title">Linux SDK 多声道文档 →</p>
+          <p class="card-desc">OPUSMC 编码、发送/接收三路径、私参与回退、4×stereo 布局映射、C++ 集成指南。</p>
+        </a>
+        <a class="card" href="web-sdk-multichannel.html">
+          <p class="card-title">Web SDK 多声道文档 →</p>
+          <p class="card-desc">ENABLE_MULTIOPUS_CODEC、发布/订阅、selectChannels、getVolumeLevels、浏览器兼容。</p>
+        </a>
+        <a class="card" href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">
+          <p class="card-title">在线 Web 验证 Demo ↗</p>
+          <p class="card-desc">在浏览器中订阅/发布多声道流，逐声道音量条与 codec 判定（Chrome 96+，新标签页打开）。</p>
+        </a>
+        <a class="card" href="linux-sdk-multichannel.html#integration">
+          <p class="card-title">本仓库 Demo 目录</p>
+          <p class="card-desc">
+            <code>Demo/linux/</code>：C++ 收发 sample（构建与运行见其 README）；<code>Demo/web/</code>：Vue3 验证 demo（<code>npm run dev</code>）。
+          </p>
+        </a>
+      </div>
+
+      <h2>SDK 版本与计费说明</h2>
+      <ul>
+        <li>
+          <strong>Web SDK</strong>：本功能需要多声道特殊版本。本仓库 Demo/web 使用
+          <code>agora-rtc-sdk-ng@4.20.1-200</code>；设计文档对应版本为
+          <code>agora-rtc-sdk-ng@4.20.1-100</code>，可通过 npm 或
+          <a href="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.1-100.js" target="_blank" rel="noopener">CDN</a>
+          获取，完整包见
+          <a href="https://download.agora.io/sdk/release/Agora_Web_SDK_v4_20_1-100_FULL.zip" target="_blank" rel="noopener">Agora_Web_SDK_v4_20_1-100_FULL.zip</a>。
+        </li>
+        <li>
+          <strong>Linux SDK</strong>：多声道验证版本为 <code>v4.4.30.149</code>（x86_64 / aarch64），下载：
+          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz" target="_blank" rel="noopener">x86_64</a>、
+          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz" target="_blank" rel="noopener">aarch64</a>。
+        </li>
+        <li>
+          <strong>计费</strong>：当前多声道费用与普通双声道音频相同；未来可能随成本调整，请以 Agora 官方计费说明为准。
+        </li>
+      </ul>
+
+      <h2>payload type 与声道数映射</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>payload type</th>
+            <th>默认声道数</th>
+            <th>支持的声道数</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>123</td>
+            <td>4</td>
+            <td>3 / 4</td>
+            <td>3 声道需额外设置 <code>che.audio.custom_channel_num</code></td>
+          </tr>
+          <tr>
+            <td>124</td>
+            <td>6</td>
+            <td>5 / 6</td>
+            <td>5 声道需额外设置 <code>che.audio.custom_channel_num</code></td>
+          </tr>
+          <tr>
+            <td>125</td>
+            <td>8</td>
+            <td>7 / 8</td>
+            <td>7 声道需额外设置 <code>che.audio.custom_channel_num</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        即：<strong>123 → 3/4、124 → 5/6、125 → 7/8</strong>；默认声道数为 4/6/8，
+        3/5/7 声道必须在对应 payload type 下显式设置 <code>custom_channel_num</code>。
+        完整的 channel_mapping / coupled_streams / num_streams 编码参数表见
+        <a href="linux-sdk-multichannel.html">Linux SDK 文档</a>。
+      </p>
+    </div>
+
+    <!-- ==================== English ==================== -->
+    <div data-lang="en">
+      <h1>Agora Audio Multi-Channel (multiopus)</h1>
+      <p class="subtitle">Overview · Integration guides · End-to-end verification (Linux SDK + Web SDK)</p>
+
+      <h2>What is audio multi-channel</h2>
+      <p>
+        The audio multi-channel feature is based on <strong>Opus multistream encoding (OPUSMC)</strong>:
+        it carries <strong>3 to 8 audio channels</strong> in a single RTC audio stream. A sender
+        (for example, the Linux SDK) encodes multi-channel material into an OPUSMC stream and
+        distributes it over SD-RTN; receivers (Web / Native / Linux) can then select individual
+        channels for playback or further processing.
+      </p>
+      <ul>
+        <li>Multi-channel streams use dedicated <strong>payload types 123 / 124 / 125</strong> (codec type OPUSMC);</li>
+        <li>Encoding and decoding <strong>only support 48 kHz</strong>; material at other sample rates must be resampled first;</li>
+        <li>3/4/5/6/7/8 channels are supported; the Web SDK can decode even channel counts (4/6/8) only.</li>
+      </ul>
+
+      <h2>Use cases</h2>
+      <p>
+        This feature fits <strong>broadcast / media production</strong> and other scenarios that
+        need multi-channel audio transport. A <strong>Linux server</strong> (x86_64 / aarch64)
+        injects 4/6/8-channel audio material (raw PCM, WAV, or pre-encoded Opus) into an RTC
+        channel. A common source layout in broadcasting carries 8 channels as four stereo tracks;
+        such content must be reordered into a sample-interleaved 8-channel stream before being
+        fed to the SDK. A <strong>Web client (Chrome)</strong> acts as the monitoring and
+        verification endpoint: it subscribes to the multi-channel stream, watches per-channel
+        volume levels, and listens channel by channel to confirm the layout and content are correct.
+      </p>
+
+      <h2>Capability boundaries</h2>
+      <ul>
+        <li><strong>Even channel counts only on Web</strong>: 4/6/8 channels work; 3/5/7-channel streams are not applicable to Web receivers.</li>
+        <li><strong>Maximum 8 channels</strong>: this feature supports 3 to 8 channels; 16 channels and above are not supported.</li>
+        <li><strong>Browser requirement</strong>: Chrome 96+ (110+ recommended); Safari and Firefox are not supported — behavior in a multi-channel channel is undefined (possibly silence or stereo only).</li>
+        <li><strong>Fallback rules for unsupported endpoints</strong>: when Linux is sending, an endpoint without multi-channel support joining the channel triggers the sender to fall back to plain Opus (the private parameter <code>che.audio.codec_unfallback</code> can force no-fallback); when Web is sending, no fallback occurs and the unsupported endpoint hears nothing. All participants in the channel should support multi-channel when using this feature.</li>
+      </ul>
+
+      <h2>Quick links</h2>
+      <div class="card-grid">
+        <a class="card" href="linux-sdk-multichannel.html">
+          <p class="card-title">Linux SDK multi-channel docs →</p>
+          <p class="card-desc">OPUSMC encoding, three send/receive paths, private parameters and fallback, 4×stereo layout mapping, C++ integration guide.</p>
+        </a>
+        <a class="card" href="web-sdk-multichannel.html">
+          <p class="card-title">Web SDK multi-channel docs →</p>
+          <p class="card-desc">ENABLE_MULTIOPUS_CODEC, publish/subscribe, selectChannels, getVolumeLevels, browser compatibility.</p>
+        </a>
+        <a class="card" href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">
+          <p class="card-title">Online Web verification demo ↗</p>
+          <p class="card-desc">Subscribe/publish multi-channel streams in the browser with per-channel volume bars and codec detection (Chrome 96+, opens in a new tab).</p>
+        </a>
+        <a class="card" href="linux-sdk-multichannel.html#integration">
+          <p class="card-title">Demo directories in this repo</p>
+          <p class="card-desc">
+            <code>Demo/linux/</code>: C++ send/receive samples (see its README for build &amp; run); <code>Demo/web/</code>: Vue3 verification demo (<code>npm run dev</code>).
+          </p>
+        </a>
+      </div>
+
+      <h2>SDK versions and pricing</h2>
+      <ul>
+        <li>
+          <strong>Web SDK</strong>: this feature requires a special multi-channel build. This repo's
+          <code>Demo/web</code> uses <code>agora-rtc-sdk-ng@4.20.1-200</code>; the design doc version is
+          <code>agora-rtc-sdk-ng@4.20.1-100</code>, available on npm or via the
+          <a href="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.1-100.js" target="_blank" rel="noopener">CDN</a>
+          and the
+          <a href="https://download.agora.io/sdk/release/Agora_Web_SDK_v4_20_1-100_FULL.zip" target="_blank" rel="noopener">Agora_Web_SDK_v4_20_1-100_FULL.zip</a>
+          package.
+        </li>
+        <li>
+          <strong>Linux SDK</strong>: the verified multi-channel version is <code>v4.4.30.149</code>
+          (x86_64 / aarch64). Downloads:
+          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz" target="_blank" rel="noopener">x86_64</a>,
+          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz" target="_blank" rel="noopener">aarch64</a>.
+        </li>
+        <li>
+          <strong>Pricing</strong>: multi-channel audio is currently charged the same as normal stereo
+          audio; this may change in the future. Refer to Agora's official pricing documentation for
+          the latest terms.
+        </li>
+      </ul>
+
+      <h2>Payload type ↔ channel count mapping</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Payload type</th>
+            <th>Default channels</th>
+            <th>Supported channels</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>123</td>
+            <td>4</td>
+            <td>3 / 4</td>
+            <td>3 channels require <code>che.audio.custom_channel_num</code></td>
+          </tr>
+          <tr>
+            <td>124</td>
+            <td>6</td>
+            <td>5 / 6</td>
+            <td>5 channels require <code>che.audio.custom_channel_num</code></td>
+          </tr>
+          <tr>
+            <td>125</td>
+            <td>8</td>
+            <td>7 / 8</td>
+            <td>7 channels require <code>che.audio.custom_channel_num</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        In short: <strong>123 → 3/4, 124 → 5/6, 125 → 7/8</strong>; the defaults are 4/6/8 channels,
+        and 3/5/7 channels require an explicit <code>custom_channel_num</code> under the matching
+        payload type. See the <a href="linux-sdk-multichannel.html">Linux SDK doc</a> for the full
+        channel_mapping / coupled_streams / num_streams encoding table.
+      </p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span data-lang="zh">内容依据：多声道设计文档（ExT-1485178709 / ExT-1485178492）与 Spec/ 下 PRD；示例代码取自 Demo/linux 与 Demo/web。</span>
+      <span data-lang="en">Sources: multi-channel design docs (ExT-1485178709 / ExT-1485178492) and the PRDs under Spec/; code samples are taken from Demo/linux and Demo/web.</span>
+    </div>
+  </footer>
+
+  <script src="assets/i18n.js?v=20260820-135222"></script>
+</body>
+</html>

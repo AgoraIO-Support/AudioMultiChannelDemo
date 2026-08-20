@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title
+    data-title-zh="Web SDK 音频多声道（multiopus）文档"
+    data-title-en="Web SDK Audio Multi-Channel (multiopus) Docs"
+  >Web SDK 音频多声道（multiopus）文档</title>
+  <link rel="stylesheet" href="assets/style.css?v=20260820-135222">
+  <meta name="build-id" content="20260820-135222">
+  </head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html">Agora Multi-Channel Docs</a>
+      <nav class="header-nav">
+        <a href="index.html">Home</a>
+        <a href="linux-sdk-multichannel.html">Linux SDK</a>
+        <a href="../"><span data-lang="zh">在线 Demo</span><span data-lang="en">Live Demo</span></a>
+        <button id="lang-toggle" type="button">EN</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ==================== 中文 ==================== -->
+    <div data-lang="zh">
+      <h1>Web SDK 音频多声道（multiopus）</h1>
+      <p class="subtitle">适用版本：agora-rtc-sdk-ng 4.20.1-100 / 4.20.1-200（多声道版本），Chrome 96+</p>
+
+      <h2>〇、SDK 版本与下载</h2>
+      <ul>
+        <li>
+          本仓库 Demo/web 使用 <code>agora-rtc-sdk-ng@4.20.1-200</code>；设计文档对应版本为
+          <code>agora-rtc-sdk-ng@4.20.1-100</code>。
+        </li>
+        <li>
+          npm 包：除 <code>agora-rtc-sdk-ng</code> 外，多声道版本还包含
+          <code>@agora-js/media</code>、<code>@agora-js/report</code>、<code>@agora-js/shared</code>。
+        </li>
+        <li>
+          CDN / 完整包：
+          <a href="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.1-100.js" target="_blank" rel="noopener">AgoraRTC_N-4.20.1-100.js</a>、
+          <a href="https://download.agora.io/sdk/release/Agora_Web_SDK_v4_20_1-100_FULL.zip" target="_blank" rel="noopener">Agora_Web_SDK_v4_20_1-100_FULL.zip</a>。
+        </li>
+        <li>Web SDK 最多支持 8 声道解码，16 声道及以上不支持。</li>
+      </ul>
+
+      <!-- ================= 功能说明 ================= -->
+      <h2>一、功能说明</h2>
+
+      <h3>1.1 能力开关 ENABLE_MULTIOPUS_CODEC</h3>
+      <p>
+        多声道能力通过私参开关开启：
+        <code>AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)</code>。
+        <strong>必须在 <code>AgoraRTC.createClient()</code> 之前设置</strong>，创建 client 后再设置不生效。
+        未开启时订阅端按普通单/双声道处理，无法解出多声道。开启后订阅/发布走 ORTC multiopus 协商
+        （payload type 123、clockRate 48000、fmtp 含 channel_mapping / coupled_streams / num_streams）。
+      </p>
+
+      <h3>1.2 多声道发布</h3>
+      <p>
+        通过 <code>AgoraRTC.createCustomAudioTrack({ mediaStreamTrack, channelCount })</code>
+        将多声道音频发布为 OPUSMC 流；<code>channelCount</code> 支持 <strong>4 / 6 / 8</strong>，
+        SDK 依据该值生成发布用的 <code>custom_payload_type</code>。本地音轨的
+        <code>channelCount</code> 属性为创建时设定值。声道路由（哪路对应哪个逻辑声道）由发布素材与业务约定决定，
+        SDK 不做声道重排；广播场景下应与 Linux 侧的布局映射
+        （T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）保持一致。
+      </p>
+      <p>
+        注：部分早期设计文档示例使用 <code>createMultiAudioTrack</code>，在本版多声道 SDK 中对应
+        <code>AgoraRTC.createCustomAudioTrack({ mediaStreamTrack, channelCount })</code>。
+      </p>
+
+      <h3>1.3 订阅与 channelCount</h3>
+      <p>
+        <code>client.subscribe(user, "audio")</code> 成功后调用 <code>track.play()</code> 即按多声道解码播放。
+        远端音轨的 <code>channelCount</code> 属性来自 <code>on_add_audio_stream</code> 信令中的 pt 值，
+        反映信令协商的声道数（4/6/8）。仅支持偶数声道解码。
+      </p>
+
+      <h3>1.4 selectChannels 声道选择（三种模式）</h3>
+      <p>
+        本地与远端多声道音轨均支持
+        <code>selectChannels(channels, mode)</code>（<code>channels</code> 为声道序号数组，从 0 开始，
+        <code>mode</code> 默认 <code>"surround"</code>）：
+      </p>
+      <table>
+        <thead>
+          <tr><th>模式</th><th>行为</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>surround</code></td>
+            <td>按标准多声道协议输出所选声道；例如 5.1 布局中选择声道 2（中置）与声道 3（LFE）可按立体声播放</td>
+          </tr>
+          <tr>
+            <td><code>stereo</code></td>
+            <td>所选声道中的 <strong>0,2,4,6… 声道混入左</strong>、<strong>1,3,5,7… 声道混入右</strong>，输出立体声。例如选 <code>0,1,2,3</code> 时 0、2 在左，1、3 在右</td>
+          </tr>
+          <tr>
+            <td><code>mono</code></td>
+            <td>所选声道全部混为单声道（输出为立体声容器）</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        声道选择基于 Insertable Streams（MediaStreamTrackProcessor / Generator）实现，
+        绕开 Chrome WebAudio 缺陷（chromium issue 1116042），可播放 8 个声道的任意组合。
+      </p>
+
+      <h3>1.5 getVolumeLevels 逐声道音量</h3>
+      <p>
+        <code>getVolumeLevels()</code> 返回全部声道的实时音量数组（0~1）；传入声道列表
+        （如 <code>[0, 1, 2]</code>）时仅返回所列声道。<strong>返回数组长度等于实际解码声道数</strong>，
+        可作为多声道是否生效的判定依据。
+      </p>
+
+      <h3>1.6 浏览器兼容性</h3>
+      <table>
+        <thead>
+          <tr><th>浏览器</th><th>支持情况</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Chrome 94 / 95</td><td>相关接口默认关闭，需手动开启，不推荐</td></tr>
+          <tr><td>Chrome 96 ~ 109</td><td>96 起正式支持；取消订阅后的重协商差异已做兼容</td></tr>
+          <tr><td>Chrome 110+</td><td>完全支持（推荐）</td></tr>
+          <tr><td>Safari / Firefox</td><td><strong>不支持</strong>；加入多声道频道行为未定义——可能无声或仅立体声</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1.7 回退表现</h3>
+      <ul>
+        <li><strong>Linux 发送时</strong>：不支持多声道的端加入会触发发送端回退为普通 Opus，Web 订阅端可观测到 codec 由 <code>multiopus</code> 变为 <code>opus</code>、声道数下降；发送端可用 <code>che.audio.codec_unfallback</code> 强制不回退（设置位置要求见 <a href="linux-sdk-multichannel.html">Linux SDK 文档</a>）。</li>
+        <li><strong>Web 发送时</strong>：不支持端加入不触发回退，该端听不到声音。使用多声道时应保证频道内所有参与者均支持多声道。</li>
+      </ul>
+
+      <!-- ================= 集成指南 ================= -->
+      <h2 id="integration">二、集成指南</h2>
+
+      <h3>2.1 订阅链路（典型场景）</h3>
+      <pre><code>// 1. 开启 multiopus（必须在 createClient 之前）
+AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true);
+
+// 2. 创建 client 并加入频道
+const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+await client.join(appId, channel, token, uid);
+
+// 3. 订阅目标远端音频并播放
+const track = await client.subscribe(user, "audio");
+track.play();
+
+// 4. 判定声道数：返回数组长度 = 实际解码声道数
+const levels = track.getVolumeLevels();   // 8 声道流 → 长度 8
+
+// 5. 声道选择播放（任意声道组合）
+track.selectChannels([0, 1], "stereo");   // 0,2,4,6→左；1,3,5,7→右
+track.selectChannels([3], "mono");        // 逐声道试听
+track.selectChannels([0,1,2,3,4,5,6,7], "surround");</code></pre>
+
+      <h3>2.2 发布链路（多声道 WAV）</h3>
+      <pre><code>// 1. fetch 素材并用 Web Audio 解码
+const audioCtx = new AudioContext();
+const buffer = await audioCtx.decodeAudioData(
+  await (await fetch("8_Channel_ID.wav")).arrayBuffer());
+
+// 2. 显式 channelCount 的 MediaStreamDestination（避免被 down-mix 成立体声）
+const dest = audioCtx.createMediaStreamDestination();
+dest.channelCount = 8;
+dest.channelCountMode = "explicit";
+dest.channelInterpretation = "discrete";
+const source = audioCtx.createBufferSource();
+source.buffer = buffer;
+source.connect(dest);
+source.start();
+
+// 3. channelCount 驱动 SDK 生成发布用 custom_payload_type
+const track = await AgoraRTC.createCustomAudioTrack({
+  mediaStreamTrack: dest.stream.getAudioTracks()[0],
+  channelCount: 8,
+});
+await client.publish(track);</code></pre>
+      <p>
+        以上代码从本仓库 <code>Demo/web/src/Multiopus.vue</code> 简化而来；素材循环播放可通过
+        <code>source.onended</code> 重新挂载实现。
+      </p>
+
+      <h3>2.3 判定方法</h3>
+      <table>
+        <thead>
+          <tr><th>判据</th><th>多声道生效</th><th>未生效</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>getVolumeLevels()</code> 返回数组长度</td>
+            <td>= 实际声道数（4/6/8）</td>
+            <td>1（单声道）</td>
+          </tr>
+          <tr>
+            <td>getStats inbound codec</td>
+            <td><code>multiopus</code></td>
+            <td><code>opus</code></td>
+          </tr>
+          <tr>
+            <td>远端音轨 <code>channelCount</code>（信令 pt 值）</td>
+            <td>4 / 6 / 8</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        getStats 读取底层 codec 需 hook <code>RTCPeerConnection.getStats()</code>（demo 层手段，
+        非 SDK 公开 API），可按 800 ms 轮询、最多 6 次以容忍协商延迟。
+      </p>
+
+      <h3>2.4 Demo 与在线验证</h3>
+      <ul>
+        <li>
+          <strong>在线 demo</strong>：<a href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">https://xiaoyingtao.convoai.club/multiopus/</a>（Chrome 96+）。
+          支持双标签页自收发：一个标签页以 Publisher uid 发布多声道 WAV，另一个以 Subscriber uid
+          订阅检测；结果面板显示逐声道音量条与 codec 判定。
+        </li>
+        <li>
+          <strong>本仓库 demo</strong>：<code>Demo/web/</code>（Vue3 + Vite），
+          <code>npm install &amp;&amp; npm run dev</code> 后访问 http://localhost:5173/。
+          内置 4/6/8 声道 Channel ID 素材；URL 参数 <code>channel</code> / <code>uid</code> / <code>subTo</code> 控制角色。
+          详细用法见 <code>Demo/web/README.md</code>。
+        </li>
+        <li>
+          <strong>配合 Linux demo</strong>：Linux 端以 8 声道 OPUSMC 发布后，Web 订阅端预期音量条出现 8 路、
+          codec 为 multiopus、远端 channelCount 为 8；用「声道选择」逐路试听可核对
+          T1L,T1R,…,T4R 布局映射。
+        </li>
+      </ul>
+
+      <h2>三、ORTC 协商与技术细节</h2>
+      <p>
+        开启 <code>ENABLE_MULTIOPUS_CODEC</code> 后，Web SDK 与 VOS 之间按 ORTC 协商 multiopus。
+        以 6 声道为例，远端 SDP / ORTC 中会出现类似如下参数：
+      </p>
+      <pre><code>{
+  "payloadType": 124,
+  "rtpMap": {
+    "clockRate": 48000,
+    "encodingName": "multiopus",
+    "encodingParameters": 6
+  },
+  "fmtp": {
+    "parameters": {
+      "channel_mapping": "0,1,2,3,4,5",
+      "coupled_streams": "3",
+      "num_streams": "3",
+      "minptime": "10",
+      "useinbandfec": "1"
+    }
+  }
+}</code></pre>
+      <ul>
+        <li><code>encodingParameters</code> 为协商的声道数（4/6/8）。</li>
+        <li><code>coupled_streams</code> 表示“两个声道编码为一条流”的流数量；<code>num_streams</code> 为总流数；总声道数 = <code>coupled_streams</code> + <code>num_streams</code>。</li>
+        <li><code>channel_mapping</code> 为编码声道到输出声道的映射；当前 3~8 声道均为顺序映射 <code>0,1,2,…</code>。</li>
+        <li>
+          声道选择没有使用 WebAudio，而是基于 Insertable Streams（<code>MediaStreamTrackProcessor / MediaStreamTrackGenerator</code>）实现，
+          以绕开 Chrome WebAudio 在多声道输出上的缺陷（<a href="https://bugs.chromium.org/p/chromium/issues/detail?id=1116042" target="_blank" rel="noopener">chromium issue 1116042</a>）。
+        </li>
+      </ul>
+    </div>
+
+    <!-- ==================== English ==================== -->
+    <div data-lang="en">
+      <h1>Web SDK Audio Multi-Channel (multiopus)</h1>
+      <p class="subtitle">Applies to: agora-rtc-sdk-ng 4.20.1-100 / 4.20.1-200 (multi-channel builds), Chrome 96+</p>
+
+      <h2>0. SDK Version and Download</h2>
+      <ul>
+        <li>
+          This repo's <code>Demo/web</code> uses <code>agora-rtc-sdk-ng@4.20.1-200</code>; the design doc version is
+          <code>agora-rtc-sdk-ng@4.20.1-100</code>.
+        </li>
+        <li>
+          NPM packages: in addition to <code>agora-rtc-sdk-ng</code>, the multi-channel build also includes
+          <code>@agora-js/media</code>, <code>@agora-js/report</code>, and <code>@agora-js/shared</code>.
+        </li>
+        <li>
+          CDN / full package:
+          <a href="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.1-100.js" target="_blank" rel="noopener">AgoraRTC_N-4.20.1-100.js</a>,
+          <a href="https://download.agora.io/sdk/release/Agora_Web_SDK_v4_20_1-100_FULL.zip" target="_blank" rel="noopener">Agora_Web_SDK_v4_20_1-100_FULL.zip</a>.
+        </li>
+        <li>The Web SDK supports up to 8-channel decode; 16 channels and above are not supported.</li>
+      </ul>
+
+      <!-- ================= Feature description ================= -->
+      <h2>1. Feature Description</h2>
+
+      <h3>1.1 The ENABLE_MULTIOPUS_CODEC switch</h3>
+      <p>
+        Multi-channel is enabled with a private switch:
+        <code>AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)</code>.
+        It <strong>must be set before <code>AgoraRTC.createClient()</code></strong>; setting it after the
+        client is created has no effect. Without the switch, a subscriber treats the stream as plain
+        mono/stereo and cannot decode the multiple channels. With the switch on, subscribe and publish
+        negotiate multiopus over ORTC (payload type 123, clockRate 48000, fmtp with
+        channel_mapping / coupled_streams / num_streams).
+      </p>
+
+      <h3>1.2 Multi-channel publishing</h3>
+      <p>
+        Publish multi-channel audio as an OPUSMC stream with
+        <code>AgoraRTC.createCustomAudioTrack({ mediaStreamTrack, channelCount })</code>.
+        <code>channelCount</code> supports <strong>4 / 6 / 8</strong>, and the SDK uses it to generate the
+        <code>custom_payload_type</code> for publishing. The local track's <code>channelCount</code>
+        property returns the value set at creation time. Channel routing (which track maps to which
+        logical channel) is defined by the material and your business convention — the SDK does not
+        reorder channels; in broadcast scenarios it should match the Linux-side layout mapping
+        (T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R).
+      </p>
+      <p>
+        Note: some early design-doc samples use <code>createMultiAudioTrack</code>; in this
+        multi-channel SDK version the corresponding API is
+        <code>AgoraRTC.createCustomAudioTrack({ mediaStreamTrack, channelCount })</code>.
+      </p>
+
+      <h3>1.3 Subscribing and channelCount</h3>
+      <p>
+        After <code>client.subscribe(user, "audio")</code> succeeds, calling <code>track.play()</code>
+        plays the stream decoded as multi-channel. The remote track's <code>channelCount</code> property
+        comes from the pt value in the <code>on_add_audio_stream</code> signaling and reflects the
+        negotiated channel count (4/6/8). Only even channel counts can be decoded.
+      </p>
+
+      <h3>1.4 selectChannels (three modes)</h3>
+      <p>
+        Both local and remote multi-channel tracks support
+        <code>selectChannels(channels, mode)</code> (<code>channels</code> is an array of zero-based
+        channel indexes; <code>mode</code> defaults to <code>"surround"</code>):
+      </p>
+      <table>
+        <thead>
+          <tr><th>Mode</th><th>Behavior</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>surround</code></td>
+            <td>Outputs the selected channels per the standard multi-channel protocol; for example, selecting channel 2 (center) and channel 3 (LFE) of a 5.1 layout plays back as stereo</td>
+          </tr>
+          <tr>
+            <td><code>stereo</code></td>
+            <td>Mixes the selected <strong>channels 0,2,4,6… into the left</strong> and <strong>1,3,5,7… into the right</strong>, producing stereo. For example, with <code>0,1,2,3</code> selected, channels 0 and 2 go left and 1 and 3 go right</td>
+          </tr>
+          <tr>
+            <td><code>mono</code></td>
+            <td>Mixes all selected channels into a single channel (output is a stereo container)</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Channel selection is implemented with Insertable Streams (MediaStreamTrackProcessor /
+        Generator) to work around a Chrome WebAudio defect (chromium issue 1116042), making it
+        possible to play any combination of the 8 channels.
+      </p>
+
+      <h3>1.5 Per-channel volume with getVolumeLevels</h3>
+      <p>
+        <code>getVolumeLevels()</code> returns the real-time volume of every channel as an array (0–1);
+        pass a channel list (for example <code>[0, 1, 2]</code>) to get only those channels.
+        <strong>The returned array length equals the actual decoded channel count</strong>, which makes
+        it a reliable signal for whether multi-channel is in effect.
+      </p>
+
+      <h3>1.6 Browser compatibility</h3>
+      <table>
+        <thead>
+          <tr><th>Browser</th><th>Support</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Chrome 94 / 95</td><td>The relevant interfaces are disabled by default and must be enabled manually — not recommended</td></tr>
+          <tr><td>Chrome 96 – 109</td><td>Official support starts at 96; the renegotiation differences after unsubscribing have been made compatible</td></tr>
+          <tr><td>Chrome 110+</td><td>Fully supported (recommended)</td></tr>
+          <tr><td>Safari / Firefox</td><td><strong>Not supported</strong>; joining a multi-channel channel has undefined behavior — possibly silence or stereo only</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1.7 Fallback behavior</h3>
+      <ul>
+        <li><strong>When Linux is sending</strong>: an unsupported endpoint joining triggers the sender to fall back to plain Opus; a Web subscriber can observe the codec changing from <code>multiopus</code> to <code>opus</code> with a reduced channel count. The sender can force no-fallback with <code>che.audio.codec_unfallback</code> (see the <a href="linux-sdk-multichannel.html">Linux SDK doc</a> for its placement requirement).</li>
+        <li><strong>When Web is sending</strong>: an unsupported endpoint joining does not trigger fallback, and that endpoint hears nothing. All participants in the channel should support multi-channel when using this feature.</li>
+      </ul>
+
+      <!-- ================= Integration guide ================= -->
+      <h2 id="integration">2. Integration Guide</h2>
+
+      <h3>2.1 Subscribe chain (typical scenario)</h3>
+      <pre><code>// 1. Enable multiopus (must be before createClient)
+AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true);
+
+// 2. Create the client and join the channel
+const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+await client.join(appId, channel, token, uid);
+
+// 3. Subscribe to the target remote audio and play it
+const track = await client.subscribe(user, "audio");
+track.play();
+
+// 4. Detect the channel count: array length = decoded channels
+const levels = track.getVolumeLevels();   // 8-channel stream → length 8
+
+// 5. Channel-selective playback (any combination)
+track.selectChannels([0, 1], "stereo");   // 0,2,4,6→left; 1,3,5,7→right
+track.selectChannels([3], "mono");        // listen to one channel
+track.selectChannels([0,1,2,3,4,5,6,7], "surround");</code></pre>
+
+      <h3>2.2 Publish chain (multi-channel WAV)</h3>
+      <pre><code>// 1. Fetch the material and decode it with Web Audio
+const audioCtx = new AudioContext();
+const buffer = await audioCtx.decodeAudioData(
+  await (await fetch("8_Channel_ID.wav")).arrayBuffer());
+
+// 2. MediaStreamDestination with explicit channelCount (avoids down-mix to stereo)
+const dest = audioCtx.createMediaStreamDestination();
+dest.channelCount = 8;
+dest.channelCountMode = "explicit";
+dest.channelInterpretation = "discrete";
+const source = audioCtx.createBufferSource();
+source.buffer = buffer;
+source.connect(dest);
+source.start();
+
+// 3. channelCount drives the SDK to generate the publish custom_payload_type
+const track = await AgoraRTC.createCustomAudioTrack({
+  mediaStreamTrack: dest.stream.getAudioTracks()[0],
+  channelCount: 8,
+});
+await client.publish(track);</code></pre>
+      <p>
+        The code above is simplified from <code>Demo/web/src/Multiopus.vue</code> in this repo; loop
+        playback can be implemented by re-attaching the source in <code>source.onended</code>.
+      </p>
+
+      <h3>2.3 How to verify</h3>
+      <table>
+        <thead>
+          <tr><th>Signal</th><th>Multi-channel works</th><th>Not working</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Length of the <code>getVolumeLevels()</code> array</td>
+            <td>= actual channel count (4/6/8)</td>
+            <td>1 (mono)</td>
+          </tr>
+          <tr>
+            <td>getStats inbound codec</td>
+            <td><code>multiopus</code></td>
+            <td><code>opus</code></td>
+          </tr>
+          <tr>
+            <td>Remote track <code>channelCount</code> (pt value from signaling)</td>
+            <td>4 / 6 / 8</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Reading the underlying codec requires hooking <code>RTCPeerConnection.getStats()</code>
+        (a demo-level technique, not a public SDK API); poll every 800 ms, up to 6 times, to tolerate
+        negotiation delay.
+      </p>
+
+      <h3>2.4 Demos and online verification</h3>
+      <ul>
+        <li>
+          <strong>Online demo</strong>: <a href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">https://xiaoyingtao.convoai.club/multiopus/</a> (Chrome 96+).
+          Supports two-tab self-verification: one tab publishes a multi-channel WAV with the Publisher
+          uid, the other subscribes with the Subscriber uid; the result panel shows per-channel volume
+          bars and the codec verdict.
+        </li>
+        <li>
+          <strong>Demo in this repo</strong>: <code>Demo/web/</code> (Vue3 + Vite). Run
+          <code>npm install &amp;&amp; npm run dev</code> and open http://localhost:5173/.
+          Built-in 4/6/8-channel Channel ID material; the URL parameters <code>channel</code> /
+          <code>uid</code> / <code>subTo</code> control the role. See <code>Demo/web/README.md</code> for details.
+        </li>
+        <li>
+          <strong>With the Linux demo</strong>: after the Linux side publishes an 8-channel OPUSMC
+          stream, the Web subscriber should show 8 volume bars, codec multiopus, and a remote
+          channelCount of 8; use channel selection to listen track by track and verify the
+          T1L,T1R,…,T4R layout mapping.
+        </li>
+      </ul>
+
+      <h2>3. ORTC Negotiation and Technical Details</h2>
+      <p>
+        With <code>ENABLE_MULTIOPUS_CODEC</code> enabled, the Web SDK negotiates multiopus with VOS over ORTC.
+        Taking 6 channels as an example, the remote SDP / ORTC parameters look like:
+      </p>
+      <pre><code>{
+  "payloadType": 124,
+  "rtpMap": {
+    "clockRate": 48000,
+    "encodingName": "multiopus",
+    "encodingParameters": 6
+  },
+  "fmtp": {
+    "parameters": {
+      "channel_mapping": "0,1,2,3,4,5",
+      "coupled_streams": "3",
+      "num_streams": "3",
+      "minptime": "10",
+      "useinbandfec": "1"
+    }
+  }
+}</code></pre>
+      <ul>
+        <li><code>encodingParameters</code> is the negotiated channel count (4/6/8).</li>
+        <li><code>coupled_streams</code> is the number of streams that encode two channels together; <code>num_streams</code> is the total stream count. Total channels = <code>coupled_streams</code> + <code>num_streams</code>.</li>
+        <li><code>channel_mapping</code> maps encoded channels to output channels; for current 3–8 channel configurations it is the sequential mapping <code>0,1,2,…</code>.</li>
+        <li>
+          Channel selection is not implemented with WebAudio, but with Insertable Streams
+          (<code>MediaStreamTrackProcessor / MediaStreamTrackGenerator</code>) to work around a Chrome
+          WebAudio defect (<a href="https://bugs.chromium.org/p/chromium/issues/detail?id=1116042" target="_blank" rel="noopener">chromium issue 1116042</a>).
+        </li>
+      </ul>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span data-lang="zh">内容依据：Web 多声道设计文档（ExT-1485178492）与 Spec/web_sdk_audio_multichannel_spec.md；示例代码取自 Demo/web。</span>
+      <span data-lang="en">Sources: Web multi-channel design doc (ExT-1485178492) and Spec/web_sdk_audio_multichannel_spec.md; code samples are taken from Demo/web.</span>
+    </div>
+  </footer>
+
+  <script src="assets/i18n.js?v=20260820-135222"></script>
+</body>
+</html>

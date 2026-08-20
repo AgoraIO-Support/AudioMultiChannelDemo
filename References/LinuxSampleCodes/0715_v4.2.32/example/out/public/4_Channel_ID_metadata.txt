@@ -1,0 +1,97 @@
+ ffprobe -v quiet -show_streams -show_format -print_format json 4_Channel_ID.wav 
+{
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "pcm_s16le",
+            "codec_long_name": "PCM signed 16-bit little-endian",
+            "codec_type": "audio",
+            "codec_tag_string": "[1][0][0][0]",
+            "codec_tag": "0x0001",
+            "sample_fmt": "s16",
+            "sample_rate": "44100",
+            "channels": 4,
+            "bits_per_sample": 16,
+            "initial_padding": 0,
+            "r_frame_rate": "0/0",
+            "avg_frame_rate": "0/0",
+            "time_base": "1/44100",
+            "duration_ts": 257411,
+            "duration": "5.836984",
+            "bit_rate": "2822400",
+            "disposition": {
+                "default": 0,
+                "dub": 0,
+                "original": 0,
+                "comment": 0,
+                "lyrics": 0,
+                "karaoke": 0,
+                "forced": 0,
+                "hearing_impaired": 0,
+                "visual_impaired": 0,
+                "clean_effects": 0,
+                "attached_pic": 0,
+                "timed_thumbnails": 0,
+                "non_diegetic": 0,
+                "captions": 0,
+                "descriptions": 0,
+                "metadata": 0,
+                "dependent": 0,
+                "still_image": 0,
+                "multilayer": 0
+            }
+        }
+    ],
+    "format": {
+        "filename": "4_Channel_ID.wav",
+        "nb_streams": 1,
+        "nb_programs": 0,
+        "nb_stream_groups": 0,
+        "format_name": "wav",
+        "format_long_name": "WAV / WAVE (Waveform Audio)",
+        "duration": "5.836984",
+        "size": "2059332",
+        "bit_rate": "2822460",
+        "probe_score": 99
+    }
+}
+
+
+
+以下是针对该音频文件的专业分析报告：
+
+一、基础编码信息
+
+音频格式‌
+
+标准WAV容器格式（format_name: wav），采用PCM无损编码（codec_name: pcm_s16le），采样深度为16位小端模式。
+采样率为44.1kHz（sample_rate: 44100），符合CD音质标准。
+
+声道配置‌
+
+4声道音频（channels: 4），未标注具体布局（如quad、surround等），需结合实际应用场景判断。
+二、技术参数详解
+
+数据流特征‌
+
+比特率2822.4kbps（bit_rate: 2822400），与PCM 16bit/44.1kHz/4声道的理论值一致（计算式：44100×16×4=2822400）。
+时长为5.837秒（duration: 5.836984），总大小约2.06MB（size: 2059332），与理论值匹配。
+
+元数据标记‌
+
+disposition字段全为0，表示无默认音轨、无歌词等附加标记。
+probe_score: 99表明文件头解析置信度极高。
+三、潜在问题排查
+
+多声道兼容性‌
+
+需确认播放设备是否支持4声道WAV解码，部分旧设备可能仅支持立体声。
+
+文件完整性‌
+
+initial_padding: 0表示无数据填充，若播放时出现爆音需检查文件是否损坏。
+四、应用建议
+专业音频处理‌：可直接导入DAW（如Audacity）进行多声道编辑。
+格式转换‌：若需压缩体积，建议转码为Opus或AAC并指定多声道映射。
+
+（注：分析基于ffprobe标准输出，未涉及文件实际内容验证）

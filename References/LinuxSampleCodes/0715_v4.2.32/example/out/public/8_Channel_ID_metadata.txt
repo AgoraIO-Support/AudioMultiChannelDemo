@@ -1,0 +1,99 @@
+ffprobe -v quiet -show_streams -show_format -print_format json 8_Channel_ID.wav
+{
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "pcm_s24le",
+            "codec_long_name": "PCM signed 24-bit little-endian",
+            "codec_type": "audio",
+            "codec_tag_string": "[1][0][0][0]",
+            "codec_tag": "0x0001",
+            "sample_fmt": "s32",
+            "sample_rate": "48000",
+            "channels": 8,
+            "channel_layout": "7.1",
+            "bits_per_sample": 24,
+            "initial_padding": 0,
+            "r_frame_rate": "0/0",
+            "avg_frame_rate": "0/0",
+            "time_base": "1/48000",
+            "duration_ts": 671919,
+            "duration": "13.998312",
+            "bit_rate": "9216000",
+            "bits_per_raw_sample": "24",
+            "disposition": {
+                "default": 0,
+                "dub": 0,
+                "original": 0,
+                "comment": 0,
+                "lyrics": 0,
+                "karaoke": 0,
+                "forced": 0,
+                "hearing_impaired": 0,
+                "visual_impaired": 0,
+                "clean_effects": 0,
+                "attached_pic": 0,
+                "timed_thumbnails": 0,
+                "non_diegetic": 0,
+                "captions": 0,
+                "descriptions": 0,
+                "metadata": 0,
+                "dependent": 0,
+                "still_image": 0,
+                "multilayer": 0
+            }
+        }
+    ],
+    "format": {
+        "filename": "8_Channel_ID.wav",
+        "nb_streams": 1,
+        "nb_programs": 0,
+        "nb_stream_groups": 0,
+        "format_name": "wav",
+        "format_long_name": "WAV / WAVE (Waveform Audio)",
+        "duration": "13.998313",
+        "size": "16126124",
+        "bit_rate": "9216038",
+        "probe_score": 99
+    }
+}
+
+
+
+
+以下是针对8声道WAV文件的专业分析报告：
+
+一、核心编码特性
+
+高精度音频格式‌
+
+采用24位PCM编码（codec_name: pcm_s24le），采样深度提升至24bit，动态范围优于16bit音频
+采样率48kHz（sample_rate: 48000），符合专业音频制作标准
+
+多声道配置‌
+
+明确标注为7.1声道布局（channel_layout: "7.1"），包含8个独立声道（channels: 8）
+超高比特率9216kbps（bit_rate: 9216000），数据量达到CD音质的6倍
+二、技术参数验证
+
+数据规格‌
+
+文件大小15.4MB（size: 16126124）与14秒时长（duration: 13.998313）精确匹配理论值
+sample_fmt: s32表示实际存储采用32位容器封装24bit有效数据
+
+完整性指标‌
+
+probe_score: 99确认文件头解析完全正确
+initial_padding: 0表明无数据延迟问题
+三、专业应用建议
+
+后期制作注意事项‌
+
+需使用支持7.1声道的DAW软件（如Pro Tools）进行编辑，注意声道映射顺序
+转码时推荐使用FLAC格式以保留24bit精度和多声道数据
+
+播放兼容性‌
+
+普通播放器可能无法正确解析7.1声道，建议提前测试目标设备支持性
+
+（注：分析基于标准WAV规范及ffprobe输出数据）

@@ -1,0 +1,8 @@
+# 仓库根目录 .dockerignore：减小 Demo/linux 镜像的构建上下文
+.git
+References
+Demo/web
+Demo/linux/build
+Demo/linux/out
+LinuxSDKFolder/*/*.tgz
+**/.DS_Store

@@ -1,0 +1,249 @@
+# Agora Linux SDK Multi-Channel Audio (multiopus) Demo
+
+A standalone C++ demo for multi-channel audio send/receive with the Agora Linux SDK
+(v4.4.30.149, x86_64 / aarch64), written against the requirements in
+`Spec/linux_sdk_audio_multichannel_spec.md`. It covers 3 send paths and 2 receive paths.
+Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) and
+**supports 48 kHz only**.
+
+[中文文档](README.md)
+
+## Features
+
+| Sample | Direction | Spec coverage | Description |
+| --- | --- | --- | --- |
+| `sample_send_pcm_multiopus` | Send | Req. 1 (PCM send), Req. 4 (private params & negotiation) | Raw PCM multi-channel send, 10 ms frames, 3~8 channels configurable |
+| `sample_send_wav_multiopus` | Send | Req. 2 (WAV send), Req. 4 | Multi-channel WAV send: RIFF parsing, 16-bit sent as-is, 24-bit converted to 16-bit, unsupported bit depth rejected, non-48 kHz warned |
+| `sample_send_opus8` | Send | Req. 3 (pre-encoded Opus send) | 8-channel raw Opus stream (640 bytes per 20 ms frame), `AUDIO_CODEC_OPUSMC` + `MIX_DISABLED` |
+| `sample_receive_pcm_multiopus` | Receive | Req. 5 (decoded PCM callback) | Per-user multi-channel PCM via `onPlaybackAudioFrameBeforeMixing`, written to disk (new file every 100 MB) |
+| `sample_receive_encoded_audio` | Receive | Req. 6 (encoded frame callback) | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`, no decoding, no playback |
+
+> Req. 7 (mixed-audio receive, always 2 channels) is already covered by the SDK example
+> `mixed_audio/sample_receive_mixed_audio` and is not duplicated here.
+> Req. 9 (TVU 4×stereo → 8-channel layout mapping) is an integration-side convention;
+> see "TVU Layout Mapping" below.
+
+## Directory Layout
+
+```
+Demo/linux/
+├── CMakeLists.txt            # Top level; SDK path set via AGORA_SDK_DIR
+├── build.sh                  # Helper script: ./build.sh [x86_64|aarch64] [clean]
+├── common/                   # Copied from LinuxSDKFolder/X86_64 example/common (matches SDK v4.4.30.149)
+├── multiopus/                # 3 sender samples
+├── receive/                  # 2 receiver samples
+├── public/                   # Assets: 8ch_2.opus, 8_Channel_ID_signed_16_bit_pcm.wav
+└── out/                      # Build output (binaries + copy of public assets)
+```
+
+## Build
+
+### Helper script (recommended)
+
+```bash
+cd Demo/linux
+./build.sh x86_64     # or ./build.sh aarch64; with no argument, arch is picked from uname -m
+./build.sh clean      # remove build/ and out/
+```
+
+The script selects `LinuxSDKFolder/X86_64/agora_rtc_sdk` or
+`LinuxSDKFolder/Aarch64/agora_rtc_sdk` and checks that `agora_sdk/libagora_rtc_sdk.so` exists.
+
+### Manual CMake
+
+```bash
+cd Demo/linux
+mkdir build && cd build
+cmake .. -DAGORA_SDK_DIR=../../LinuxSDKFolder/X86_64/agora_rtc_sdk
+make -j8
+```
+
+`AGORA_SDK_DIR` accepts relative or absolute paths. Linking matches the SDK's own examples
+(`agora_rtc_sdk` + `pthread/dl/rt/m`; `libagora-fdkaac.so` and `libaosl.so` are loaded at
+runtime from the SDK directory via rpath).
+
+## Docker
+
+Run these from the **repository root** (`AudioMultiChannelDemo/`) — the build context must
+include both `Demo/linux` and `LinuxSDKFolder`:
+
+```bash
+# Build the image (SDK arch is picked from the build machine: X86_64 / Aarch64)
+docker build -f Demo/linux/Dockerfile -t agora-multichannel-linux .
+
+# Cross-build an ARM64 image (requires buildx + QEMU, or build natively on ARM)
+docker buildx build --platform linux/arm64 \
+    -f Demo/linux/Dockerfile -t agora-multichannel-linux:arm64 .
+```
+
+Inside the image: binaries and assets are in `/app` (including `public/`), and the SDK shared
+libraries are in `/opt/agora/lib` (wired up via `LD_LIBRARY_PATH`). RTC media runs over UDP,
+so host networking is recommended:
+
+```bash
+docker run --rm -it --network host agora-multichannel-linux \
+    ./sample_send_wav_multiopus --channelId <name> --token <token> \
+    --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" \
+    --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
+```
+
+All samples take the same arguments as in "Run Examples" below — just replace the part after
+`docker run ... agora-multichannel-linux` with the command you want.
+
+## Run Examples
+
+Run the commands below from the `out/` directory. As in the reference samples, `--token`
+carries either a token or an appId (pass the appId when no certificate is enabled).
+
+### 1. Send an 8-channel WAV file (16-bit)
+
+```bash
+./sample_send_wav_multiopus --channelId <name> --token <token> \
+    --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" \
+    --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
+```
+
+### 2. Send raw multi-channel PCM (3~8 channels)
+
+```bash
+./sample_send_pcm_multiopus --channelId <name> --token <token> \
+    --audioFile <48kHz_16bit_interleaved.pcm> \
+    --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
+```
+
+### 3. Send a pre-encoded 8-channel Opus raw stream
+
+```bash
+./sample_send_opus8 --channelId <name> --token <token> --audioFile "public/8ch_2.opus"
+```
+
+### 4. Receive multi-channel PCM (per-user callback + dump)
+
+```bash
+./sample_receive_pcm_multiopus --channelId <name> --token <token> \
+    --numOfChannels 8 --sampleRate 48000 --audioFile received_8ch.pcm
+```
+
+### 5. Receive encoded frames (raw OPUSMC dump)
+
+```bash
+./sample_receive_encoded_audio --channelId <name> --token <token> --audioFile received.opus
+```
+
+### Force no fallback (codec_unfallback)
+
+All sender samples accept the `--codecUnfallback` flag:
+
+```bash
+./sample_send_pcm_multiopus ... --codecUnfallback
+```
+
+## Payload Type to Channel Mapping
+
+| payload type | channels | sample rate | channel_mapping | coupled_streams | num_streams |
+| --- | --- | --- | --- | --- | --- |
+| 123 | 3 | 48000 | 0,1,2 | 1 | 2 |
+| 123 | 4 | 48000 | 0,1,2,3 | 2 | 2 |
+| 124 | 5 | 48000 | 0,1,2,3,4 | 2 | 3 |
+| 124 | 6 | 48000 | 0,1,2,3,4,5 | 3 | 3 |
+| 125 | 7 | 48000 | 0,1,2,3,4,5,6 | 3 | 4 |
+| 125 | 8 | 48000 | 0,1,2,3,4,5,6,7 | 4 | 4 |
+
+- 123 defaults to 4 channels, 124 to 6, 125 to 8. **For 3/5/7 channels you must set
+  `che.audio.custom_channel_num` explicitly** (`--custom_channel_num` in the demo; if unset,
+  it follows `--numOfChannels`).
+- If `--custom_payload_type` is not set, the demo derives it from the channel count
+  (≤4 → 123, ≤6 → 124, otherwise → 125).
+- To confirm the settings took effect, look for this log line:
+  `MultistreamEncoder channel num:N rate:48000 coupled:M channel_mapping:... bitrate:...`.
+
+## Private Parameter Timing (Important)
+
+| Private parameter | Set on | When |
+| --- | --- | --- |
+| `che.audio.custom_payload_type` / `che.audio.custom_channel_num` / `che.audio.custom_sample_rate` | `connection->getAgoraParameter()` | After `createRtcConnection`, before `connect()`; setting them after connect has no effect |
+| `che.audio.codec_unfallback` (JSON array, e.g. `[123,124,125]`) | `service->getAgoraParameter()` | **Before `createRtcConnection()`**; setting it at connection level has no effect |
+
+The sender must set the payload type parameters. The receiver does not need them under the
+123/124/125 negotiation scheme.
+
+## Verifying the Receiver
+
+### PCM dump files (sample_receive_pcm_multiopus)
+
+Output is raw 48 kHz / N-channel / 16-bit little-endian interleaved PCM. Play it with ffplay:
+
+```bash
+ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8-channel example
+# Or use Audacity: File > Import > Raw Data, choose Signed 16-bit PCM / Little-endian / N channels / 48000 Hz
+```
+
+When sending a Channel ID file (`8_Channel_ID_signed_16_bit_pcm.wav`, where each channel has
+distinct content), checking the dump channel by channel confirms there is no channel crosstalk
+or channel loss.
+
+### End-to-end verification with the Web demo
+
+Use the Web quick-demo-multiopus (agora-rtc-sdk-ng 4.20.1-200 multi-channel build, Chrome 96+):
+
+1. Set `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` before creating the client.
+2. Subscribe to the multi-channel stream published by the Linux side.
+3. `getVolumeLevels()` returns an array whose length equals the decoded channel count, and the
+   underlying codec shows as `multiopus`.
+4. `selectChannels(channels, "surround"|"stereo"|"mono")` plays any combination of channels.
+
+Note: the Web side decodes even channel counts only — 3/5/7-channel streams do not apply.
+Safari/Firefox behavior is undefined.
+
+### Encoded frame dump (sample_receive_encoded_audio)
+
+Output is a raw OPUSMC frame stream (640 bytes per frame), suitable for forwarding or custom
+decoding. The callback `info` carries only `codec` and `sendTs` (in SDK v4.4.30.149,
+`AudioEncodedFrameInfo` in `AgoraMediaBase.h` has no channel-count or sample-rate fields).
+
+## TVU Layout Mapping (Req. 9)
+
+On the TVU source side, 8 channels are carried as 4 stereo tracks in **track-block order**
+(`[T1L,T1R]×N [T2L,T2R]×N [T3L,T3R]×N [T4L,T4R]×N`). This buffer **cannot** be passed directly
+to `sendAudioPcmData`. It must first be reordered on the application side into Agora's
+8-channel **sample-interleaved** layout:
+
+```
+Channel order: CH1=T1L, CH2=T1R, CH3=T2L, CH4=T2R, CH5=T3L, CH6=T3R, CH7=T4L, CH8=T4R
+The buffer repeats [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] for every sample
+```
+
+- Channel pairs (0,1)(2,3)(4,5)(6,7) map to tracks 1~4, matching the 4 coupled streams of
+  8-channel OPUSMC.
+- One TVU write is 15360 bytes = 8 channels × 16-bit × 960 samples = 20 ms @ 48 kHz; split it
+  into 10 ms frames before calling the SDK.
+- A 44.1 kHz source (PCM decoded from AC-3) must be resampled to 48 kHz first. Resampling and
+  reordering can happen in either order, but both must finish before `sendAudioPcmData`.
+- This mapping was confirmed by both sides in the 2025-04 joint debugging session. (The root
+  cause of the earlier noise issue on the receiver was reading sample-interleaved data as
+  planar blocks.)
+
+## Notes
+
+- **48 kHz only**: OPUSMC encoding/decoding supports 48000 Hz only. 44.1 kHz files (such as
+  `4_Channel_ID.wav`, `6_Channel_ID.wav`) must be resampled first. The demo does not resample;
+  sending them as-is causes pitch/duration errors.
+- **Channel count consistency**: the PCM frame channel count, `--numOfChannels`,
+  `custom_channel_num`, the WAV header channel count, and the receiver's
+  `setPlaybackAudioFrameBeforeMixingParameters` channel count must all match (a hard
+  requirement above 4 channels), or the full multi-channel content cannot be recovered.
+- **codec_unfallback placement**: it must be set on `service->getAgoraParameter()` before
+  `createRtcConnection()`; setting it at connection level does not work (verified by CSE).
+- **When a non-multi-channel endpoint joins**: the Linux sender falls back to plain Opus
+  (OPUSFB) and multi-channel stops working. Use `--codecUnfallback` to force multi-channel
+  for the whole channel, and make sure every participant supports it.
+- **Pre-encoded Opus input format**: `sample_send_opus8` accepts only a raw 8-channel 48 kHz
+  Opus frame stream (640 bytes per frame, not ogg). The frame format must match
+  `EncodedAudioFrameInfo` exactly.
+- **Asset location**: after building, `build.sh` copies `public/` into `out/`; samples read
+  files with relative paths by default.
+- Sender samples handle audio only; no video sending (the h264 part of the reference sample
+  was removed).
+- The mixing/playback path always outputs 2 channels (odd channels mixed to one side, even
+  channels to the other). For per-channel data, use `sample_receive_pcm_multiopus` or
+  `sample_receive_encoded_audio`.
