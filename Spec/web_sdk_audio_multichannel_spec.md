@@ -292,7 +292,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 
 - 前置条件：quick-demo-multiopus 运行（Vite dev server）；两个标签页分别以 Publisher/Subscriber uid 与对应 token 加入同一频道（URL 参数 `channel`/`uid`/`subTo` 控制角色与订阅目标）
 - 当：Publisher 发布多声道音频，Subscriber 订阅
-- 则：Subscriber 面板显示 codec（multiopus）与逐声道音量条，判定结果按"音量数组长度 ≥ 2 或 codec = multiopus"给出多声道结论
+- 则：Subscriber 面板显示 codec（multiopus）与逐声道音量条；仅当 codec 为 `multiopus`，或 `getVolumeLevels()` 返回 4/6/8 个声道时，判定为多声道。普通单/双声道不得判定为多声道
 - 且：token 与 uid 绑定，两个标签页需各自 uid 的 token（或 uid=0 通配 token）
 
 #### 场景8.2：逐声道内容核对
@@ -323,7 +323,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 | 产出物 | 产出物描述 | Jira（可选） | 是否必须 | 交付时间 | 备注 |
 | --- | --- | --- | --- | --- | --- |
 | 开发包/服务 | agora-rtc-sdk-ng@4.20.1-100（npm：media/report/shared 同名版本；FULL zip 与 Aliyun CDN `AgoraRTC_N-4.20.1-100.js`）；TVU 特殊版 4.20.1-200 | — | 必须 | 已交付 | Web VOS 服务端配合已上线 |
-| 性能测试报告 | 多声道订阅/发布的浏览器端 CPU/内存基线 | 待补充 | 【待明确】 | 待补充 | |
+| 性能测试报告 | 多声道订阅/发布的浏览器端 CPU/内存基线，以及 4/6/8 声道、Chrome 96+/110+ 的测试环境与样本量 | 待补充 | 必须 | 发布前 | 未形成报告不得将性能与稳定性标记为已验收 |
 | 体验测试报告 | 多声道收发主观验证（逐声道、回退、浏览器矩阵） | 待补充 | 必须 | 已有（Web SDK 4.20.1-200 Test Report） | 来源：TVU 交付记录 |
 | API 文档 | multiopus 开关与 `selectChannels`/`getVolumeLevels`/`channelCount` 使用说明 | 待补充 | 必须 | 待补充 | 当前见 NPM 包内 `rtc-sdk_cn.d.ts` / `rtc-sdk_en.d.ts` 与内部设计文档 |
 | 最佳实践文档 | 订阅验证与发布集成指南（含浏览器约束） | 待补充 | 必须 | 待补充 | |

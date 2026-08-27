@@ -1,9 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/Users/zengxiaoteng/CSEWorkspace/TVUFolder/AudioMultiChannelDemo/Demo/linux/build/cmake_install.cmake",
-		"/Users/zengxiaoteng/CSEWorkspace/TVUFolder/AudioMultiChannelDemo/Demo/linux/build/multiopus/cmake_install.cmake",
-		"/Users/zengxiaoteng/CSEWorkspace/TVUFolder/AudioMultiChannelDemo/Demo/linux/build/receive/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

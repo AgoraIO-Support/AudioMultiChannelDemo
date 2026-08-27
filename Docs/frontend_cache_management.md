@@ -1,6 +1,6 @@
 # 前端缓存管理（基于 Build ID）
 
-本文档说明 `Demo/web` 与 `Demo/docs` 两个前端项目如何通过 **Build ID** 管理静态资源缓存，避免发版后浏览器仍使用旧版本资源。
+本文档说明 `Demo/web` 与其随构建发布的 `Demo/docs` 如何通过 **Build ID** 管理静态资源缓存，避免发版后浏览器仍使用旧版本资源。
 
 ---
 
@@ -60,8 +60,10 @@ cd Demo/web
 # 本地开发（自动使用当前时间戳作为 build id）
 npm run dev
 
-# 生产构建
-npm run build
+# 为文档和 Web 使用同一个 Build ID 后再生产构建
+BUILD_ID=$(git rev-parse --short HEAD)
+BUILD_ID="$BUILD_ID" node ../docs/build.mjs
+VITE_BUILD_ID="$BUILD_ID" npm run build
 
 # Docker 构建并指定 build id
 docker build --build-arg VITE_BUILD_ID=abc123 -t agora-multichannel-web .
@@ -103,15 +105,15 @@ BUILD_ID=abc123 node build.mjs
 
 ## 4. 部署建议
 
-1. **每次发版前重新生成 Build ID**：
-   - Web 项目：在 CI 中传入 `VITE_BUILD_ID=$(git rev-parse --short HEAD)`。
-   - Docs 项目：部署前运行 `BUILD_ID=$(git rev-parse --short HEAD) node build.mjs`。
+1. **每次发版前使用同一个 Build ID 生成 docs 并构建 Web**：
+   - 在仓库根目录执行 `BUILD_ID=$(git rev-parse --short HEAD)`，再运行 `BUILD_ID="$BUILD_ID" node Demo/docs/build.mjs`。
+   - 随后在 `Demo/web` 运行 `VITE_BUILD_ID="$BUILD_ID" npm run build`；构建插件会将 docs 复制到 `dist/docs/`。
 
 2. **优先使用 git commit hash**：
    - 时间戳虽然能确保唯一，但无法直接对应代码版本；git hash 更利于问题排查。
 
 3. **避免将带 Build ID 的资源 URL 当作“源文件”长期不动**：
-   - Docs 的 `build.mjs` 会修改 HTML 文件，应在部署流水线中执行，而不是手动维护。
+   - Docs 的 `build.mjs` 会修改 HTML 文件，应在部署流水线中执行，而不是手动维护；不能只构建 Web 而跳过该步骤。
 
 ---
 
@@ -119,7 +121,7 @@ BUILD_ID=abc123 node build.mjs
 
 ```text
 Demo/web/
-  ├── vite.config.ts          # 注入 __BUILD_ID__
+  ├── vite.config.ts          # 注入 __BUILD_ID__，并将 ../docs 复制到 dist/docs/
   ├── src/vite-env.d.ts       # 声明 __BUILD_ID__
   ├── src/Multiopus.vue       # WAV URL 加 ?v=<BUILD_ID>
   ├── nginx.conf              # 分层缓存头

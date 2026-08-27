@@ -46,6 +46,10 @@ class EncodedAudioReceiver : public agora::rtc::IAudioEncodedFrameReceiver {
   EncodedAudioReceiver(const std::string& outputFilePath)
       : outputFilePath_(outputFilePath), file_(nullptr), fileCount(0), fileSize_(0) {}
 
+  ~EncodedAudioReceiver() {
+    if (file_) fclose(file_);
+  }
+
   bool onEncodedAudioFrameReceived(
       const uint8_t* packet, size_t length,
       const agora::media::base::AudioEncodedFrameInfo& info) override;
@@ -143,18 +147,18 @@ int main(int argc, char* argv[]) {
 
   connection->getLocalUser()->subscribeAllAudio();
 
-  // Connect to Agora channel
-  if (connection->connect(options.appId.c_str(), options.channelId.c_str(),
-                          options.userId.c_str())) {
-    AG_LOG(ERROR, "Failed to connect to Agora channel!");
-    return -1;
-  }
-
   auto localUserObserver =
       std::make_shared<SampleLocalUserObserver>(connection->getLocalUser());
 
   auto audioReceiver = std::make_shared<EncodedAudioReceiver>(options.audioFile);
   localUserObserver->setEncodedAudioFrameObserver(audioReceiver.get());
+
+  // Register the observer before connecting so the first subscribed frames are not missed.
+  if (connection->connect(options.appId.c_str(), options.channelId.c_str(),
+                          options.userId.c_str())) {
+    AG_LOG(ERROR, "Failed to connect to Agora channel!");
+    return -1;
+  }
 
   // Start receiving incoming media data
   AG_LOG(INFO, "Start receiving encoded audio frames ...");

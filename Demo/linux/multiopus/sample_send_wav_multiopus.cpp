@@ -111,6 +111,10 @@ static bool parseWavHeader(FILE* file, WavFormat& format) {
   bool dataFound = false;
   while (!dataFound && readChunkId(file, chunkId) && readU32LE(file, chunkSize)) {
     if (memcmp(chunkId, "fmt ", 4) == 0) {
+      if (chunkSize < 16) {
+        AG_LOG(ERROR, "Invalid fmt chunk size: %u", chunkSize);
+        return false;
+      }
       uint16_t formatType = 0;
       uint32_t byteRate = 0;
       uint16_t blockAlign = 0;
@@ -124,8 +128,9 @@ static bool parseWavHeader(FILE* file, WavFormat& format) {
         AG_LOG(ERROR, "Unsupported WAV format type: %d (only PCM is supported)", formatType);
         return false;
       }
-      // fmt chunk 可能大于 16 字节，跳过剩余部分
+      // fmt chunk may be larger than 16 bytes; RIFF chunks are word-aligned.
       if (chunkSize > 16 && fseek(file, chunkSize - 16, SEEK_CUR) != 0) return false;
+      if ((chunkSize & 1) && fseek(file, 1, SEEK_CUR) != 0) return false;
       fmtFound = true;
     } else if (memcmp(chunkId, "data", 4) == 0) {
       format.dataOffset = ftell(file);
@@ -142,12 +147,47 @@ static bool parseWavHeader(FILE* file, WavFormat& format) {
                chunkSize, currentPos, fileSize - currentPos);
         return false;
       }
-      if (fseek(file, chunkSize, SEEK_CUR) != 0) return false;
+      if (fseek(file, chunkSize + (chunkSize & 1), SEEK_CUR) != 0) return false;
     }
   }
 
   if (!fmtFound || !dataFound) {
     AG_LOG(ERROR, "Invalid WAV file: fmt or data chunk not found");
+    return false;
+  }
+  return true;
+}
+
+static bool validateWavOptions(const SampleOptions& options) {
+  FILE* file = fopen(options.audioFile.c_str(), "rb");
+  if (!file) {
+    AG_LOG(ERROR, "Failed to open audio file %s", options.audioFile.c_str());
+    return false;
+  }
+
+  WavFormat wav;
+  bool parsed = parseWavHeader(file, wav);
+  fclose(file);
+  if (!parsed) return false;
+
+  if (wav.bitsPerSample != 16 && wav.bitsPerSample != 24) {
+    AG_LOG(ERROR, "Unsupported bit depth: %d. Only 16-bit and 24-bit PCM are supported.",
+           wav.bitsPerSample);
+    return false;
+  }
+  if (wav.sampleRate != 48000) {
+    AG_LOG(ERROR, "WAV sample rate must be 48000 for multi-channel OPUSMC, got %d.",
+           wav.sampleRate);
+    return false;
+  }
+  if (wav.channels < 3 || wav.channels > 8) {
+    AG_LOG(ERROR, "WAV channel count must be in [3, 8], got %d.", wav.channels);
+    return false;
+  }
+  if (wav.sampleRate != options.audio.sampleRate || wav.channels != options.audio.numOfChannels) {
+    AG_LOG(ERROR,
+           "WAV header (%d Hz, %d channels) must match --sampleRate (%d) and --numOfChannels (%d).",
+           wav.sampleRate, wav.channels, options.audio.sampleRate, options.audio.numOfChannels);
     return false;
   }
   return true;
@@ -175,28 +215,6 @@ static void sendOnePcmFrame(const SampleOptions& options,
     AG_LOG(INFO, "Sample Rate: %d, Channels: %d, Bits Per Sample: %d", wav.sampleRate,
            wav.channels, wav.bitsPerSample);
 
-    // 位深校验：仅支持 16bit / 24bit，其他位深报错并停止读取（spec 场景2.3）
-    if (wav.bitsPerSample != 16 && wav.bitsPerSample != 24) {
-      AG_LOG(ERROR, "Unsupported bit depth: %d. Only 16-bit and 24-bit are supported.",
-             wav.bitsPerSample);
-      fclose(file);
-      file = nullptr;
-      return;
-    }
-    // 采样率非 48 kHz：不做重采样，打印警告（spec 场景2.3）
-    if (wav.sampleRate != 48000) {
-      AG_LOG(WARNING,
-             "WAV sample rate %d is not 48000. Multi-channel codec only supports 48 kHz. "
-             "The sample does NOT resample; pitch/duration will be wrong. "
-             "Please resample the asset to 48 kHz first.",
-             wav.sampleRate);
-    }
-    if ((int)wav.channels != options.audio.numOfChannels) {
-      AG_LOG(WARNING,
-             "WAV channels %d != --numOfChannels %d. The WAV header value is used. "
-             "Make sure it matches che.audio.custom_channel_num!",
-             wav.channels, options.audio.numOfChannels);
-    }
   }
 
   // 每 10ms 帧的样本数与字节数
@@ -315,6 +333,7 @@ int main(int argc, char* argv[]) {
     AG_LOG(ERROR, "numOfChannels must be in [3, 8] for multi-channel (OPUSMC) sending!");
     return -1;
   }
+  if (!validateWavOptions(options)) return -1;
 
   // 未显式指定时按声道数推导 payload type（123->3/4, 124->5/6, 125->7/8）
   if (options.customPayloadType == 0) {
@@ -329,6 +348,11 @@ int main(int argc, char* argv[]) {
            options.customPayloadType);
     return -1;
   }
+  if (options.customPayloadType != payloadTypeForChannels(options.audio.numOfChannels)) {
+    AG_LOG(ERROR, "custom_payload_type %d is incompatible with numOfChannels=%d",
+           options.customPayloadType, options.audio.numOfChannels);
+    return -1;
+  }
 
   // 未显式指定 custom_channel_num 时跟随 numOfChannels（4/6/8 为默认值，3/5/7 必须显式设置）
   if (options.customChannelNum == 0) {
@@ -336,6 +360,11 @@ int main(int argc, char* argv[]) {
   }
   if (options.customSampleRate == 0) {
     options.customSampleRate = options.audio.sampleRate;
+  }
+  if (options.customChannelNum != options.audio.numOfChannels ||
+      options.customSampleRate != options.audio.sampleRate) {
+    AG_LOG(ERROR, "custom channel count and sample rate must match the WAV header.");
+    return -1;
   }
 
   std::signal(SIGQUIT, SignalHandler);

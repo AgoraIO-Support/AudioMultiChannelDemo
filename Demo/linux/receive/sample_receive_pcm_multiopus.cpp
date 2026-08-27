@@ -59,6 +59,10 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
         fileCount(0),
         fileSize_(0) {}
 
+  ~PcmFrameObserver() {
+    if (pcmFile_) fclose(pcmFile_);
+  }
+
   bool onPlaybackAudioFrame(const char* channelId, AudioFrame& audioFrame) override {
     return true;
   };
@@ -162,8 +166,12 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  if (options.audio.numOfChannels < 1 || options.audio.numOfChannels > 8) {
-    AG_LOG(ERROR, "numOfChannels must be in [1, 8] and match the sender's channel count!");
+  if (options.audio.numOfChannels < 3 || options.audio.numOfChannels > 8) {
+    AG_LOG(ERROR, "numOfChannels must be in [3, 8] and match the sender's channel count!");
+    return -1;
+  }
+  if (options.audio.sampleRate != 48000) {
+    AG_LOG(ERROR, "Multi-channel OPUSMC receive only supports a 48000 Hz sample rate!");
     return -1;
   }
 

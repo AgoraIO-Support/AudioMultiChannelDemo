@@ -2,3 +2,5 @@
 **/.DS_Store
 *.pem
 *.mkv
+Demo/linux/build/
+Demo/linux/out/

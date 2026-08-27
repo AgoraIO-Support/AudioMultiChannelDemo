@@ -11,7 +11,7 @@
 | Sample | 方向 | 覆盖需求点 | 说明 |
 | --- | --- | --- | --- |
 | `sample_send_pcm_multiopus` | 发送 | 需求点1（PCM 发送）、需求点4（私参与协商） | raw PCM 多声道发送，10ms/帧，声道数可配 3~8 |
-| `sample_send_wav_multiopus` | 发送 | 需求点2（WAV 发送）、需求点4 | 多声道 WAV 发送：RIFF 解析，16bit 直发、24bit 转 16bit，非法位深报错，非 48kHz 警告 |
+| `sample_send_wav_multiopus` | 发送 | 需求点2（WAV 发送）、需求点4 | 多声道 WAV 发送：RIFF 解析，16bit 直发、24bit 转 16bit，非法位深、声道数与非 48kHz 在连接前报错 |
 | `sample_send_opus8` | 发送 | 需求点3（预编码 Opus 发送） | 8 声道 Opus 裸流（640 字节/20ms 帧），`AUDIO_CODEC_OPUSMC` + `MIX_DISABLED` |
 | `sample_receive_pcm_multiopus` | 接收 | 需求点5（解码 PCM 回调） | `onPlaybackAudioFrameBeforeMixing` 按用户回调多声道 PCM 并落盘（100MB 切换文件） |
 | `sample_receive_encoded_audio` | 接收 | 需求点6（编码帧回调） | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`，不解码不播放 |
@@ -209,7 +209,8 @@ TVU 源端 8 声道以 4 条双声道（stereo）音轨承载，按 **track 块�
 ## 注意事项
 
 - **仅支持 48 kHz**：多声道编解码（OPUSMC）仅支持 48000 Hz；44.1 kHz 素材（如
-  `4_Channel_ID.wav`、`6_Channel_ID.wav`）须先重采样，demo 不做重采样，直接发送会音调/时长异常。
+  `4_Channel_ID.wav`、`6_Channel_ID.wav`）须先重采样；WAV 发送 sample 会在连接前拒绝此类文件，
+  不会自动重采样。
 - **声道数一致性**：发送端 PCM 帧声道数、`--numOfChannels`、`custom_channel_num`、
   WAV 头声道数必须与接收端 `setPlaybackAudioFrameBeforeMixingParameters` 的声道数一致
   （>4 声道为硬约束），否则无法还原完整多声道。

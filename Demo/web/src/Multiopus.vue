@@ -427,12 +427,12 @@ const verdictText = computed(() => {
   if (!subscribed.value) return m.value.notSubscribed;
   if (volumes.value.length === 0) return m.value.detecting;
   const n = volumes.value.length;
-  const multi = n >= 2 || codec.value === "multiopus";
+  const multi = codec.value === "multiopus" || [4, 6, 8].includes(n);
   return `${n} ${m.value.chUnit} → ${multi ? m.value.multiChannel : m.value.mono}`;
 });
 
 const isMulti = computed(
-  () => subscribed.value && (volumes.value.length >= 2 || codec.value === "multiopus")
+  () => subscribed.value && (codec.value === "multiopus" || [4, 6, 8].includes(volumes.value.length))
 );
 
 const resultClass = computed(() => {

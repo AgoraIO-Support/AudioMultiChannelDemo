@@ -13,7 +13,7 @@ Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) 
 | Sample | Direction | Spec coverage | Description |
 | --- | --- | --- | --- |
 | `sample_send_pcm_multiopus` | Send | Req. 1 (PCM send), Req. 4 (private params & negotiation) | Raw PCM multi-channel send, 10 ms frames, 3~8 channels configurable |
-| `sample_send_wav_multiopus` | Send | Req. 2 (WAV send), Req. 4 | Multi-channel WAV send: RIFF parsing, 16-bit sent as-is, 24-bit converted to 16-bit, unsupported bit depth rejected, non-48 kHz warned |
+| `sample_send_wav_multiopus` | Send | Req. 2 (WAV send), Req. 4 | Multi-channel WAV send: RIFF parsing, 16-bit sent as-is, 24-bit converted to 16-bit, unsupported bit depth, channel count, and non-48 kHz rejected before connecting |
 | `sample_send_opus8` | Send | Req. 3 (pre-encoded Opus send) | 8-channel raw Opus stream (640 bytes per 20 ms frame), `AUDIO_CODEC_OPUSMC` + `MIX_DISABLED` |
 | `sample_receive_pcm_multiopus` | Receive | Req. 5 (decoded PCM callback) | Per-user multi-channel PCM via `onPlaybackAudioFrameBeforeMixing`, written to disk (new file every 100 MB) |
 | `sample_receive_encoded_audio` | Receive | Req. 6 (encoded frame callback) | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`, no decoding, no playback |
@@ -226,8 +226,8 @@ The buffer repeats [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] for every sample
 ## Notes
 
 - **48 kHz only**: OPUSMC encoding/decoding supports 48000 Hz only. 44.1 kHz files (such as
-  `4_Channel_ID.wav`, `6_Channel_ID.wav`) must be resampled first. The demo does not resample;
-  sending them as-is causes pitch/duration errors.
+  `4_Channel_ID.wav`, `6_Channel_ID.wav`) must be resampled first. The WAV sender rejects them
+  before connecting; it does not resample them.
 - **Channel count consistency**: the PCM frame channel count, `--numOfChannels`,
   `custom_channel_num`, the WAV header channel count, and the receiver's
   `setPlaybackAudioFrameBeforeMixingParameters` channel count must all match (a hard

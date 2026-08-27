@@ -32,7 +32,7 @@
 | 产物 | 位置 | 说明 |
 | --- | --- | --- |
 | Web demo 访问地址 | https://xiaoyingtao.convoai.club/multiopus/ | 静态站点，经 nginx 反代 |
-| 文档站访问地址 | https://xiaoyingtao.convoai.club/multiopus/docs/ | 静态文件，nginx alias 直连（与 demo 同源，语言选择互相跟随） |
+| 文档站访问地址 | https://xiaoyingtao.convoai.club/multiopus/docs/ | `dist/docs/` 中的静态文件，经同一 Web 容器与 nginx 反代服务 |
 | `multiopus-web` 容器 | 127.0.0.1:8090 → 80 | nginx:stable-alpine，挂载 dist，`--restart unless-stopped` |
 | `agora-multichannel-linux:latest` 镜像 | 服务器 docker | 含 5 个 sample 二进制 + 素材 + SDK 动态库 |
 | 服务器端文件 | `~/multiopus/{Demo/linux, LinuxSDKFolder/X86_64, web/dist, web/nginx.conf, .dockerignore}` | 构建上下文与站点文件 |
@@ -55,10 +55,14 @@
 服务器内存仅 1.9 GB，不适合跑 npm 构建，因此**在本地构建后只上传 dist**：
 
 ```bash
+BUILD_ID=$(git rev-parse --short HEAD)
+BUILD_ID="$BUILD_ID" node Demo/docs/build.mjs
 cd Demo/web
-VITE_BASE=/multiopus/ npm run build
+VITE_BASE=/multiopus/ VITE_BUILD_ID="$BUILD_ID" npm run build
 # 验证 dist/index.html 中资源路径为 /multiopus/assets/...
 grep -o 'src="[^"]*"' dist/index.html
+# 文档与其资源已随 Vite 构建复制到 dist/docs/
+test -f dist/docs/index.html
 ```
 
 ### 3.3 上传文件到服务器
@@ -109,6 +113,7 @@ docker run -d --name multiopus-web --restart unless-stopped \
 # 本机验证
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8090/
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8090/8_Channel_ID.wav
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8090/docs/
 ```
 
 ### 3.6 服务器 nginx 增加 /multiopus/ 反代
@@ -153,6 +158,7 @@ sudo nginx -t && sudo systemctl reload nginx
 # 本机执行
 curl -s -o /dev/null -w '%{http_code}\n' https://xiaoyingtao.convoai.club/multiopus/        # 200
 curl -s -o /dev/null -w '%{http_code}\n' https://xiaoyingtao.convoai.club/multiopus/8_Channel_ID.wav  # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://xiaoyingtao.convoai.club/multiopus/docs/  # 200
 curl -s https://xiaoyingtao.convoai.club/health                                            # 原服务不受影响
 ```
 
@@ -173,8 +179,10 @@ docker run --rm -it --network host agora-multichannel-linux \
 ### 更新 Web demo
 
 ```bash
-# 本地重新构建
-cd Demo/web && VITE_BASE=/multiopus/ npm run build
+# 本地重新生成文档 Build ID 并构建（docs 会复制到 dist/docs/）
+BUILD_ID=$(git rev-parse --short HEAD)
+BUILD_ID="$BUILD_ID" node Demo/docs/build.mjs
+cd Demo/web && VITE_BASE=/multiopus/ VITE_BUILD_ID="$BUILD_ID" npm run build
 # 上传并重启容器（dist 是挂载的，替换文件即可）
 rsync -az --delete -e "ssh -i $KEY" dist/ $SRV:~/multiopus/web/dist/
 # 静态文件无需重启容器；如改了 nginx.conf 则：docker restart multiopus-web
@@ -182,16 +190,8 @@ rsync -az --delete -e "ssh -i $KEY" dist/ $SRV:~/multiopus/web/dist/
 
 ### 更新文档站（Demo/docs）
 
-文档站为纯静态文件，由宿主机 nginx 以 alias 直接服务（`/multiopus/docs/` →
-`/var/www/multiopus-docs/`，与 demo 同源、localStorage `locale` 键共享，语言选择互相跟随）：
-
-```bash
-rsync -az -e "ssh -i $KEY" Demo/docs/ $SRV:~/docs-site-tmp/
-ssh -i $KEY $SRV 'sudo rsync -a --delete ~/docs-site-tmp/ /var/www/multiopus-docs/ && rm -rf ~/docs-site-tmp'
-```
-
-注意：必须是 `/var/www/` 等系统路径，**不能**放 `/home/ubuntu/` 下（home 目录权限 750，
-nginx worker 读不到会 403——2026-08-18 实测踩过）。
+文档已包含在 `Demo/web/dist/docs/`。按“更新 Web demo”的命令生成 Build ID、重新构建并同步整个
+`dist/`；不再配置宿主机 nginx alias，也不再单独上传 `Demo/docs/`。
 
 ### 更新 Linux demo
 

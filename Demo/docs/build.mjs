@@ -12,8 +12,12 @@
  *   BUILD_ID=abc123 node Demo/docs/build.mjs
  */
 
-import { readFile, writeFile, access } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { execSync } from 'node:child_process';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+process.chdir(dirname(fileURLToPath(import.meta.url)));
 
 const files = [
   'index.html',

@@ -206,6 +206,11 @@ int main(int argc, char* argv[]) {
            options.customPayloadType);
     return -1;
   }
+  if (options.customPayloadType != payloadTypeForChannels(options.audio.numOfChannels)) {
+    AG_LOG(ERROR, "custom_payload_type %d is incompatible with numOfChannels=%d",
+           options.customPayloadType, options.audio.numOfChannels);
+    return -1;
+  }
 
   // 未显式指定 custom_channel_num 时跟随 numOfChannels（4/6/8 为默认值，3/5/7 必须显式设置）
   if (options.customChannelNum == 0) {
@@ -213,6 +218,11 @@ int main(int argc, char* argv[]) {
   }
   if (options.customSampleRate == 0) {
     options.customSampleRate = options.audio.sampleRate;
+  }
+  if (options.customChannelNum != options.audio.numOfChannels ||
+      options.customSampleRate != options.audio.sampleRate) {
+    AG_LOG(ERROR, "custom channel count and sample rate must match the PCM input.");
+    return -1;
   }
 
   std::signal(SIGQUIT, SignalHandler);

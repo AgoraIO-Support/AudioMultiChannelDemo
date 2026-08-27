@@ -32,7 +32,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 | 客户业务场景 | Linux 服务器端注入多声道音频（最高 8 声道）到 RTC 频道，供 Web / Native / Linux 端订阅接收并按需选择声道播放或后处理；客户源端 8 声道内容以 **4 条双声道（stereo）音轨**承载（AC-3、44.1 kHz，参考 `VictoriaMulti.mkv`：1 路 mpeg4 视频 + 4 条 ac3 stereo 音频流） | |
 | 客户碰到的问题 | 标准 SDK 音频仅支持单/双声道（Native 此前最多 4 声道、Linux 此前仅双声道），无法传输 4/6/8 声道素材；TVU 通过 4 条双声道音轨承载 8 声道，送入 Agora Linux SDK 时需重排为 RTC 频道中的 8 声道流，存在 **audio layout 声道映射问题**——2025-04 联调中接收端出现杂音，根因为发送端把逐样本交错（LRLR…）的源数据按平面块序（LLL…RRR…）读取，最终声道映射经双方确认（`abhi_audio_order_mapping.jpg` / `alan_audio_order_mapping.png`），2025-04-14 客户确认问题解决；交付过程中曾反馈音画不同步（CSD-74687）、多声道功能异常、Multipath 下音频延迟（CSD-76350）、4.2.32 Crash（CSD-76354） | |
 | 该问题解决对客户的价值 | Linux 服务器可直接收发 3~8 声道音频，接收端可按声道选择播放/处理，支撑广电多声道制作链路 | |
-| 当前客户在用方案 | Linux SDK `example/multiopus` 系列 sample：raw PCM 发送、WAV（16/24bit）发送、预编码 Opus（8ch）发送；接收侧使用 `sample_receive_yuv_pcm`（解码 PCM 回调）与 `sample_receive_encoded_audio`（编码帧回调）；Web 端使用 quick-demo-multiopus 验证 | 见 6.4 现有 API 关联梳理 |
+| 当前客户在用方案 | Linux SDK `example/multiopus` 系列 sample：raw PCM 发送、WAV（16/24bit）发送、预编码 Opus（8ch）发送；本仓库 Demo 对应 `sample_receive_pcm_multiopus`（解码 PCM 回调）与 `sample_receive_encoded_audio`（编码帧回调）；Web 端使用 quick-demo-multiopus 验证 | 旧 SDK reference sample 名称见 6.4，当前 Demo 名称见 8.1 |
 | 客户做了哪些尝试 | 基于 v4.2.32（0715）与 v4.4.30.130（verified0805）两个版本的多声道 sample 完成收发验证 | |
 | 是否有竞品在 pk 中 | 无明确竞品信息 | |
 | 竞品方案 | 无明确竞品线路 | |
@@ -86,7 +86,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 
 | 内容项 | 描述 | 备注 |
 | --- | --- | --- |
-| API 接口（描述性语言） | 发送：PCM 原始数据发送接口（`sendAudioPcmData`）、编码音频帧发送接口（`sendEncodedAudioFrame`，codec 取 `AUDIO_CODEC_OPUS8C` 等多声道编码类型）；通过连接级私有参数设置多声道 payload type 与声道数。接收：按用户的解码前混音 PCM 回调（`onPlaybackAudioFrameBeforeMixing` + 回调参数设置）、编码音频帧接收回调（`audioRecvEncodedFrame` + `onEncodedAudioFrameReceived`）、混音音频回调 | 均为 Linux SDK 现有接口 + 私有参数，无新增公开 API |
+| API 接口（描述性语言） | 发送：PCM 原始数据发送接口（`sendAudioPcmData`）、编码音频帧发送接口（`sendEncodedAudioFrame`，本仓库 v4.4.30.149 Demo 使用 `AUDIO_CODEC_OPUSMC`）；通过连接级私有参数设置多声道 payload type 与声道数。接收：按用户的解码前混音 PCM 回调（`onPlaybackAudioFrameBeforeMixing` + 回调参数设置）、编码音频帧接收回调（`audioRecvEncodedFrame` + `onEncodedAudioFrameReceived`）、混音音频回调 | 旧 reference 中的 `AUDIO_CODEC_OPUS8C` 仅作为历史版本资料，不可作为当前 Demo 接口契约 |
 | 功能点概述 | ① 多声道 PCM 发送（3~8 声道、48 kHz、16bit、10ms 帧）；② 多声道 WAV 文件发送（RIFF 解析，16bit 直发、24bit 转 16bit）；③ 预编码多声道 Opus 发送（8 声道、20ms 帧、640 字节/帧裸流）；④ 多声道编码配置与能力协商（payload 123/124/125、回退与强制不回退）；⑤ 接收端解码 PCM 回调（按用户、声道数可配）；⑥ 接收端编码帧回调；⑦ 混音输出（恒 2 声道）；⑧ 端到端验证手段（Web demo、音量、日志与 dump）；⑨ 发送侧 4×双声道音轨 → 8 声道布局映射（声道顺序已确认，重排在客户侧完成） | |
 | 客户使用逻辑概述 | 发送端：准备 48 kHz 多声道素材 → 创建服务/连接 → connect 前设置 payload type 与声道数 → 创建对应 sender 与 custom audio track → publish → 按帧节奏喂数据。接收端：创建连接（按需开启编码帧接收或设置 PCM 回调参数）→ 订阅远端音频 → 在回调中获取多声道 PCM / 编码帧 → 落盘、播放或后处理；或用 Web demo 订阅并逐声道验证 | |
 
@@ -122,14 +122,14 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 | 3 | 声道数范围 | 支持哪些声道数？ | 3/4/5/6/7/8；3/5/7 需额外设置 `che.audio.custom_channel_num`；16 声道及以上不支持 | 设计文档 |
 | 4 | 能力协商 | 对端不支持多声道时行为？ | Linux 发送时回退为非多声道编码；Web 发送时不回退且不支持端无声；可用 `che.audio.codec_unfallback` 强制不回退 | 设计文档（回退到单声道还是双声道两份文档表述不一致，见待确认问题） |
 | 5 | 混音策略 | 多声道混音输出什么布局？ | 奇数声道混一路、偶数声道混一路，混音输出恒为 2 声道 | 设计文档 |
-| 6 | 输入素材 | 44.1 kHz 多声道 WAV 能否直接发送？ | 现有 sample 不做重采样；多声道编码仅 48 kHz，非 48 kHz 素材需业务侧先重采样，否则音调/时长异常 | 代码 + 素材事实 |
+| 6 | 输入素材 | 44.1 kHz 多声道 WAV 能否直接发送？ | 不能。本仓库 WAV sender 不做重采样，并在连接前拒绝非 48 kHz 素材；业务侧必须先重采样 | 当前 Demo 代码事实 |
 
 ### 6.4 现有 API 关联梳理
 
 | API / 能力 | 事实来源 | 职责 | 能力范围 | 与本需求的关系 |
 | --- | --- | --- | --- | --- |
 | `IAudioPcmDataSender::sendAudioPcmData` | `References/LinuxSampleCodes/0715_v4.2.32/example/multiopus/sample_send_h264_pcm_multiopus.cpp:149` | 发送原始 PCM（10ms 帧，16bit） | 声道数/采样率由入参指定；多声道需配合私参 | 可复用 |
-| `IAudioEncodedFrameSender::sendEncodedAudioFrame` + `AUDIO_CODEC_OPUS8C` | `References/LinuxSampleCodes/sample_send_opus8.cpp:81-87` | 发送预编码多声道 Opus 帧 | `EncodedAudioFrameInfo` 携带 codec/channels/sampleRate/samplesPerChannel；不解析 ogg 封装，按固定帧长裸流喂入 | 可复用 |
+| `IAudioEncodedFrameSender::sendEncodedAudioFrame` + `AUDIO_CODEC_OPUSMC` | `Demo/linux/multiopus/sample_send_opus8.cpp` | 发送预编码多声道 Opus 帧 | 发送侧 `EncodedAudioFrameInfo` 设置 codec/channels/sampleRate/samplesPerChannel；不解析 ogg 封装，按固定帧长裸流喂入 | 可复用 |
 | 私参 `che.audio.custom_payload_type` / `che.audio.custom_channel_num` / `che.audio.custom_sample_rate` | `sample_send_h264_pcm_multiopus.cpp:294-295`；Linux 多声道设计文档（ExT-1485178709） | 设置多声道 payload type（123/124/125）、具体声道数、采样率 | 须在 `connect` 之前对 `connection->getAgoraParameter()` 设置；接收端（123/124/125 协商下）无需设置 | 可复用 |
 | 私参 `che.audio.codec_unfallback` | Linux / Web 多声道设计文档；CSE 实测 | 强制全频道使用多声道能力、禁止编解码回退 | 取值如 `[123, 124, 125]`；**必须在 `service->getAgoraParameter()` 上、`createRtcConnection()` 之前设置，设在 connection 级不生效** | 可复用 |
 | `IAudioFrameObserverBase::onPlaybackAudioFrameBeforeMixing` + `ILocalUser::setPlaybackAudioFrameBeforeMixingParameters` | `References/LinuxSampleCodes/0715_v4.2.32/example/yuv_pcm/sample_receive_yuv_pcm.cpp:106,280` | 按远端用户回调解码后 PCM（16bit 交错） | 回调声道数/采样率可设置，需与发送端声道数一致以拿到完整多声道 | 可复用 |
@@ -171,7 +171,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 - 前置条件：同一连接同时创建视频编码帧 sender 与视频 track
 - 当：音频 PCM 线程与视频 H264 线程并行发送
 - 则：音频多声道与视频均正常发布，互不阻塞
-- 且：参考实现为 `sample_send_h264_pcm_multiopus`（音频 10ms pacer、视频按帧率 pacer 各自独立）
+- 且：历史参考实现为 `sample_send_h264_pcm_multiopus`（音频 10ms pacer、视频按帧率 pacer 各自独立）；本仓库当前 Demo 未包含该音视频同发 sample
 
 #### 场景1.3：非法/不匹配配置
 
@@ -200,7 +200,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 
 - 当：WAV 位深既非 16bit 也非 24bit
 - 则：sample 记录错误日志并停止读取该文件，不发送
-- 且：WAV 采样率非 48000（如现有 44.1 kHz 的 4/6 声道 Channel ID 素材）时，sample 不做重采样；客户须先将素材重采样到 48 kHz，否则发送端按 48 kHz 编码会导致音调与时长异常
+- 且：WAV 采样率非 48000（如现有 44.1 kHz 的 4/6 声道 Channel ID 素材）时，sample 不做重采样，并在连接前拒绝该素材；客户须先重采样到 48 kHz
 
 ### 需求点3：预编码多声道 Opus 音频发送
 
@@ -209,7 +209,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 #### 场景3.1：8 声道 Opus 裸流发送
 
 - 前置条件：输入为约定格式的 Opus 裸帧流（非 ogg 封装）：每帧 640 字节 = 20 ms @ 48 kHz 8 声道（参考素材 `8ch_2.opus`）；已设置 `che.audio.custom_payload_type=125`、`che.audio.custom_channel_num=8`；custom audio track 以 `MIX_DISABLED` 创建
-- 当：以 20 ms 间隔调用 `sendEncodedAudioFrame`，`EncodedAudioFrameInfo` 为 `codec=AUDIO_CODEC_OPUS8C`、`numberOfChannels=8`、`sampleRateHz=48000`、`samplesPerChannel=960`
+- 当：以 20 ms 间隔调用 `sendEncodedAudioFrame`，`EncodedAudioFrameInfo` 为 `codec=AUDIO_CODEC_OPUSMC`、`numberOfChannels=8`、`sampleRateHz=48000`、`samplesPerChannel=960`
 - 则：远端收到 OPUSMC 8 声道流，可正常解码播放
 - 且：发送节奏由 20 ms pacer 保证；参考实现读到 EOF 后关闭并重新打开文件，循环发送直至退出（PCM/WAV 发送 sample 同为循环读取行为）
 
@@ -290,7 +290,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 
 - 前置条件：连接配置 `audioRecvEncodedFrame=true`、`enableAudioRecordingOrPlayout=false`，角色为观众，调用 `subscribeAllAudio()` 或订阅指定流
 - 当：远端编码音频帧到达
-- 则：`IAudioEncodedFrameReceiver::onEncodedAudioFrameReceived(packet, length, info)` 回调原始编码帧，`info` 携带 codec/声道数/采样率
+- 则：`IAudioEncodedFrameReceiver::onEncodedAudioFrameReceived(packet, length, info)` 回调原始编码帧；本仓库 v4.4.30.149 SDK 的 `info` 可用字段为 codec 与 sendTs，业务侧不得依赖回调提供声道数或采样率
 - 且：该路径不做播放；与播放路径互斥（`enableAudioRecordingOrPlayout=false`）
 
 ### 需求点7：多声道混音接收（双声道输出）
@@ -367,13 +367,13 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 
 | 需求项 | 需求描述 | 性能要求 | 体验要求 | 优先级 | 交付时间 | Jira（Optional） | 安全合规审查 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 多声道 PCM 音频发送 | 3~8 声道 48 kHz 16bit PCM 经 OPUSMC 发布，10ms/帧 | 发送节奏 10 ms/帧，pacer 偏差在毫秒级 | 远端解码声道数与发送一致 | P0 | 已交付（v4.2.32 / v4.4.30.130），后续版本回归 | — | 不涉及 | sample：sample_send_h264_pcm_multiopus |
-| 多声道 WAV 文件发送 | RIFF 解析，16bit 直发、24bit 转 16bit，非法位深报错 | 同 PCM 发送 | 日志打印 WAV 头信息（采样率/声道/位深） | P0 | 同上 | — | 不涉及 | sample：sample_send_h264_pcm_multiopus_8ch_wav |
+| 多声道 PCM 音频发送 | 3~8 声道 48 kHz 16bit PCM 经 OPUSMC 发布，10ms/帧 | 发送节奏 10 ms/帧；性能报告须按 3~8 声道给出测量环境、p95 帧间隔偏差、CPU 和内存基线 | 远端解码声道数与发送一致 | P0 | 已交付（v4.2.32 / v4.4.30.130），后续版本回归 | — | 不涉及 | 当前 Demo：sample_send_pcm_multiopus |
+| 多声道 WAV 文件发送 | RIFF 解析，16bit 直发、24bit 转 16bit；非 48 kHz、非法位深和声道数不一致在连接前报错 | 同 PCM 发送 | 日志打印 WAV 头信息（采样率/声道/位深） | P0 | 同上 | — | 不涉及 | 当前 Demo：sample_send_wav_multiopus |
 | 预编码多声道 Opus 发送 | 8 声道 Opus 裸流（640B/20ms）经编码帧接口发布 | 20 ms/帧 | 远端可解码播放 | P0 | 同上 | — | 不涉及 | sample：sample_send_opus8；素材 8ch_2.opus |
 | 4×双声道音轨→8 声道布局映射 | TVU 源端 4 条 stereo 轨（track 块序）重排为 Agora 8 声道逐样本交错流（声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R，已双方确认），44.1 kHz 源重采样至 48 kHz，20 ms 写入拆分为 10 ms 帧 | 重排不引入额外端到端可感知延迟 | 端到端逐声道内容一致、无串轨、无杂音 | P0 | 已验证（2025-04-14 客户确认解决） | — | 不涉及 | 最终映射见场景9.2 |
 | 编码配置与能力协商 | payload 123/124/125 与声道映射、回退/强制不回退规则生效 | — | 编码器日志可确认配置生效 | P0 | 同上 | — | 不涉及 | 含 codec_unfallback |
-| 接收多声道（PCM 回调） | 按用户回调多声道解码 PCM，可落盘 | 10 ms 帧回调 | 落盘文件逐声道可核对 | P0 | 同上 | — | 不涉及 | sample：sample_receive_yuv_pcm |
-| 接收多声道（编码帧） | 订阅端接收 OPUSMC 编码帧 | — | info 携带 codec/声道数 | P1 | 同上 | — | 不涉及 | sample：sample_receive_encoded_audio |
+| 接收多声道（PCM 回调） | 按用户回调多声道解码 PCM，可落盘 | 10 ms 帧回调 | 落盘文件逐声道可核对 | P0 | 同上 | — | 不涉及 | 当前 Demo：sample_receive_pcm_multiopus |
+| 接收多声道（编码帧） | 订阅端接收 OPUSMC 编码帧 | — | 回调的 codec 与原始帧可落盘核对；声道数/采样率由协商或业务上下文提供 | P1 | 同上 | — | 不涉及 | 当前 Demo：sample_receive_encoded_audio |
 | 多声道混音接收 | 混音输出恒 2 声道（奇/偶声道分路） | — | 混音内容可听辨 | P1 | 同上 | — | 不涉及 | sample：sample_receive_mixed_audio |
 | 验证与可观测性 | 日志、dump、Web demo 逐声道验证链路可用 | — | getVolumeLevels 数组长度=声道数，codec=multiopus | P0 | 同上 | — | 不涉及 | quick-demo-multiopus |
 
@@ -445,7 +445,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 
 | 问题 | 回复 |
 | --- | --- |
-| 如何发送 8 声道 WAV？ | `./out/sample_send_h264_pcm_multiopus_8ch_wav --channelId <name> --token <token> --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000`（来自 `0715_v4.2.32/example/out/public/1.txt` 的实测命令） |
+| 如何发送 8 声道 WAV？ | `./sample_send_wav_multiopus --channelId <name> --token <token> --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000`（在本仓库 `Demo/linux/out/` 目录运行） |
 | 4/6 声道如何选 payload type？ | 4 声道 → 123，6 声道 → 124，8 声道 → 125；3/5/7 声道在对应 payload type 下加 `--custom_channel_num`。设计文档示例：`--audioFile 4_Channel_ID.wav --numOfChannels 4 --custom_channel_num 4 --custom_payload_type 123 --sampleRate 48000` |
 | 接收端需要设置多声道私参吗？ | payload 123/124/125 协商机制下不需要；但用 PCM 回调拿完整多声道时，`setPlaybackAudioFrameBeforeMixingParameters` 的声道数须与发送端一致 |
 | 44.1 kHz 的 Channel ID 素材能直接发吗？ | 不能按原样发送。多声道编解码仅支持 48 kHz，sample 不做重采样；需先重采样到 48 kHz（如 `8_Channel_ID_signed_16_bit_pcm.wav` 即 48 kHz 版本） |
