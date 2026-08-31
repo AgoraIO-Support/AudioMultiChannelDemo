@@ -8,6 +8,8 @@
 FROM debian:bookworm-slim AS builder
 
 ARG TARGETARCH
+# demo 镜像不锁定 apt 版本：bookworm 源滚动更新，锁死版本反而易构建失败
+# hadolint ignore=DL3008
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential cmake \
  && rm -rf /var/lib/apt/lists/*

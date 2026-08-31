@@ -8,6 +8,13 @@ set -e
 CURRENT=$(cd "$(dirname "$0")" && pwd)
 PROJECT_ROOT=$(cd "$CURRENT/../.." && pwd)
 
+# clean 可作为第一个或第二个参数：./build.sh clean | ./build.sh x86_64 clean
+if [ "$1" = "clean" ] || [ "$2" = "clean" ]; then
+  rm -rf "$CURRENT/build" "$CURRENT/out"
+  echo "clean done"
+  exit 0
+fi
+
 arch="$1"
 if [ -z "$arch" ]; then
   case "$(uname -m)" in
@@ -20,11 +27,6 @@ fi
 case "$arch" in
   x86_64)  SDK_DIR="$PROJECT_ROOT/LinuxSDKFolder/X86_64/agora_rtc_sdk" ;;
   aarch64) SDK_DIR="$PROJECT_ROOT/LinuxSDKFolder/Aarch64/agora_rtc_sdk" ;;
-  clean)
-    rm -rf "$CURRENT/build" "$CURRENT/out"
-    echo "clean done"
-    exit 0
-    ;;
   *) echo "usage: $0 [x86_64|aarch64] [clean]"; exit 1 ;;
 esac
 

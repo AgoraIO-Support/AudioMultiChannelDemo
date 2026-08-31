@@ -6,7 +6,7 @@
 //   - 连接配置 audioRecvEncodedFrame=true 且 enableAudioRecordingOrPlayout=false
 //   - 观众角色 subscribeAllAudio（或 subscribeAudio 指定流）
 //   - IAudioEncodedFrameReceiver::onEncodedAudioFrameReceived 回调 OPUSMC 编码帧，
-//     info 携带 codec / numberOfChannels / sampleRateHz
+//     info 仅携带 codec 与 sendTs（v4.4.30.149 不提供声道数/采样率，业务侧不得依赖）
 //   - 该路径不解码、不播放，与播放路径互斥；业务侧可自行解码或转发
 //   - 落盘文件追加写入，单文件达到 100 MB 自动切换新文件
 //

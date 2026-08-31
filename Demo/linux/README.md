@@ -1,7 +1,7 @@
 # Agora Linux SDK 音频多声道（multiopus）Demo
 
 本工程是 Agora Linux SDK（v4.4.30.149，x86_64 / aarch64）音频多声道收发的独立 C++ demo，
-依据需求规格 `Spec/linux_sdk_audio_multichannel_spec.md` 编写，覆盖发送 3 路径与接收 2 路径。
+依据需求规格 `Spec/linux_sdk_audio_multichannel_spec.md` 编写，覆盖发送 3 路径与接收 3 路径。
 多声道编码基于 Opus 多流（OPUSMC，payload type 123/124/125），**仅支持 48 kHz 采样率**。
 
 [English Documentation](README.en.md)
@@ -15,8 +15,8 @@
 | `sample_send_opus8` | 发送 | 需求点3（预编码 Opus 发送） | 8 声道 Opus 裸流（640 字节/20ms 帧），`AUDIO_CODEC_OPUSMC` + `MIX_DISABLED` |
 | `sample_receive_pcm_multiopus` | 接收 | 需求点5（解码 PCM 回调） | `onPlaybackAudioFrameBeforeMixing` 按用户回调多声道 PCM 并落盘（100MB 切换文件） |
 | `sample_receive_encoded_audio` | 接收 | 需求点6（编码帧回调） | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`，不解码不播放 |
+| `sample_receive_mixed_audio` | 接收 | 需求点7（混音接收） | `onPlaybackAudioFrame` 混音输出（恒 2 声道，奇/偶声道分路）并落盘（100MB 切换文件） |
 
-> 需求点7（混音接收，恒 2 声道）可直接复用 SDK example 的 `mixed_audio/sample_receive_mixed_audio`，本工程不重复实现。
 > 需求点9（TVU 4×stereo → 8 声道布局映射）为集成侧约定，见下文「TVU 布局映射」。
 
 ## 目录结构
@@ -27,10 +27,23 @@ Demo/linux/
 ├── build.sh                  # 便捷脚本：./build.sh [x86_64|aarch64] [clean]
 ├── common/                   # 拷贝自 LinuxSDKFolder/X86_64 example/common（与 SDK v4.4.30.149 匹配）
 ├── multiopus/                # 发送端 3 个 sample
-├── receive/                  # 接收端 2 个 sample
-├── public/                   # 素材：8ch_2.opus、8_Channel_ID_signed_16_bit_pcm.wav
+├── receive/                  # 接收端 3 个 sample
+├── public/                   # 素材：8ch_2.opus、8_Channel_ID_signed_16_bit_pcm.wav（及同名 .raw.pcm）、
+│                             # 4/6_Channel_ID_48k.wav（48kHz 重采样版）、8_Channel_ID_24bit.wav（24bit 验证素材）
 └── out/                      # 构建产物（二进制 + public 素材副本）
 ```
+
+> 注：`common/` 与 SDK 自带 example 保持逐字一致，便于对照与后续同步。静态分析发现的以下
+> **上游原始问题仅记录、不修改**：
+>
+> 1. `sample_local_user_observer.h/.cpp` 使用 `std::string` 但未自包含 `<string>`（依赖传递
+>    include；在 include 图不同的 libc++ 环境下会编译失败，Linux GCC/当前 SDK 组合不受影响）；
+> 2. `sample_local_user_observer.cpp` `calculate_layout` 中 `y_offset_ = y_offset_;` 自赋值
+>   （无效语句，混流布局遗留代码，音频 demo 不会走到）；
+> 3. `sample_connection_observer.cpp` `onTransferStatistics` 以 `%lu` 打印 `uint64_t`
+>   （Linux x86_64/aarch64 上 `unsigned long` 恰为 64 位可正常工作，其他平台属未定义行为）；
+> 4. `file_parser/helper_h264_parser.cpp`、`helper_h265_parser.cpp` 构造函数未初始化
+>   `data_size_` 成员（file_parser 未编入本工程 sample，仅随 `common/` 一并拷贝）。
 
 ## 构建方法
 
@@ -98,11 +111,17 @@ docker run --rm -it --network host agora-multichannel-linux \
     --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
 ```
 
+> 其他 WAV 验证素材：24bit 转换（场景2.2）用 `public/8_Channel_ID_24bit.wav`（命令同上）；
+> 4/6 声道用 `public/4_Channel_ID_48k.wav` / `public/6_Channel_ID_48k.wav`（已由 44.1 kHz
+> 重采样到 48 kHz），对应 `--numOfChannels 4 --custom_channel_num 4 --custom_payload_type 123`
+> 与 `--numOfChannels 6 --custom_channel_num 6 --custom_payload_type 124`。
+
 ### 2. 发送 raw PCM 多声道（3~8 声道）
 
 ```bash
+# 默认素材 public/8_Channel_ID_signed_16_bit_pcm.raw.pcm（48kHz/8ch/16bit，由同名 WAV 提取）
 ./sample_send_pcm_multiopus --channelId <name> --token <token> \
-    --audioFile <48kHz_16bit_interleaved.pcm> \
+    --audioFile "public/8_Channel_ID_signed_16_bit_pcm.raw.pcm" \
     --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
 ```
 
@@ -125,12 +144,18 @@ docker run --rm -it --network host agora-multichannel-linux \
 ./sample_receive_encoded_audio --channelId <name> --token <token> --audioFile received.opus
 ```
 
-### 强制不回退（codec_unfallback）
-
-所有发送 sample 支持 `--codecUnfallback` 开关：
+### 6. 接收混音输出（恒 2 声道）
 
 ```bash
-./sample_send_pcm_multiopus ... --codecUnfallback
+./sample_receive_mixed_audio --channelId <name> --token <token> --audioFile received_mixed.pcm
+```
+
+### 强制不回退（codec_unfallback）
+
+所有发送 sample 支持 `--codecUnfallback` 开关（注意必须带值 `1`，无值用法会被参数解析器拒绝）：
+
+```bash
+./sample_send_pcm_multiopus ... --codecUnfallback 1
 ```
 
 ## payload type 与声道数映射
@@ -189,6 +214,15 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例
 输出为 OPUSMC 裸帧流（640 字节/帧），可用于转发或自行解码。回调 `info` 仅携带
 `codec` 与 `sendTs`（SDK v4.4.30.149 头文件 `AgoraMediaBase.h` 中
 `AudioEncodedFrameInfo` 无声道数/采样率字段）。
+
+### 混音落盘（sample_receive_mixed_audio）
+
+输出为混音后的 48 kHz / 2 声道 / 16bit 小端交错裸 PCM（多声道流混音恒为 2 声道，
+奇数声道混一路、偶数声道混一路）：
+
+```bash
+ffplay -f s16le -ar 48000 -ch_layout stereo received_mixed.pcm
+```
 
 ## TVU 布局映射（需求点9）
 

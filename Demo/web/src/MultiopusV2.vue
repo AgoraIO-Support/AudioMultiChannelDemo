@@ -25,7 +25,7 @@
         </div>
         <div class="input-item">
           <span>{{ m.channelCount }}</span>
-          <n-input-number v-model:value="channelCount" :min="3" :max="8" />
+          <n-input-number v-model:value="channelCount" :min="4" :max="8" />
         </div>
       </div>
 
@@ -64,15 +64,15 @@
 
       <!-- 行4：操作按钮 -->
       <div class="content operation">
-        <n-button type="info" @click="joinChannel" :disabled="joined">{{ m.join }}</n-button>
-        <n-button type="info" @click="leaveChannel" :disabled="!joined">{{ m.leave }}</n-button>
-        <n-button type="info" @click="publishAudio" :disabled="!joined || published">
+        <n-button type="info" @click="joinChannel" :disabled="joined || joining">{{ m.join }}</n-button>
+        <n-button type="info" @click="leaveChannel" :disabled="!joined || leaving">{{ m.leave }}</n-button>
+        <n-button type="info" @click="publishAudio" :disabled="!joined || published || publishing">
           {{ m.publish }}
         </n-button>
         <n-button type="info" @click="unpublishAudio" :disabled="!published">
           {{ m.unpublish }}
         </n-button>
-        <n-button type="success" @click="subscribe" :disabled="!joined || !hasRemote || subscribed">
+        <n-button type="success" @click="subscribe" :disabled="!joined || !hasRemote || subscribed || subscribing">
           {{ m.subscribe }}
         </n-button>
         <n-button type="info" @click="cancelSubscribe" :disabled="!subscribed">
@@ -145,9 +145,11 @@ const messages = {
     noRemote: "频道内暂无可订阅的远端音频",
     enterChannels: "请输入声道序号，如 0,1",
     channelOutOfRange: "声道序号必须在 0~7 之间",
-    channelCountInvalid: "声道数必须在 3~8 之间",
+    channelCountInvalid: "声道数必须为 4/6/8（Web 端仅支持偶数声道解码）",
     publishedOk: (n: number) => `已发布 ${n} 声道音频`,
     publishFail: (msg: string) => `发布失败: ${msg}`,
+    joinFail: (msg: string) => `加入频道失败: ${msg}`,
+    subscribeFail: (msg: string) => `订阅失败: ${msg}`,
   },
   en: {
     appTitle: "Agora Multi-Channel Audio Demo",
@@ -179,9 +181,11 @@ const messages = {
     noRemote: "No remote audio to subscribe in channel",
     enterChannels: "Enter channel indices, e.g. 0,1",
     channelOutOfRange: "Channel indices must be between 0 and 7",
-    channelCountInvalid: "Channel count must be between 3 and 8",
+    channelCountInvalid: "Channel count must be 4, 6 or 8 (even counts only on Web)",
     publishedOk: (n: number) => `Published ${n}ch audio`,
     publishFail: (msg: string) => `Publish failed: ${msg}`,
+    joinFail: (msg: string) => `Join failed: ${msg}`,
+    subscribeFail: (msg: string) => `Subscribe failed: ${msg}`,
   },
 };
 const m = computed(() => messages[locale.value]);
@@ -192,7 +196,7 @@ watch(
   (v) => {
     localStorage.setItem("locale", v);
     document.documentElement.lang = v === "zh" ? "zh-CN" : "en";
-    document.title = `${m.value.appTitle} (multiopus)`;
+    document.title = `${m.value.appTitle} (multiopus-v2)`;
   },
   { immediate: true }
 );
@@ -237,6 +241,14 @@ const published = ref(false);
 const subscribed = ref(false);
 const hasRemote = ref(false);
 let lastPublishedUser: IAgoraRTCRemoteUser | undefined;
+// 实际订阅的用户：unpublished/left/cancelSubscribe 都以它为准（lastPublishedUser 仅作
+// “最近发布者”提示，unpublish/left 时即时清除，避免过期引用被优先选中）
+let subscribedUser: IAgoraRTCRemoteUser | undefined;
+// 异步操作 in-flight 守卫，防止飞行期间重复点击
+const joining = ref(false);
+const publishing = ref(false);
+const subscribing = ref(false);
+const leaving = ref(false);
 
 let localAudioTrack: ILocalAudioTrack | null = null;
 let remoteAudioTrack: IRemoteAudioTrack | null = null;
@@ -246,10 +258,31 @@ const volumes = ref<number[]>([]);
 let volumeTimer = -1;
 
 async function joinChannel() {
-  if (joined.value) return;
+  if (joined.value || joining.value) return;
+  joining.value = true;
   client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-  await client.join(appId.value, channel.value, token.value || null, Number(myUid.value) || null);
+  try {
+    const assignedUid = await client.join(
+      appId.value,
+      channel.value,
+      token.value || null,
+      Number(myUid.value) || null
+    );
+    // 未填 uid（或服务端分配）时回显实际 uid
+    if (!Number(myUid.value)) myUid.value = String(assignedUid);
+  } catch (e: any) {
+    // 加入失败（token 错误/网络失败等）：提示并清理 client，避免半连接泄漏且无法 Leave
+    notification.error({ title: m.value.joinFail(e?.message || String(e)), duration: 3000 });
+    try {
+      await client.leave();
+    } catch {
+      /* 忽略清理失败 */
+    }
+    client = null;
+    joining.value = false;
+    return;
+  }
+  joining.value = false;
   joined.value = true;
   notification.success({ title: m.value.joined, duration: 1000 });
 
@@ -263,22 +296,32 @@ async function joinChannel() {
   client.on("user-unpublished", (user, mediaType) => {
     console.warn("user-unpublished", user.uid, mediaType);
     if (mediaType === "audio") {
+      // 即时清除过期的“最近发布者”，避免 subscribe 选中已停流的用户
+      if (lastPublishedUser?.uid === user.uid) lastPublishedUser = undefined;
       hasRemote.value = (client?.remoteUsers.some((u) => u.hasAudio)) ?? false;
-      if (subscribed.value) cancelSubscribe();
+      // 只有已订阅的那个用户停流时才取消订阅（其他发布者不影响当前订阅）
+      if (subscribed.value && subscribedUser?.uid === user.uid) cancelSubscribe();
     }
   });
-  client.on("user-left", () => {
+  client.on("user-left", (user) => {
+    console.warn("user-left", user.uid);
+    if (lastPublishedUser?.uid === user.uid) lastPublishedUser = undefined;
     hasRemote.value = (client?.remoteUsers.some((u) => u.hasAudio)) ?? false;
+    if (subscribed.value && subscribedUser?.uid === user.uid) cancelSubscribe();
   });
 }
 
 async function leaveChannel() {
+  if (leaving.value) return;
+  leaving.value = true;
   if (published.value) await unpublishAudio();
   if (subscribed.value) await cancelSubscribe();
   await client?.leave();
   client = null;
   joined.value = false;
   hasRemote.value = false;
+  lastPublishedUser = undefined;
+  leaving.value = false;
   notification.success({ title: m.value.leftChannel, duration: 1000 });
 }
 
@@ -296,7 +339,8 @@ async function createAudioBuffer(source: string): Promise<AudioBuffer> {
 function getAudioBufferTrack(audioBuffer: AudioBuffer): MediaStreamTrack {
   audioContext = audioContext || new AudioContext();
   const dest = audioContext.createMediaStreamDestination();
-  dest.channelCount = audioBuffer.numberOfChannels;
+  // 与 createCustomAudioTrack 的 channelCount 保持一致（V1 同），避免两处声道数不一致
+  dest.channelCount = channelCount.value;
   dest.channelCountMode = "explicit";
   dest.channelInterpretation = "discrete";
   const startSource = () => {
@@ -314,15 +358,16 @@ function getAudioBufferTrack(audioBuffer: AudioBuffer): MediaStreamTrack {
 }
 
 async function publishAudio() {
-  if (!client || !joined.value || published.value) return;
+  if (!client || !joined.value || published.value || publishing.value) return;
   if (!audioURL.value) {
     notification.warning({ title: m.value.noAudioUrl, duration: 1000 });
     return;
   }
-  if (channelCount.value < 3 || channelCount.value > 8 || !Number.isFinite(channelCount.value)) {
+  if (![4, 6, 8].includes(channelCount.value)) {
     notification.warning({ title: m.value.channelCountInvalid, duration: 2000 });
     return;
   }
+  publishing.value = true;
   try {
     if (audioContext && audioContext.state === "suspended") await audioContext.resume();
     const buffer = await createAudioBuffer(audioURL.value);
@@ -337,9 +382,13 @@ async function publishAudio() {
     notification.success({ title: m.value.publishedOk(channelCount.value), duration: 2000 });
   } catch (e: any) {
     notification.error({ title: m.value.publishFail(e?.message || String(e)), duration: 3000 });
-    // 发布失败时关闭 AudioContext，避免泄漏和循环播放残留。
+    // 发布失败时关闭残留 track 与 AudioContext，避免泄漏和循环播放残留。
+    localAudioTrack?.close();
+    localAudioTrack = null;
     await audioContext?.close();
     audioContext = null;
+  } finally {
+    publishing.value = false;
   }
 }
 
@@ -354,17 +403,28 @@ async function unpublishAudio() {
 }
 
 async function subscribe() {
-  if (!client || !joined.value) return;
+  if (!client || !joined.value || subscribed.value || subscribing.value) return;
   const user =
     lastPublishedUser || client.remoteUsers.find((u) => u.hasAudio) || client.remoteUsers[0];
   if (!user || !user.hasAudio) {
     notification.warning({ title: m.value.noRemote, duration: 2000 });
     return;
   }
-  const track = await client.subscribe(user, "audio");
+  subscribing.value = true;
+  let track: IRemoteAudioTrack;
+  try {
+    track = await client.subscribe(user, "audio");
+  } catch (e: any) {
+    // 竞态（对端恰好 unpublish/left）等导致的订阅失败：提示并保持未订阅状态
+    notification.error({ title: m.value.subscribeFail(e?.message || String(e)), duration: 3000 });
+    subscribing.value = false;
+    return;
+  }
+  subscribing.value = false;
   remoteAudioTrack = track;
   track.play();
   subscribed.value = true;
+  subscribedUser = user;
 
   window.clearInterval(volumeTimer);
   volumeTimer = window.setInterval(() => {
@@ -374,10 +434,12 @@ async function subscribe() {
 
 async function cancelSubscribe() {
   if (!client) return;
-  const user = lastPublishedUser || client.remoteUsers[0];
-  if (user && remoteAudioTrack) {
-    await client.unsubscribe(user, "audio");
+  // 以实际订阅的用户为准（而不是 lastPublishedUser 兜底），避免对错误用户 unsubscribe
+  // 导致真实订阅泄漏（服务端继续推流、声音继续响）
+  if (subscribedUser && remoteAudioTrack) {
+    await client.unsubscribe(subscribedUser, "audio");
   }
+  subscribedUser = undefined;
   remoteAudioTrack = null;
   subscribed.value = false;
   volumes.value = [];
@@ -387,10 +449,16 @@ async function cancelSubscribe() {
 // 声道选择：对远端多声道音轨选择任意声道组合，按 surround/stereo/mono 渲染。
 function selectChannel(mode: "mono" | "stereo" | "surround") {
   if (!remoteAudioTrack) return;
-  const channels = selectedChannels.value
-    .split(",")
-    .map((v) => parseInt(v.trim(), 10))
-    .filter((n) => !Number.isNaN(n));
+  // 严格解析：只接受纯数字序号并去重（"0,0,1"、"1abc"、"0.9" 不再被静默接受）
+  const channels = [
+    ...new Set(
+      selectedChannels.value
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => /^\d+$/.test(v))
+        .map(Number)
+    ),
+  ];
   if (!channels.length) {
     notification.warning({ title: m.value.enterChannels, duration: 2000 });
     return;
@@ -409,6 +477,9 @@ function selectChannel(mode: "mono" | "stereo" | "surround") {
 
 onBeforeUnmount(() => {
   window.clearInterval(volumeTimer);
+  // 关闭本地 track 与 AudioContext，避免 HMR 时循环播放的 source 成为孤儿（幽灵音频）
+  localAudioTrack?.close();
+  void audioContext?.close();
   client?.leave();
 });
 </script>

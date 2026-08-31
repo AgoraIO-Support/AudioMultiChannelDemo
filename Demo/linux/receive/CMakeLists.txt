@@ -12,3 +12,9 @@ file(GLOB SAMPLE_RECEIVE_ENCODED_AUDIO_CPP_FILES
      "${PROJECT_SOURCE_DIR}/sample_receive_encoded_audio.cpp"
      "${PROJECT_SOURCE_DIR}/../common/*.cpp")
 add_executable(sample_receive_encoded_audio ${SAMPLE_RECEIVE_ENCODED_AUDIO_CPP_FILES})
+
+# Build sample_receive_mixed_audio (mixed audio output, always 2 channels)
+file(GLOB SAMPLE_RECEIVE_MIXED_AUDIO_CPP_FILES
+     "${PROJECT_SOURCE_DIR}/sample_receive_mixed_audio.cpp"
+     "${PROJECT_SOURCE_DIR}/../common/*.cpp")
+add_executable(sample_receive_mixed_audio ${SAMPLE_RECEIVE_MIXED_AUDIO_CPP_FILES})

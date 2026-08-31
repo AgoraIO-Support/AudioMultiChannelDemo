@@ -490,7 +490,10 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `8ch_2.opus` | Opus 裸帧流（非 ogg），640 字节/帧 | 48000 | 8 | — | 约 112 s（3,575,680 字节 ÷ 640 字节/帧 × 20 ms） | 需求点3 预编码 Opus 发送 | `References/LinuxSampleCodes/8ch_2.opus` |
 | `8_Channel_ID_signed_16_bit_pcm.wav` | WAV pcm_s16le | 48000 | 8 | 16bit | 约 14 s | 需求点2 八声道 WAV 发送主验证素材 | ffprobe 元数据（`*_metadata.txt`） |
-| `8_Channel_ID.wav` | WAV | 48000（Web demo 直发，浏览器解码） | 8 | 16bit | — | Web demo 发布素材；v4.4.30.130 sample 默认音频文件 | `quick-demo-multiopus/public/`、`example/out/public/` |
+| `8_Channel_ID_signed_16_bit_pcm.raw.pcm` | raw PCM s16le 交错 | 48000 | 8 | 16bit | 约 14 s | 需求点1 PCM 发送默认素材（由同名 WAV 提取，`Demo/linux/public/`） | 本仓库生成 |
+| `8_Channel_ID.wav` | WAV | 48000（Web demo 直发，浏览器解码） | 8 | 16bit（本仓库 `Demo/web/public` 拷贝实测为 24bit，浏览器解码不受影响） | — | Web demo 发布素材；v4.4.30.130 sample 默认音频文件 | `quick-demo-multiopus/public/`、`example/out/public/` |
+| `8_Channel_ID_24bit.wav` | WAV pcm_s24le | 48000 | 8 | 24bit | — | 需求点2 场景2.2（24bit→16bit）验证素材（拷贝自 `Demo/web/public/8_Channel_ID.wav`，`Demo/linux/public/`） | 本仓库 |
+| `4_Channel_ID_48k.wav` / `6_Channel_ID_48k.wav` | WAV pcm_s16le | 48000 | 4 / 6 | 16bit | 约 5.8 s | Linux sample 4/6 声道发送验证（由 44.1 kHz 源重采样，`Demo/linux/public/`） | 本仓库生成 |
 | `6_Channel_ID.wav` | WAV pcm_s16le | 44100 | 6（5.1 布局） | 16bit | 约 5.8 s | 六声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `4_Channel_ID.wav` | WAV pcm_s16le | 44100 | 4 | 16bit | 约 5.8 s | 四声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `send_audio_16k_1ch.pcm` | raw PCM | 16000 | 1 | 16bit | — | 普通单声道基线（非多声道） | SDK 包 `test_data/`（sync-data.sh 下载） |

@@ -62,8 +62,10 @@ Other scripts: `npm run build` (vue-tsc type check + build to `dist/`), `npm run
 ## Docker
 
 ```bash
-cd Demo/web
-docker build -t agora-multichannel-web .
+# Run from the Demo/ directory (the build context must include both web/ and docs/;
+# docs is copied into dist/docs during the build)
+cd Demo
+docker build -f web/Dockerfile -t agora-multichannel-web .
 docker run --rm -p 8080:80 agora-multichannel-web
 # Open http://localhost:8080/
 ```
@@ -126,7 +128,7 @@ and the non-supporting endpoint hears nothing.
 | getStats inbound codec | `multiopus` | `opus` |
 | Remote track `channelCount` (signaling pt value) | 4/6/8 | — |
 
-The demo result panel reports multi-channel when "volume array length ≥ 2 or codec = multiopus".
+The demo result panel reports multi-channel when "the volume array length is 4/6/8, or the codec is multiopus". Plain mono/stereo is never reported as multi-channel.
 
 ## Channel Selection Modes
 
@@ -151,9 +153,9 @@ To listen to one channel: enter a single index (e.g. `3`) and choose mono, or en
 - **Token error / join failure?** Tokens are bound to uids — each tab must use the token for its
   own uid (or a uid=0 wildcard token). The `APP_ID` in the demo is a plain-text demo credential;
   replace it for real use and issue tokens from your own server.
-- **Are the files 44.1 kHz?** The built-in WAV files are sampled at 44.1 kHz. They are resampled
-  by the Web Audio graph and encoded at the negotiated 48 kHz (multi-channel codec supports
-  48 kHz only), so this does not affect verification.
+- **Are the files 44.1 kHz?** The 4/6-channel files are 44.1 kHz/16-bit, and the 8-channel file
+  is 48 kHz/24-bit. All are decoded by the Web Audio graph and encoded at the negotiated
+  48 kHz (multi-channel codec supports 48 kHz only), so this does not affect verification.
 - **Unsupported browser?** Safari/Firefox do not support multi-channel (undefined behavior). On
   Chrome 94/95 the related interfaces are off by default; Chrome 96+ officially supports them,
   110+ recommended.
@@ -174,8 +176,9 @@ Demo/web/
 ├─ public/                 # 4/6/8_Channel_ID.wav assets
 └─ src/
    ├─ main.ts              # createApp + mount
-   ├─ App.vue              # NNotificationProvider wrapper
-   ├─ Multiopus.vue        # All logic and UI (publish/subscribe/channel selection/codec detection)
+   ├─ App.vue              # NNotificationProvider wrapper, switches layouts via ?demo= query
+   ├─ Multiopus.vue        # Live Demo 1 (default): all logic and UI (publish/subscribe/channel selection/codec detection)
+   ├─ MultiopusV2.vue      # Live Demo 2 (?demo=2): reproduces the original quick-demo-multiopus layout
    ├─ style.css
    └─ vite-env.d.ts
 ```

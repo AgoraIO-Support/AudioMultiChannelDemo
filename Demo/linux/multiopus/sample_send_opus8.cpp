@@ -21,6 +21,7 @@
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 #include <thread>
 
 #include "IAgoraService.h"
@@ -77,12 +78,13 @@ static void SampleSendAudioTask(
 
     if (fread(frameBuf, 1, sizeof(frameBuf), file) != sizeof(frameBuf)) {
       if (feof(file)) {
-        fclose(file);
-        file = nullptr;
         AG_LOG(INFO, "End of audio file, loop from the beginning");
       } else {
+        // 读错误时同样关闭文件，让下一帧走重开路径（否则 error indicator 置位后永久刷错）
         AG_LOG(ERROR, "Error reading audio data: %s", std::strerror(errno));
       }
+      fclose(file);
+      file = nullptr;
       continue;
     }
 
@@ -114,10 +116,11 @@ int main(int argc, char* argv[]) {
                          "The 8-channel Opus raw frame stream file to be sent "
                          "(640 bytes per 20ms frame, NOT ogg container)");
   optParser.add_long_opt("frameSizeDuration", &options.audio.frameSizeDuration,
-                         "The audio frame size duration to be sent (ms), default 20");
+                         "The audio frame size duration to be sent (ms); only 20 is "
+                         "supported (frames are hardcoded to 640 bytes / 960 samples)");
   optParser.add_long_opt("codecUnfallback", &options.codecUnfallback,
-                         "Set che.audio.codec_unfallback=[123,124,125] on service level "
-                         "before createRtcConnection to force multi-channel codec");
+                         "Pass 1 to set che.audio.codec_unfallback=[123,124,125] on service "
+                         "level before createRtcConnection to force multi-channel codec");
 
   if ((argc <= 1) || !optParser.parse_opts(argc, argv)) {
     std::ostringstream strStream;
@@ -134,6 +137,36 @@ int main(int argc, char* argv[]) {
   if (options.channelId.empty()) {
     AG_LOG(ERROR, "Must provide channelId!");
     return -1;
+  }
+
+  // 帧格式硬编码为 640 字节/帧（20ms @ 48kHz 8ch，spec 场景3.1/3.2），
+  // frameSizeDuration 只改发送节奏，其他值会与帧格式/samplesPerChannel 脱钩导致破音
+  if (options.audio.frameSizeDuration != DEFAULT_FRAME_SIZE_DURATION) {
+    AG_LOG(ERROR, "Only --frameSizeDuration %d is supported (frames are hardcoded to %d "
+                  "bytes / %d samples per channel), got %d",
+           DEFAULT_FRAME_SIZE_DURATION, OPUS8_FRAME_BYTES, OPUS8_SAMPLES_PER_CHANNEL,
+           options.audio.frameSizeDuration);
+    return -1;
+  }
+
+  // 连接前预检素材：可读、为常规文件且至少包含一帧，避免启动后发送线程静默退出或空转
+  {
+    FILE* f = fopen(options.audioFile.c_str(), "rb");
+    if (!f) {
+      AG_LOG(ERROR, "Cannot open audio file %s: %s", options.audioFile.c_str(),
+             std::strerror(errno));
+      return -1;
+    }
+    struct stat st;
+    if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode) ||
+        st.st_size < OPUS8_FRAME_BYTES) {
+      AG_LOG(ERROR,
+             "Audio file %s must be a regular file containing at least one %d-byte frame",
+             options.audioFile.c_str(), OPUS8_FRAME_BYTES);
+      fclose(f);
+      return -1;
+    }
+    fclose(f);
   }
 
   std::signal(SIGQUIT, SignalHandler);

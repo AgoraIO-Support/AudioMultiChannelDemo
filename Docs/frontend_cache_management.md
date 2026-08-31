@@ -38,10 +38,16 @@
 
 | 资源类型 | Location 匹配 | Cache-Control |
 |---|---|---|
-| `index.html` | `= /index.html` | `no-cache, no-store, must-revalidate` |
-| 带 hash 的 JS/CSS | `~* \.[a-f0-9]{8,}\.(js|css)$` | `public, immutable`（1 年） |
+| 应用入口 `index.html` | `= /index.html` | `no-cache, no-store, must-revalidate` |
+| 带 hash 的 JS/CSS | `~* -[A-Za-z0-9_-]{8,}\.(js|css)$` | `public, immutable`（1 年） |
+| docs 站 HTML | `~* \.html$` | `no-cache, must-revalidate` |
+| docs 站 JS/CSS（`?v=` 打戳） | `~* /docs/.+\.(css|js)$` | `public`（1 年） |
 | WAV/图标/图片 | `~* \.(wav\|ico\|png\|svg\|...)$` | `public`（1 年） |
 | 其他静态文件 | `~* \.(json\|woff2?\|ttf\|...)$` | `public`（7 天） |
+
+> 注意：Vite 产物的文件名形如 `index-B-3pcp-h.js`（连字符分隔、base64url 字符集，
+> 含 `-_` 与大写字母），hash 资源 location 必须按 `-<hash>.js` 形式匹配，否则匹配不到会落入
+> 默认 location 而不带任何 Cache-Control。
 
 ### 2.4 Docker 构建参数
 
@@ -49,7 +55,9 @@
 - 新增 `VITE_BUILD_ID` build arg，可在 CI/CD 中传入固定 Build ID：
 
   ```bash
-  docker build --build-arg VITE_BUILD_ID=$(git rev-parse --short HEAD) -t agora-multichannel-web .
+  # 在 Demo/ 目录执行（构建上下文需包含 web/ 与 docs/）
+  cd Demo
+  docker build -f web/Dockerfile --build-arg VITE_BUILD_ID=$(git rev-parse --short HEAD) -t agora-multichannel-web .
   ```
 
 ### 2.5 常用命令
@@ -65,8 +73,9 @@ BUILD_ID=$(git rev-parse --short HEAD)
 BUILD_ID="$BUILD_ID" node ../docs/build.mjs
 VITE_BUILD_ID="$BUILD_ID" npm run build
 
-# Docker 构建并指定 build id
-docker build --build-arg VITE_BUILD_ID=abc123 -t agora-multichannel-web .
+# Docker 构建并指定 build id（在 Demo/ 目录执行）
+cd Demo
+docker build -f web/Dockerfile --build-arg VITE_BUILD_ID=abc123 -t agora-multichannel-web .
 ```
 
 ---

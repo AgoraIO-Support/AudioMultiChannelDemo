@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { existsSync } from 'node:fs'
 import { cp, readFile } from 'node:fs/promises'
 import { extname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -42,6 +43,13 @@ function docsPlugin() {
       });
     },
     async closeBundle() {
+      if (!existsSync(docsDir)) {
+        throw new Error(
+          `[docsPlugin] 文档目录不存在：${docsDir}。` +
+          '本地构建请保持 Demo/docs 与 Demo/web 的相对位置；' +
+          'Docker 构建请以 Demo/ 为构建上下文（见 Dockerfile 头部说明）。'
+        );
+      }
       await cp(docsDir, resolve(webDir, 'dist/docs'), { recursive: true });
     },
   }

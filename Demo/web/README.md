@@ -39,8 +39,9 @@ npm run dev   # 默认 http://localhost:5173/
 ## Docker 部署
 
 ```bash
-cd Demo/web
-docker build -t agora-multichannel-web .
+# 在 Demo/ 目录执行（构建上下文需同时包含 web/ 与 docs/，构建时 docs 会被复制进 dist/docs）
+cd Demo
+docker build -f web/Dockerfile -t agora-multichannel-web .
 docker run --rm -p 8080:80 agora-multichannel-web
 # 打开 http://localhost:8080/
 ```
@@ -87,7 +88,7 @@ URL 参数一览（均优先于 localStorage 回填值）：
 | getStats inbound codec | `multiopus` | `opus` |
 | 远端音轨 `channelCount`（信令 pt 值） | 4/6/8 | — |
 
-demo 结果面板按「音量数组长度 ≥ 2 或 codec = multiopus」给出多声道结论。
+demo 结果面板按「音量数组长度为 4/6/8，或 codec = multiopus」给出多声道结论；普通单/双声道不会被判定为多声道。
 
 ## 声道选择模式说明
 
@@ -103,7 +104,7 @@ demo 结果面板按「音量数组长度 ≥ 2 或 codec = multiopus」给出�
 
 - **订阅多声道流只有单/双声道？** 检查是否在 `createClient` 之前设置了 `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)`；未开启则按普通音频处理，只能解出单/双声道。
 - **token 报错 / 加入失败？** token 与 uid 绑定，两个标签页必须使用各自 uid 的 token（或 uid=0 通配 token）。demo 内 `APP_ID` 为明文演示凭证，正式使用请替换并在自己的服务端签发 token。
-- **素材是 44.1kHz？** 内置 WAV 素材为 44.1kHz 采样，经 Web Audio 图重采样后按协商的 48kHz 编码（多声道编解码仅 48kHz），不影响验证。
+- **素材是 44.1kHz？** 4/6 声道素材为 44.1kHz/16bit，8 声道素材为 48kHz/24bit；经 Web Audio 图解码后统一按协商的 48kHz 编码（多声道编解码仅 48kHz），不影响验证。
 - **浏览器不支持？** Safari/Firefox 不支持多声道（行为未定义）；Chrome 94/95 相关接口默认关闭，96 起正式支持，推荐 110+。
 - **频道里进来不支持多声道的端？** Linux 发送时发送端回退、多声道失效（Linux 端可用 `che.audio.codec_unfallback` 强制不回退）；Web 发送时不回退且该端无声。
 - **最多几声？** 8 声道；仅偶数声道；16 声道及以上不支持。
@@ -119,8 +120,9 @@ Demo/web/
 ├─ public/                 # 4/6/8_Channel_ID.wav 素材
 └─ src/
    ├─ main.ts              # createApp + mount
-   ├─ App.vue              # NNotificationProvider 包裹
-   ├─ Multiopus.vue        # 全部逻辑与 UI（发布/订阅/声道选择/codec 判定）
+   ├─ App.vue              # NNotificationProvider 包裹，按 ?demo= 查询参数切换两个布局
+   ├─ Multiopus.vue        # Live Demo 1（默认）：全部逻辑与 UI（发布/订阅/声道选择/codec 判定）
+   ├─ MultiopusV2.vue      # Live Demo 2（?demo=2）：参考 quick-demo-multiopus 原版布局
    ├─ style.css
    └─ vite-env.d.ts
 ```

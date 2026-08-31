@@ -2,7 +2,7 @@
 
 A standalone C++ demo for multi-channel audio send/receive with the Agora Linux SDK
 (v4.4.30.149, x86_64 / aarch64), written against the requirements in
-`Spec/linux_sdk_audio_multichannel_spec.md`. It covers 3 send paths and 2 receive paths.
+`Spec/linux_sdk_audio_multichannel_spec.md`. It covers 3 send paths and 3 receive paths.
 Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) and
 **supports 48 kHz only**.
 
@@ -17,9 +17,8 @@ Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) 
 | `sample_send_opus8` | Send | Req. 3 (pre-encoded Opus send) | 8-channel raw Opus stream (640 bytes per 20 ms frame), `AUDIO_CODEC_OPUSMC` + `MIX_DISABLED` |
 | `sample_receive_pcm_multiopus` | Receive | Req. 5 (decoded PCM callback) | Per-user multi-channel PCM via `onPlaybackAudioFrameBeforeMixing`, written to disk (new file every 100 MB) |
 | `sample_receive_encoded_audio` | Receive | Req. 6 (encoded frame callback) | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`, no decoding, no playback |
+| `sample_receive_mixed_audio` | Receive | Req. 7 (mixed-audio receive) | Mixed output via `onPlaybackAudioFrame` (always 2 channels, odd/even channels split), written to disk (new file every 100 MB) |
 
-> Req. 7 (mixed-audio receive, always 2 channels) is already covered by the SDK example
-> `mixed_audio/sample_receive_mixed_audio` and is not duplicated here.
 > Req. 9 (TVU 4×stereo → 8-channel layout mapping) is an integration-side convention;
 > see "TVU Layout Mapping" below.
 
@@ -31,10 +30,28 @@ Demo/linux/
 ├── build.sh                  # Helper script: ./build.sh [x86_64|aarch64] [clean]
 ├── common/                   # Copied from LinuxSDKFolder/X86_64 example/common (matches SDK v4.4.30.149)
 ├── multiopus/                # 3 sender samples
-├── receive/                  # 2 receiver samples
-├── public/                   # Assets: 8ch_2.opus, 8_Channel_ID_signed_16_bit_pcm.wav
+├── receive/                  # 3 receiver samples
+├── public/                   # Assets: 8ch_2.opus, 8_Channel_ID_signed_16_bit_pcm.wav (+ same-name .raw.pcm),
+│                             # 4/6_Channel_ID_48k.wav (48 kHz resampled), 8_Channel_ID_24bit.wav (24-bit verification asset)
 └── out/                      # Build output (binaries + copy of public assets)
 ```
+
+> Note: `common/` is kept byte-identical to the SDK's own example code for easy comparison
+> and future syncing. The following **upstream issues found by static analysis are recorded
+> only, intentionally not fixed**:
+>
+> 1. `sample_local_user_observer.h/.cpp` uses `std::string` without including `<string>`
+>    itself (relies on transitive includes; fails on libc++ variants with a different
+>    include graph, but works with the Linux GCC / current SDK combination);
+> 2. `sample_local_user_observer.cpp` `calculate_layout` contains a self-assignment
+>    `y_offset_ = y_offset_;` (no-op leftover from the video-mixing path, never reached by
+>    the audio-only demo);
+> 3. `sample_connection_observer.cpp` `onTransferStatistics` prints `uint64_t` with `%lu`
+>    (works on Linux x86_64/aarch64 where `unsigned long` is 64-bit; undefined behavior on
+>    other platforms);
+> 4. `file_parser/helper_h264_parser.cpp` and `helper_h265_parser.cpp` constructors do not
+>    initialize the `data_size_` member (`file_parser/` is not compiled into this project's
+>    samples; it is only copied along with `common/`).
 
 ## Build
 
@@ -103,11 +120,18 @@ carries either a token or an appId (pass the appId when no certificate is enable
     --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
 ```
 
+> Other WAV assets: use `public/8_Channel_ID_24bit.wav` to verify 24-bit conversion
+> (scenario 2.2, same command); use `public/4_Channel_ID_48k.wav` / `public/6_Channel_ID_48k.wav`
+> (resampled from 44.1 kHz to 48 kHz) for 4/6-channel verification with
+> `--numOfChannels 4 --custom_channel_num 4 --custom_payload_type 123` and
+> `--numOfChannels 6 --custom_channel_num 6 --custom_payload_type 124`.
+
 ### 2. Send raw multi-channel PCM (3~8 channels)
 
 ```bash
+# Default asset: public/8_Channel_ID_signed_16_bit_pcm.raw.pcm (48kHz/8ch/16-bit, extracted from the same-name WAV)
 ./sample_send_pcm_multiopus --channelId <name> --token <token> \
-    --audioFile <48kHz_16bit_interleaved.pcm> \
+    --audioFile "public/8_Channel_ID_signed_16_bit_pcm.raw.pcm" \
     --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
 ```
 
@@ -130,12 +154,19 @@ carries either a token or an appId (pass the appId when no certificate is enable
 ./sample_receive_encoded_audio --channelId <name> --token <token> --audioFile received.opus
 ```
 
-### Force no fallback (codec_unfallback)
-
-All sender samples accept the `--codecUnfallback` flag:
+### 6. Receive mixed output (always 2 channels)
 
 ```bash
-./sample_send_pcm_multiopus ... --codecUnfallback
+./sample_receive_mixed_audio --channelId <name> --token <token> --audioFile received_mixed.pcm
+```
+
+### Force no fallback (codec_unfallback)
+
+All sender samples accept the `--codecUnfallback` flag (note: it takes a value — pass `1`;
+the bare flag is rejected by the argument parser):
+
+```bash
+./sample_send_pcm_multiopus ... --codecUnfallback 1
 ```
 
 ## Payload Type to Channel Mapping
@@ -200,6 +231,16 @@ Safari/Firefox behavior is undefined.
 Output is a raw OPUSMC frame stream (640 bytes per frame), suitable for forwarding or custom
 decoding. The callback `info` carries only `codec` and `sendTs` (in SDK v4.4.30.149,
 `AudioEncodedFrameInfo` in `AgoraMediaBase.h` has no channel-count or sample-rate fields).
+
+### Mixed audio dump (sample_receive_mixed_audio)
+
+Output is mixed 48 kHz / 2-channel / 16-bit little-endian interleaved PCM (multi-channel
+streams are always mixed down to 2 channels — odd channels to one side, even channels to the
+other):
+
+```bash
+ffplay -f s16le -ar 48000 -ch_layout stereo received_mixed.pcm
+```
 
 ## TVU Layout Mapping (Req. 9)
 

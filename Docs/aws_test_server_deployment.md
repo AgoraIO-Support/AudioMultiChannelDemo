@@ -48,7 +48,8 @@
 - `Demo/web/src/Multiopus.vue`：WAV 素材 URL 从绝对路径 `/8_Channel_ID.wav` 改为
   `` `${import.meta.env.BASE_URL}8_Channel_ID.wav` ``
 
-`Demo/web/Dockerfile` 也支持 `--build-arg VITE_BASE=/multiopus/`。
+`Demo/web/Dockerfile` 也支持 `--build-arg VITE_BASE=/multiopus/`（注意：该 Dockerfile 需以
+`Demo/` 为构建上下文，如 `cd Demo && docker build -f web/Dockerfile ...`，构建时 `docs/` 会被复制进 `dist/docs`）。
 
 ### 3.2 本地构建 Web 产物
 

@@ -30,6 +30,7 @@
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 #include <thread>
 
 #include "IAgoraService.h"
@@ -106,12 +107,13 @@ static void sendOnePcmFrame(const SampleOptions& options,
 
   if (fread(frameBuf, 1, sizeof(frameBuf), file) != sizeof(frameBuf)) {
     if (feof(file)) {
-      fclose(file);
-      file = nullptr;
       AG_LOG(INFO, "End of audio file");
     } else {
+      // 读错误时同样关闭文件，让下一帧走重开路径（否则 error indicator 置位后永久刷错）
       AG_LOG(ERROR, "Error reading audio data: %s", std::strerror(errno));
     }
+    fclose(file);
+    file = nullptr;
     return;
   }
 
@@ -158,8 +160,8 @@ int main(int argc, char* argv[]) {
   optParser.add_long_opt("custom_sample_rate", &options.customSampleRate,
                          "che.audio.custom_sample_rate, default follows --sampleRate");
   optParser.add_long_opt("codecUnfallback", &options.codecUnfallback,
-                         "Set che.audio.codec_unfallback=[123,124,125] on service level "
-                         "before createRtcConnection to force multi-channel codec");
+                         "Pass 1 to set che.audio.codec_unfallback=[123,124,125] on service "
+                         "level before createRtcConnection to force multi-channel codec");
 
   if ((argc <= 1) || !optParser.parse_opts(argc, argv)) {
     std::ostringstream strStream;
@@ -181,6 +183,26 @@ int main(int argc, char* argv[]) {
   if (options.audioFile.empty()) {
     AG_LOG(ERROR, "Must provide audio file path!");
     return -1;
+  }
+  // 连接前预检素材：可读、为常规文件且至少包含一帧，避免启动后发送线程空转刷错误日志
+  {
+    FILE* f = fopen(options.audioFile.c_str(), "rb");
+    if (!f) {
+      AG_LOG(ERROR, "Cannot open audio file %s: %s", options.audioFile.c_str(),
+             std::strerror(errno));
+      return -1;
+    }
+    struct stat st;
+    int frameBytes =
+        options.audio.sampleRate / 100 * options.audio.numOfChannels * (int)sizeof(int16_t);
+    if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode) || st.st_size < frameBytes) {
+      AG_LOG(ERROR,
+             "Audio file %s must be a regular file containing at least one %d-byte frame",
+             options.audioFile.c_str(), frameBytes);
+      fclose(f);
+      return -1;
+    }
+    fclose(f);
   }
   AG_LOG(INFO, "input audio file location: %s", options.audioFile.c_str());
 

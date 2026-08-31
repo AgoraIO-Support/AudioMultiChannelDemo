@@ -6,8 +6,8 @@
 //   - 解析标准 RIFF/WAVE 头，打印声道数 / 采样率 / 位深日志
 //   - 16bit PCM 直接发送；24bit PCM 逐样本转换为 16bit 后发送（小端读取、符号扩展、右移 8bit）
 //   - 其他位深报错并停止读取该文件，不发送
-//   - 采样率非 48000 打印警告（不做重采样；多声道编解码仅支持 48 kHz，
-//     非 48 kHz 素材直接发送会导致音调/时长异常，需业务侧先重采样）
+//   - 采样率非 48000 在连接前报错并拒绝发送（不做重采样；多声道编解码仅支持 48 kHz，
+//     非 48 kHz 素材需业务侧先重采样）
 //   - 发送节奏 10 ms/帧，samplesPerChannel = sampleRate/100
 //
 //  多声道私参设置时机与 sample_send_pcm_multiopus 一致（spec 需求点4）。
@@ -128,8 +128,35 @@ static bool parseWavHeader(FILE* file, WavFormat& format) {
         AG_LOG(ERROR, "Unsupported WAV format type: %d (only PCM is supported)", formatType);
         return false;
       }
-      // fmt chunk may be larger than 16 bytes; RIFF chunks are word-aligned.
-      if (chunkSize > 16 && fseek(file, chunkSize - 16, SEEK_CUR) != 0) return false;
+      if (formatType == 0xFFFE /* WAVE_FORMAT_EXTENSIBLE */) {
+        // 校验 SubFormat 为 PCM（GUID 前两字节 0x0001）；float(0x0003) 等按整型转换会发出垃圾音频
+        if (chunkSize < 40) {
+          AG_LOG(ERROR, "Invalid extensible fmt chunk size: %u", chunkSize);
+          return false;
+        }
+        uint16_t cbSize = 0;
+        uint16_t validBitsPerSample = 0;
+        uint32_t channelMask = 0;
+        uint16_t subFormatTag = 0;
+        if (!readU16LE(file, cbSize) || !readU16LE(file, validBitsPerSample) ||
+            !readU32LE(file, channelMask) || !readU16LE(file, subFormatTag)) {
+          AG_LOG(ERROR, "Failed to parse extensible fmt chunk");
+          return false;
+        }
+        if (subFormatTag != 1 /* WAVE_FORMAT_PCM */) {
+          AG_LOG(ERROR,
+                 "Unsupported extensible sub-format: 0x%04x (only PCM is supported, "
+                 "float/other encodings are rejected)",
+                 subFormatTag);
+          return false;
+        }
+        // 已读 16 + 10 字节，跳过 GUID 剩余 14 字节及 fmt 扩展的其余部分
+        if (chunkSize > 26 && fseek(file, chunkSize - 26, SEEK_CUR) != 0) return false;
+      } else if (chunkSize > 16 && fseek(file, chunkSize - 16, SEEK_CUR) != 0) {
+        // fmt chunk may be larger than 16 bytes
+        return false;
+      }
+      // RIFF chunks are word-aligned.
       if ((chunkSize & 1) && fseek(file, 1, SEEK_CUR) != 0) return false;
       fmtFound = true;
     } else if (memcmp(chunkId, "data", 4) == 0) {
@@ -190,6 +217,13 @@ static bool validateWavOptions(const SampleOptions& options) {
            wav.sampleRate, wav.channels, options.audio.sampleRate, options.audio.numOfChannels);
     return false;
   }
+  // data chunk 至少包含一帧，否则发送线程会陷入空读-重开循环
+  int frameBytes = (wav.bitsPerSample / 8) * wav.channels * (wav.sampleRate / 100);
+  if (wav.dataSize < (uint32_t)frameBytes) {
+    AG_LOG(ERROR, "WAV data chunk too small: %u bytes, need at least one %d-byte frame.",
+           wav.dataSize, frameBytes);
+    return false;
+  }
   return true;
 }
 
@@ -228,12 +262,13 @@ static void sendOnePcmFrame(const SampleOptions& options,
 
   if (fread(inputBuf, 1, originalFrameBytes, file) != (size_t)originalFrameBytes) {
     if (feof(file)) {
-      fclose(file);
-      file = nullptr;
       AG_LOG(INFO, "End of audio file");
     } else {
+      // 读错误时同样关闭文件，让下一帧走重开路径（否则 error indicator 置位后永久刷错）
       AG_LOG(ERROR, "Error reading audio data: %s", std::strerror(errno));
     }
+    fclose(file);
+    file = nullptr;
     delete[] inputBuf;
     delete[] outputBuf;
     return;
@@ -303,8 +338,8 @@ int main(int argc, char* argv[]) {
   optParser.add_long_opt("custom_sample_rate", &options.customSampleRate,
                          "che.audio.custom_sample_rate, default follows the WAV header");
   optParser.add_long_opt("codecUnfallback", &options.codecUnfallback,
-                         "Set che.audio.codec_unfallback=[123,124,125] on service level "
-                         "before createRtcConnection to force multi-channel codec");
+                         "Pass 1 to set che.audio.codec_unfallback=[123,124,125] on service "
+                         "level before createRtcConnection to force multi-channel codec");
 
   if ((argc <= 1) || !optParser.parse_opts(argc, argv)) {
     std::ostringstream strStream;

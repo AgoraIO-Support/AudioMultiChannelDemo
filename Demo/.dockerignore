@@ -1,0 +1,6 @@
+# Demo/ 目录作为 Web 镜像构建上下文时的排除项（见 web/Dockerfile）
+**/.DS_Store
+web/node_modules
+web/dist
+linux/build
+linux/out
