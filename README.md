@@ -1,7 +1,12 @@
 # AudioMultiChannelDemo
 
-TVU Networks 音频多声道（multiopus）项目交付仓库：Agora Linux SDK 3~8 声道音频收发 C++ demo、
-Web 端多声道验证 demo（OPUSMC，payload type 123/124/125，仅 48 kHz），以及配套文档站与部署资料。
+[English](README.en.md)
+
+TVU Networks 音频多声道（multiopus）项目交付仓库，包含：
+
+- Agora Linux SDK 3~8 声道音频收发 C++ demo
+- Web 端多声道验证 demo（OPUSMC，payload type 123/124/125，仅 48 kHz）
+- 配套文档站与部署资料
 
 ## 目录导航
 
@@ -20,9 +25,3 @@ Web 端多声道验证 demo（OPUSMC，payload type 123/124/125，仅 48 kHz）�
 - Linux demo 构建与运行：见 `Demo/linux/README.md`（[English](Demo/linux/README.en.md)）
 - Web demo 启动与双标签页验证：见 `Demo/web/README.md`（[English](Demo/web/README.en.md)）
 - 端到端验证（Linux 发送 → Web 订阅逐声道核对）：见上述两份 README 与 `Demo/docs/` 文档站
-
----
-
-Multi-channel audio (OPUSMC) send/receive demos for the TVU Networks project: a Linux C++
-demo (3 send + 3 receive paths, x86_64/aarch64) and a Web verification demo (Vue3 + Vite,
-agora-rtc-sdk-ng 4.20.1-200). See the per-directory READMEs linked above for build and usage.
