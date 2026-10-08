@@ -76,14 +76,14 @@ static int payloadTypeForChannels(int numOfChannels) {
   return 125;
 }
 
-// 需求点9（TVU 4×双声道音轨 -> 8 声道流布局映射）说明：
+// 需求点9（4×双声道音轨 -> 8 声道流布局映射）说明：
 // sendAudioPcmData 要求的输入是 N 声道逐样本交错（interleaved）PCM。
-// TVU 源端 8 声道以 4 条 stereo 音轨、按 track 块序排列（[T1L,T1R]xN [T2L,T2R]xN ...），
+// 源端 8 声道以 4 条 stereo 音轨、按 track 块序排列（[T1L,T1R]xN [T2L,T2R]xN ...），
 // 不能直接喂给本接口；需先重排为逐样本交错布局，声道顺序为
 // CH1=T1L, CH2=T1R, CH3=T2L, CH4=T2R, CH5=T3L, CH6=T3R, CH7=T4L, CH8=T4R，
 // 即缓冲区按 [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] 每样本重复排列。
 // 声道对 (0,1)(2,3)(4,5)(6,7) 分别对应轨 1~4，与 8 声道 OPUSMC 4 个 coupled stream 配对一致。
-// 44.1 kHz 源须先重采样到 48 kHz。详见 README「TVU 布局映射」一节。
+// 44.1 kHz 源须先重采样到 48 kHz。详见 README「4×stereo 布局映射」一节。
 
 static void sendOnePcmFrame(const SampleOptions& options,
                             agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender) {

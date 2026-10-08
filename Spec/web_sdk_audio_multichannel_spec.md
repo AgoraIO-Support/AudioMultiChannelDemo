@@ -2,7 +2,7 @@
 
 ## Web SDK 音频多声道（发布/订阅/声道选择播放）需求
 
-> 摘要：TVU Networks 多声道项目场景下，Web SDK（agora-rtc-sdk-ng）需要支持音频多声道能力：订阅端接收 Linux SDK 等平台发来的 OPUSMC 多声道流（最高 8 声道），按业务需要选择任意声道组合播放（surround/stereo/mono）并逐声道获取音量；发布端可将多声道素材（如 8 声道 WAV）以自定义音轨发布到频道。能力通过 `ENABLE_MULTIOPUS_CODEC` 开启，依赖 Web VOS 服务端配合与 Chrome 96+（推荐 110+），Safari/Firefox 不支持。该能力已在 Web SDK v4.20.1-100 与 TVU 特殊版 4.20.1-200 交付验证（配套 quick-demo-multiopus 验证 demo），本文档将其能力事实、行为边界与验收口径收敛为需求基线。与 Linux 侧发送/布局映射的配合见《Linux SDK 音频多声道收发 产品需求文档》（`Spec/linux_sdk_audio_multichannel_spec.md`）。
+> 摘要：客户多声道项目场景下，Web SDK（agora-rtc-sdk-ng）需要支持音频多声道能力：订阅端接收 Linux SDK 等平台发来的 OPUSMC 多声道流（最高 8 声道），按业务需要选择任意声道组合播放（surround/stereo/mono）并逐声道获取音量；发布端可将多声道素材（如 8 声道 WAV）以自定义音轨发布到频道。能力通过 `ENABLE_MULTIOPUS_CODEC` 开启，依赖 Web VOS 服务端配合与 Chrome 96+（推荐 110+），Safari/Firefox 不支持。该能力已在 Web SDK v4.20.1-100 与定制版 4.20.1-200 交付验证（配套 quick-demo-multiopus 验证 demo），本文档将其能力事实、行为边界与验收口径收敛为需求基线。与 Linux 侧发送/布局映射的配合见《Linux SDK 音频多声道收发 产品需求文档》（`Spec/linux_sdk_audio_multichannel_spec.md`）。
 
 ---
 
@@ -13,7 +13,7 @@
 | PM | 待补充 |
 | TO | 待补充 |
 | PMO | 待补充 |
-| 需求 Jira | 背景单：CSD-74687（[TVU] 音画不同步）、ASS-2272（[TVU] Linux SDK 特殊版申请）；需求 Jira 待补充 |
+| 需求 Jira | 背景单：CSD-74687（音画不同步）、ASS-2272（Linux SDK 特殊版申请）；需求 Jira 待补充 |
 | 需求版本 | v0.1 |
 
 ---
@@ -22,21 +22,21 @@
 
 ### 2.1 客户原始需求
 
-TVU Networks 的多声道链路中，Web 端承担订阅监听与验证角色：Linux 服务器端注入 8 声道音频流后，Web 端（Chrome）订阅该流、确认实际解码声道数、逐声道试听与查看音量；同时 Web SDK 本身也具备多声道发布能力（多声道 WAV 素材 → 自定义音轨 → 发布）。TVU 印度研发在联调中使用订阅端验证 Linux 发送的 4×双声道 → 8 声道布局映射正确性（背景见 Linux 侧 spec 需求点9）。
+客户的多声道链路中，Web 端承担订阅监听与验证角色：Linux 服务器端注入 8 声道音频流后，Web 端（Chrome）订阅该流、确认实际解码声道数、逐声道试听与查看音量；同时 Web SDK 本身也具备多声道发布能力（多声道 WAV 素材 → 自定义音轨 → 发布）。客户印度研发团队在联调中使用订阅端验证 Linux 发送的 4×双声道 → 8 声道布局映射正确性（背景见 Linux 侧 spec 需求点9）。
 
 | 内容项 | 详情 | 备注 |
 | --- | --- | --- |
-| 客户(VID) | TVU Networks（VID 待补充） | |
-| 需求 Reporter | TVU 印度研发（Abhishek Srivastava 等，企业微信沟通记录）；Agora 侧 CSD/ASS 流程 | |
+| 客户(VID) | （客户名称已隐去；VID 待补充） | |
+| 需求 Reporter | 客户印度研发团队（企业微信沟通记录）；Agora 侧 CSD/ASS 流程 | |
 | 需求业务线 | 广电级音视频传输 / 云端制作 | 依据交付记录推断，待客户确认 |
 | 客户业务场景 | Web（Chrome）订阅 Linux SDK 发送的 4/6/8 声道音频流，按声道选择播放并逐声道观测音量，用于制作监听与收发验证；按需从 Web 端发布多声道音频 | |
 | 客户碰到的问题 | 默认 Web SDK 订阅多声道流会被按单/双声道处理（不开启 multiopus 时）；声道选择播放受浏览器 WebAudio 缺陷限制（Chrome bug 1116042）需绕行 Insertable Streams；Safari/Firefox 行为未定义；联调早期曾因发送端 layout 错误导致接收端杂音（根因与结论见 Linux 侧 spec，2025-04-14 已解决） | |
-| 该问题解决对客户的价值 | Web 端成为多声道链路的监听/验证入口：可确认声道数、逐声道试听、逐声道音量观测，支撑 TVU 8 声道（4 个独立立体声对）内容的端到端验收 | |
+| 该问题解决对客户的价值 | Web 端成为多声道链路的监听/验证入口：可确认声道数、逐声道试听、逐声道音量观测，支撑客户 8 声道（4 个独立立体声对）内容的端到端验收 | |
 | 当前客户在用方案 | quick-demo-multiopus（Vue3 + Vite）：`ENABLE_MULTIOPUS_CODEC` 开启后，发布端 fetch 多声道 WAV → Web Audio 解码 → `createCustomAudioTrack({channelCount})` 发布；订阅端 subscribe → `selectChannels` → `getVolumeLevels` 逐声道音量条 | 见 6.4 现有 API 关联梳理 |
 | 客户做了哪些尝试 | 双标签页自收发验证（Publisher/Subscriber 不同 uid + token）；通过 hook RTCPeerConnection 读取 getStats 判定实际 codec（opus/multiopus）；iOS App 订阅对比（`far_in_48000hz_2ch.wav`） | 来源：demo 代码与沟通记录 |
 | 是否有竞品在 pk 中 | 无明确竞品信息 | |
 | 竞品方案 | 无明确竞品线路 | |
-| 客户在用版本 | Web SDK v4.20.1-100（agora-rtc-sdk-ng@4.20.1-100）；TVU 多声道特殊版 4.20.1-200（有专项 Test Report） | 来源：Web 多声道设计文档、TVU 交付记录 |
+| 客户在用版本 | Web SDK v4.20.1-100（agora-rtc-sdk-ng@4.20.1-100）；多声道定制版 4.20.1-200（有专项 Test Report） | 来源：Web 多声道设计文档、交付记录 |
 | 当前使用的平台/语言/框架 | Web（Chrome），JavaScript/TypeScript；demo 技术栈 Vue3 + Vite + Naive UI | |
 | 期望交付版本 | 4.20.1-200 或后续包含 multiopus 能力的版本 | |
 | 期望交付的平台/框架 | Web 浏览器（Chrome 96+，推荐 110+） | |
@@ -45,8 +45,8 @@ TVU Networks 的多声道链路中，Web 端承担订阅监听与验证角色：
 
 | 方案 | API | 功能描述 | 方案定位 | 方案成熟度 | 方案支持当前需求存在的 Gap |
 | --- | --- | --- | --- | --- | --- |
-| Web 端多声道订阅与声道选择 | `ENABLE_MULTIOPUS_CODEC`、远端音轨 `channelCount`、`selectChannels(channels, mode)`、`getVolumeLevels(channels?)` | 订阅 OPUSMC 多声道流，选择任意声道组合按 surround/stereo/mono 播放，逐声道音量 | TVU 特殊版能力 | 已在 4.20.1-100/200 验证交付 | 仅 Chrome；仅偶数声道解码；最多 8 声道 |
-| Web 端多声道发布 | `createCustomAudioTrack({mediaStreamTrack, channelCount})`（参考代码中亦示 `createMultiAudioTrack`） | 将多声道音频（如 8ch WAV 解码后的 AudioBuffer 源）发布为 OPUSMC 流，SDK 按 channelCount 生成 custom_payload_type | TVU 特殊版能力 | 已验证 | 需业务侧自备多声道素材并保证声道布局约定 |
+| Web 端多声道订阅与声道选择 | `ENABLE_MULTIOPUS_CODEC`、远端音轨 `channelCount`、`selectChannels(channels, mode)`、`getVolumeLevels(channels?)` | 订阅 OPUSMC 多声道流，选择任意声道组合按 surround/stereo/mono 播放，逐声道音量 | 定制版能力 | 已在 4.20.1-100/200 验证交付 | 仅 Chrome；仅偶数声道解码；最多 8 声道 |
+| Web 端多声道发布 | `createCustomAudioTrack({mediaStreamTrack, channelCount})`（参考代码中亦示 `createMultiAudioTrack`） | 将多声道音频（如 8ch WAV 解码后的 AudioBuffer 源）发布为 OPUSMC 流，SDK 按 channelCount 生成 custom_payload_type | 定制版能力 | 已验证 | 需业务侧自备多声道素材并保证声道布局约定 |
 | Web VOS 服务端多声道配合 | —（服务端） | ORTC multiopus 能力协商（payload type 123、fmtp channel_mapping/coupled_streams/num_streams） | 线上已生效 | 已验证 | 频道内不支持端的行为差异（见需求点7） |
 | Linux 端多声道发送（对端来源） | 见 Linux 侧 spec | Web 订阅的多声道流主要来源 | 已交付 | 已验证 | 布局映射由发送侧保证 |
 
@@ -55,8 +55,8 @@ TVU Networks 的多声道链路中，Web 端承担订阅监听与验证角色：
 ## 三、同类历史需求
 
 - 同一多声道项目的产品线落地（2024-03 设计）：Linux SDK 侧（ExT-1485178709）与 Web SDK 侧（ExT-1485178492）设计文档；Native SDK 同步支持。
-- TVU 交付线：Web SDK 4.20.1-200 TVU 多声道特殊版 Test Report（交付记录 ExT-1574700707）；Linux 侧 v4.2.32 / v4.4.30.130（详见 Linux 侧 spec 第三章）。
-- 2025-04 联调：TVU 4×双声道 → 8 声道布局映射问题排查（杂音根因：发送端交错/平面读取不一致），Web 订阅端为验证手段之一；2025-04-14 客户确认解决。
+- 客户交付线：Web SDK 4.20.1-200 多声道定制版 Test Report（交付记录 ExT-1574700707）；Linux 侧 v4.2.32 / v4.4.30.130（详见 Linux 侧 spec 第三章）。
+- 2025-04 联调：客户侧 4×双声道 → 8 声道布局映射问题排查（杂音根因：发送端交错/平面读取不一致），Web 订阅端为验证手段之一；2025-04-14 客户确认解决。
 
 ## 四、需求类型和价值
 
@@ -102,7 +102,7 @@ TVU Networks 的多声道链路中，Web 端承担订阅监听与验证角色：
 
 **RTC 场景覆盖**
 
-- Web（Chrome）订阅 Linux SDK 发布的 4/6/8 声道 OPUSMC 流并选择声道播放（TVU 主场景）。
+- Web（Chrome）订阅 Linux SDK 发布的 4/6/8 声道 OPUSMC 流并选择声道播放（客户主场景）。
 - Web（Chrome）发布多声道音频流，供 Web / Native / Linux 端订阅。
 - 频道内存在不支持多声道端时的行为差异（Linux 发送 vs Web 发送）。
 
@@ -142,7 +142,7 @@ TVU Networks 的多声道链路中，Web 端承担订阅监听与验证角色：
 
 ### 6.5 流程图（Optional）
 
-订阅验证链路（TVU 主场景）：
+订阅验证链路（客户主场景）：
 
 ```
 Linux 端发布 8ch OPUSMC (payload 125)
@@ -201,7 +201,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 #### 场景2.2：声道布局约定
 
 - 当：发布 8 声道内容
-- 则：声道路由（哪路对应哪个逻辑声道）由发布素材与业务约定决定，SDK 不做声道光箱重排；TVU 场景下应与 Linux 侧已确认映射（T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）保持一致
+- 则：声道路由（哪路对应哪个逻辑声道）由发布素材与业务约定决定，SDK 不做声道光箱重排；客户场景下应与 Linux 侧已确认映射（T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）保持一致
 - 且：素材采样率经 Web Audio 图后按协商 48 kHz 编码（多声道编解码仅 48 kHz）
 
 ### 需求点3：Web 端多声道订阅与播放
@@ -322,9 +322,9 @@ Linux 端发布 8ch OPUSMC (payload 125)
 
 | 产出物 | 产出物描述 | Jira（可选） | 是否必须 | 交付时间 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| 开发包/服务 | agora-rtc-sdk-ng@4.20.1-100（npm：media/report/shared 同名版本；FULL zip 与 Aliyun CDN `AgoraRTC_N-4.20.1-100.js`）；TVU 特殊版 4.20.1-200 | — | 必须 | 已交付 | Web VOS 服务端配合已上线 |
+| 开发包/服务 | agora-rtc-sdk-ng@4.20.1-100（npm：media/report/shared 同名版本；FULL zip 与 Aliyun CDN `AgoraRTC_N-4.20.1-100.js`）；定制版 4.20.1-200 | — | 必须 | 已交付 | Web VOS 服务端配合已上线 |
 | 性能测试报告 | 多声道订阅/发布的浏览器端 CPU/内存基线，以及 4/6/8 声道、Chrome 96+/110+ 的测试环境与样本量 | 待补充 | 必须 | 发布前 | 未形成报告不得将性能与稳定性标记为已验收 |
-| 体验测试报告 | 多声道收发主观验证（逐声道、回退、浏览器矩阵） | 待补充 | 必须 | 已有（Web SDK 4.20.1-200 Test Report） | 来源：TVU 交付记录 |
+| 体验测试报告 | 多声道收发主观验证（逐声道、回退、浏览器矩阵） | 待补充 | 必须 | 已有（Web SDK 4.20.1-200 Test Report） | 来源：交付记录 |
 | API 文档 | multiopus 开关与 `selectChannels`/`getVolumeLevels`/`channelCount` 使用说明 | 待补充 | 必须 | 待补充 | 当前见 NPM 包内 `rtc-sdk_cn.d.ts` / `rtc-sdk_en.d.ts` 与内部设计文档 |
 | 最佳实践文档 | 订阅验证与发布集成指南（含浏览器约束） | 待补充 | 必须 | 待补充 | |
 | Demo | quick-demo-multiopus（Vue3 + Vite） | — | 必须 | 已交付 | `References/AlexGongs/quick-demo-multiopus/` |
@@ -402,7 +402,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 
 - Web 多声道设计文档：`References/Docs/ExT-1485178492-100726-1000-58_en.md`
 - Linux 多声道设计文档：`References/Docs/ExT-1485178709-100726-0959-56_en.md`（协商/回退与 payload 映射）
-- TVU 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Web SDK 4.20.1-200 TVU 多声道特殊版及 Test Report）
+- 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Web SDK 4.20.1-200 多声道定制版及 Test Report）
 - 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（`src/Multiopus.vue`、`USAGE.md`、`README.md`）
 - 关联文档：`Spec/linux_sdk_audio_multichannel_spec.md`（Linux 侧发送/接收/布局映射需求）
 - 布局映射沟通记录：`References/沟通记录/`（最终确认声道映射：逐样本交错 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）

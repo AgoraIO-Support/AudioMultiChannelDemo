@@ -1,6 +1,6 @@
 # Web 音频多声道（multiopus）验证 Demo
 
-基于 Agora Web SDK（`agora-rtc-sdk-ng@4.20.1-200`，TVU 多声道特殊版）的音频多声道收发验证工程，技术栈 Vue3 + Vite + Naive UI。需求背景见 `Spec/web_sdk_audio_multichannel_spec.md`。
+基于 Agora Web SDK（`agora-rtc-sdk-ng@4.20.1-200`，多声道定制版）的音频多声道收发验证工程，技术栈 Vue3 + Vite + Naive UI。需求背景见 `Spec/web_sdk_audio_multichannel_spec.md`。
 
 [English Documentation](README.en.md)
 
@@ -34,7 +34,7 @@ npm run dev   # 默认 http://localhost:5173/
 
 其他脚本：`npm run build`（vue-tsc 类型检查 + 构建到 `dist/`）、`npm run preview`。
 
-> `agora-rtc-sdk-ng@4.20.1-200` 已发布在公共 npm，可直接安装。若拉取失败，可向 Agora 索取该 TVU 特殊版离线包，解压后将 `AgoraRTC_N-production.js` 与 `rtc-sdk_en.d.ts` 放入本地目录，改写 `package.json` 为 `"agora-rtc-sdk-ng": "file:./vendor/agora-rtc-sdk-ng"` 形式引入。
+> `agora-rtc-sdk-ng@4.20.1-200` 已发布在公共 npm，可直接安装。若拉取失败，可向 Agora 索取该定制版离线包，解压后将 `AgoraRTC_N-production.js` 与 `rtc-sdk_en.d.ts` 放入本地目录，改写 `package.json` 为 `"agora-rtc-sdk-ng": "file:./vendor/agora-rtc-sdk-ng"` 形式引入。
 
 ## Docker 部署
 

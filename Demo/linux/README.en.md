@@ -19,8 +19,8 @@ Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) 
 | `sample_receive_encoded_audio` | Receive | Req. 6 (encoded frame callback) | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`, no decoding, no playback |
 | `sample_receive_mixed_audio` | Receive | Req. 7 (mixed-audio receive) | Mixed output via `onPlaybackAudioFrame` (always 2 channels, odd/even channels split), written to disk (new file every 100 MB) |
 
-> Req. 9 (TVU 4×stereo → 8-channel layout mapping) is an integration-side convention;
-> see "TVU Layout Mapping" below.
+> Req. 9 (4×stereo → 8-channel layout mapping) is an integration-side convention;
+> see "4×Stereo Layout Mapping" below.
 
 ## Directory Layout
 
@@ -242,9 +242,9 @@ other):
 ffplay -f s16le -ar 48000 -ch_layout stereo received_mixed.pcm
 ```
 
-## TVU Layout Mapping (Req. 9)
+## 4×Stereo Layout Mapping (Req. 9)
 
-On the TVU source side, 8 channels are carried as 4 stereo tracks in **track-block order**
+On the source side, 8 channels are carried as 4 stereo tracks in **track-block order**
 (`[T1L,T1R]×N [T2L,T2R]×N [T3L,T3R]×N [T4L,T4R]×N`). This buffer **cannot** be passed directly
 to `sendAudioPcmData`. It must first be reordered on the application side into Agora's
 8-channel **sample-interleaved** layout:
@@ -256,7 +256,7 @@ The buffer repeats [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] for every sample
 
 - Channel pairs (0,1)(2,3)(4,5)(6,7) map to tracks 1~4, matching the 4 coupled streams of
   8-channel OPUSMC.
-- One TVU write is 15360 bytes = 8 channels × 16-bit × 960 samples = 20 ms @ 48 kHz; split it
+- One source-side write is 15360 bytes = 8 channels × 16-bit × 960 samples = 20 ms @ 48 kHz; split it
   into 10 ms frames before calling the SDK.
 - A 44.1 kHz source (PCM decoded from AC-3) must be resampled to 48 kHz first. Resampling and
   reordering can happen in either order, but both must finish before `sendAudioPcmData`.

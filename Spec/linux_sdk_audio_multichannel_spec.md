@@ -2,7 +2,7 @@
 
 ## Linux SDK 音频多声道（发送/接收/多格式音频文件输入）需求
 
-> 摘要：TVU Networks 场景下，Linux SDK（Server 端，x86_64 / aarch64）需要支持 3~8 声道音频的发送与接收。发送侧支持三种音频文件输入路径（raw PCM、WAV 16/24bit、预编码多声道 Opus 裸流），并覆盖 TVU 源端 4 条双声道音轨重排为 8 声道流的布局映射（声道顺序已双方确认：T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R 逐样本交错）；接收侧支持解码后 PCM 回调、编码帧回调与混音输出三种获取方式，并可通过 Web 端 demo 完成端到端声道级验证。多声道编码基于 Opus 多流（OPUSMC，payload type 123/124/125），仅支持 48 kHz 采样率。该能力已在 TVU 特殊版 v4.2.32（2024-08-27）与正式版 v4.4.30.130（2025-04-23，QA 验证通过）中交付验证，本文档将其能力事实、行为边界与验收口径收敛为需求基线。
+> 摘要：客户场景下，Linux SDK（Server 端，x86_64 / aarch64）需要支持 3~8 声道音频的发送与接收。发送侧支持三种音频文件输入路径（raw PCM、WAV 16/24bit、预编码多声道 Opus 裸流），并覆盖客户源端 4 条双声道音轨重排为 8 声道流的布局映射（声道顺序已双方确认：T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R 逐样本交错）；接收侧支持解码后 PCM 回调、编码帧回调与混音输出三种获取方式，并可通过 Web 端 demo 完成端到端声道级验证。多声道编码基于 Opus 多流（OPUSMC，payload type 123/124/125），仅支持 48 kHz 采样率。该能力已在定制版 v4.2.32（2024-08-27）与正式版 v4.4.30.130（2025-04-23，QA 验证通过）中交付验证，本文档将其能力事实、行为边界与验收口径收敛为需求基线。
 
 ---
 
@@ -13,7 +13,7 @@
 | PM | 待补充 |
 | TO | 待补充 |
 | PMO | 待补充 |
-| 需求 Jira | 背景单：CSD-74687（[TVU] 音画不同步）、CSD-76350（Multipath 音频延迟）、CSD-76354（Linux SDK 4.2.32 Crash）、ASS-2272（[TVU] Linux SDK 特殊版申请，含 MultiPath）；需求 Jira 待补充 |
+| 需求 Jira | 背景单：CSD-74687（音画不同步）、CSD-76350（Multipath 音频延迟）、CSD-76354（Linux SDK 4.2.32 Crash）、ASS-2272（Linux SDK 特殊版申请，含 MultiPath）；需求 Jira 待补充 |
 | 需求版本 | v0.5 |
 
 ---
@@ -22,39 +22,39 @@
 
 ### 2.1 客户原始需求
 
-TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK 收发多声道音频：发送端将多声道音频素材（4/6/8 声道 WAV、8 声道 Opus 等）注入频道；接收端订阅多声道音频流并按业务需要选择声道播放或做进一步处理。多声道能力已在 TVU 特殊版中分批交付并由客户印度研发团队参与验证，现需将发送、接收与音频文件输入相关能力整理为正式需求基线，作为后续版本回归与验收依据。
+客户在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK 收发多声道音频：发送端将多声道音频素材（4/6/8 声道 WAV、8 声道 Opus 等）注入频道；接收端订阅多声道音频流并按业务需要选择声道播放或做进一步处理。多声道能力已在定制版中分批交付并由客户印度研发团队参与验证，现需将发送、接收与音频文件输入相关能力整理为正式需求基线，作为后续版本回归与验收依据。
 
 | 内容项 | 详情 | 备注 |
 | --- | --- | --- |
-| 客户(VID) | TVU Networks（VID 待补充） | |
-| 需求 Reporter | TVU 印度研发（Abhishek Srivastava 等，企业微信沟通记录）；Agora 侧 CSD/ASS 流程 | 见 CSD-74687 / ASS-2272 |
+| 客户(VID) | VID 待补充 | |
+| 需求 Reporter | 客户印度研发团队（企业微信沟通记录）；Agora 侧 CSD/ASS 流程 | 见 CSD-74687 / ASS-2272 |
 | 需求业务线 | 广电级音视频传输 / 云端制作 | 依据交付记录推断，待客户确认 |
 | 客户业务场景 | Linux 服务器端注入多声道音频（最高 8 声道）到 RTC 频道，供 Web / Native / Linux 端订阅接收并按需选择声道播放或后处理；客户源端 8 声道内容以 **4 条双声道（stereo）音轨**承载（AC-3、44.1 kHz，参考 `VictoriaMulti.mkv`：1 路 mpeg4 视频 + 4 条 ac3 stereo 音频流） | |
-| 客户碰到的问题 | 标准 SDK 音频仅支持单/双声道（Native 此前最多 4 声道、Linux 此前仅双声道），无法传输 4/6/8 声道素材；TVU 通过 4 条双声道音轨承载 8 声道，送入 Agora Linux SDK 时需重排为 RTC 频道中的 8 声道流，存在 **audio layout 声道映射问题**——2025-04 联调中接收端出现杂音，根因为发送端把逐样本交错（LRLR…）的源数据按平面块序（LLL…RRR…）读取，最终声道映射经双方确认（`abhi_audio_order_mapping.jpg` / `alan_audio_order_mapping.png`），2025-04-14 客户确认问题解决；交付过程中曾反馈音画不同步（CSD-74687）、多声道功能异常、Multipath 下音频延迟（CSD-76350）、4.2.32 Crash（CSD-76354） | |
+| 客户碰到的问题 | 标准 SDK 音频仅支持单/双声道（Native 此前最多 4 声道、Linux 此前仅双声道），无法传输 4/6/8 声道素材；客户通过 4 条双声道音轨承载 8 声道，送入 Agora Linux SDK 时需重排为 RTC 频道中的 8 声道流，存在 **audio layout 声道映射问题**——2025-04 联调中接收端出现杂音，根因为发送端把逐样本交错（LRLR…）的源数据按平面块序（LLL…RRR…）读取，最终声道映射经双方确认（客户侧与 Agora 侧声道映射图），2025-04-14 客户确认问题解决；交付过程中曾反馈音画不同步（CSD-74687）、多声道功能异常、Multipath 下音频延迟（CSD-76350）、4.2.32 Crash（CSD-76354） | |
 | 该问题解决对客户的价值 | Linux 服务器可直接收发 3~8 声道音频，接收端可按声道选择播放/处理，支撑广电多声道制作链路 | |
 | 当前客户在用方案 | Linux SDK `example/multiopus` 系列 sample：raw PCM 发送、WAV（16/24bit）发送、预编码 Opus（8ch）发送；本仓库 Demo 对应 `sample_receive_pcm_multiopus`（解码 PCM 回调）与 `sample_receive_encoded_audio`（编码帧回调）；Web 端使用 quick-demo-multiopus 验证 | 旧 SDK reference sample 名称见 6.4，当前 Demo 名称见 8.1 |
 | 客户做了哪些尝试 | 基于 v4.2.32（0715）与 v4.4.30.130（verified0805）两个版本的多声道 sample 完成收发验证 | |
 | 是否有竞品在 pk 中 | 无明确竞品信息 | |
 | 竞品方案 | 无明确竞品线路 | |
-| 客户在用版本 | Agora-RTC-x86_64/aarch64-linux-gnu v4.2.32-20240827（TVU 特殊版）；v4.4.30.130-20250409（正式版，QA 验证通过）；后续修复版本 4.4.30.148 / 4.4.30.149 | 来源：TVU Linux SDK ARM Version 交付记录（ExT-1574700707） |
-| 当前使用的平台/语言/框架 | Linux Server（x86_64、aarch64），C++；验证端为 Web（Chrome，agora-rtc-sdk-ng 4.20.1-200 TVU 多声道特殊版） | |
-| 期望交付版本 | release/4.4.30.130_tvu 分支后续版本（当前最新 4.4.30.149） | |
+| 客户在用版本 | Agora-RTC-x86_64/aarch64-linux-gnu v4.2.32-20240827（定制版）；v4.4.30.130-20250409（正式版，QA 验证通过）；后续修复版本 4.4.30.148 / 4.4.30.149 | 来源：Linux SDK ARM Version 交付记录（ExT-1574700707） |
+| 当前使用的平台/语言/框架 | Linux Server（x86_64、aarch64），C++；验证端为 Web（Chrome，agora-rtc-sdk-ng 4.20.1-200 多声道定制版） | |
+| 期望交付版本 | release/4.4.30.130 交付分支后续版本（当前最新 4.4.30.149） | |
 | 期望交付的平台/框架 | Linux Server x86_64 + aarch64（C++ SDK） | |
 
 ### 2.2 当前产品方案
 
 | 方案 | API | 功能描述 | 方案定位 | 方案成熟度 | 方案支持当前需求存在的 Gap |
 | --- | --- | --- | --- | --- | --- |
-| 多声道编码发送（OPUSMC） | `IAudioPcmDataSender::sendAudioPcmData` / `IAudioEncodedFrameSender::sendEncodedAudioFrame` + 私参 `che.audio.custom_payload_type`、`che.audio.custom_channel_num` | Linux SDK 将多声道音频编码为 OPUSMC（payload 123/124/125）发送至 SD-RTN | TVU 特殊版能力 | 已在 v4.2.32 / v4.4.30.130 验证交付 | 依赖私有参数配置，无公开 API；声道数 >4 时收发两端声道数配置需一致；对端不支持时触发编解码回退 |
-| 多声道接收（解码 PCM） | `IAudioFrameObserverBase::onPlaybackAudioFrameBeforeMixing` + `ILocalUser::setPlaybackAudioFrameBeforeMixingParameters` | 按远端用户回调解码后的多声道 PCM，可落盘或后处理 | TVU 特殊版能力 | 已验证 | 回调声道数需与发送端一致；播放混音输出恒为 2 声道 |
-| 多声道接收（编码帧） | `RtcConnectionConfiguration::audioRecvEncodedFrame` + `IAudioEncodedFrameReceiver::onEncodedAudioFrameReceived` | 订阅端直接获取 OPUSMC 编码帧（不解码、不播放） | TVU 特殊版能力 | 已验证 | 需业务侧自行解码/转发 |
+| 多声道编码发送（OPUSMC） | `IAudioPcmDataSender::sendAudioPcmData` / `IAudioEncodedFrameSender::sendEncodedAudioFrame` + 私参 `che.audio.custom_payload_type`、`che.audio.custom_channel_num` | Linux SDK 将多声道音频编码为 OPUSMC（payload 123/124/125）发送至 SD-RTN | 定制版能力 | 已在 v4.2.32 / v4.4.30.130 验证交付 | 依赖私有参数配置，无公开 API；声道数 >4 时收发两端声道数配置需一致；对端不支持时触发编解码回退 |
+| 多声道接收（解码 PCM） | `IAudioFrameObserverBase::onPlaybackAudioFrameBeforeMixing` + `ILocalUser::setPlaybackAudioFrameBeforeMixingParameters` | 按远端用户回调解码后的多声道 PCM，可落盘或后处理 | 定制版能力 | 已验证 | 回调声道数需与发送端一致；播放混音输出恒为 2 声道 |
+| 多声道接收（编码帧） | `RtcConnectionConfiguration::audioRecvEncodedFrame` + `IAudioEncodedFrameReceiver::onEncodedAudioFrameReceived` | 订阅端直接获取 OPUSMC 编码帧（不解码、不播放） | 定制版能力 | 已验证 | 需业务侧自行解码/转发 |
 | Web 端多声道收发验证 | `ENABLE_MULTIOPUS_CODEC`、`createCustomAudioTrack({channelCount})`、`selectChannels`、`getVolumeLevels` | Web 端发布/订阅多声道流，按声道选择播放并显示各声道音量 | 验证链路（quick-demo-multiopus） | 已验证（Chrome 96+） | Safari / Firefox 不支持；Web 仅支持偶数声道解码 |
 
 ---
 
 ## 三、同类历史需求
 
-- TVU Linux SDK ARM 版本交付线（release/4.4.30.130_tvu 分支）：v4.4.30.130 工程验证版（2025-01-08、2025-03-20）→ 正式版（2025-04-23，QA 验证通过）→ 4.4.30.148（2025-08-28）→ 4.4.30.149（2026-02-05，含 CSD-76354 Crash 修复、CSD-76350 Multipath 音频延迟修复，正式版需设置私参 `che.audio.drop_frames_when_delay:true`）。
+- Linux SDK ARM 版本交付线（release/4.4.30.130 交付分支）：v4.4.30.130 工程验证版（2025-01-08、2025-03-20）→ 正式版（2025-04-23，QA 验证通过）→ 4.4.30.148（2025-08-28）→ 4.4.30.149（2026-02-05，含 CSD-76354 Crash 修复、CSD-76350 Multipath 音频延迟修复，正式版需设置私参 `che.audio.drop_frames_when_delay:true`）。
 - Native SDK / Web SDK 多声道需求（2024-03）：同一多声道项目的产品线落地，Web SDK v4.20.1-100/200 支持多声道发布与订阅（ExT-1485178492）。
 - Ambisonic 空间音频项目：多声道编解码能力来源于该项目（复用 Opus Ambisonic 多流模式）。
 
@@ -139,7 +139,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 
 **API 间关系**：发送两条路径（PCM 原帧 / 编码帧）互斥，同一条 custom audio track 二选一；多声道私参是发送路径生效的前提（决定 OPUSMC 编码与 payload 协商）；接收三条路径（按用户 PCM、编码帧、混音）可按需独立开启，编码帧路径与播放路径互斥（`enableAudioRecordingOrPlayout=false`）。
 
-**能力差距**：多声道能力完全依赖私有参数开启，无公开 API 与官方文档化；接收端无法从回调中直接获知实际协商声道数（Web 端通过 `getVolumeLevels` 数组长度/getStats 判断，Linux 端依赖日志与 dump 确认）；现有 sample 不做重采样与 ogg/opus 封装解析；SDK/sample 均不提供 4×双声道音轨 → 8 声道 PCM 的布局重排工具，TVU 源端布局（track 块序）到 Agora 8 声道流的映射需在客户侧集成代码中完成（见需求点9）。
+**能力差距**：多声道能力完全依赖私有参数开启，无公开 API 与官方文档化；接收端无法从回调中直接获知实际协商声道数（Web 端通过 `getVolumeLevels` 数组长度/getStats 判断，Linux 端依赖日志与 dump 确认）；现有 sample 不做重采样与 ogg/opus 封装解析；SDK/sample 均不提供 4×双声道音轨 → 8 声道 PCM 的布局重排工具，客户源端布局（track 块序）到 Agora 8 声道流的映射需在客户侧集成代码中完成（见需求点9）。
 
 ### 6.5 流程图（Optional）
 
@@ -254,7 +254,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 
 #### 场景4.4：强制全频道多声道
 
-- 前置条件（设置位置，硬性要求）：`che.audio.codec_unfallback` 必须通过 `service->getAgoraParameter()` 设置，且在 `service->createRtcConnection()` 之前完成；设置在 `connection->getAgoraParameter()` 上不生效（CSE 实测结论，TVU 交付验证）
+- 前置条件（设置位置，硬性要求）：`che.audio.codec_unfallback` 必须通过 `service->getAgoraParameter()` 设置，且在 `service->createRtcConnection()` 之前完成；设置在 `connection->getAgoraParameter()` 上不生效（CSE 实测结论，客户交付验证）
 - 当：按 JSON 数组形式设置 `"che.audio.codec_unfallback": [123, 124, 125]`
 - 则：整个频道强制使用多声道能力，即使个别参与者不支持多声道，其余参与者仍保持多声道收发
 - 且：使用多声道能力时应保证频道内所有参与者均支持多声道，或显式开启该强制配置
@@ -327,20 +327,20 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 - 则：接收端逐声道播放或落盘核对，各声道内容与发送文件对应声道一致、无串声道、无声道丢失
 - 且：48 kHz 素材（`8_Channel_ID_signed_16_bit_pcm.wav`）可直接使用；44.1 kHz 素材（`4_Channel_ID.wav`、`6_Channel_ID.wav`）须先重采样
 
-### 需求点9：发送侧 4×双声道音轨到 8 声道流的布局映射（TVU 源端适配）
+### 需求点9：发送侧 4×双声道音轨到 8 声道流的布局映射（客户源端适配）
 
-系统应支持将 TVU 源端的 4 条双声道（stereo）音轨重排为 Agora 8 声道流后发送；声道顺序以双方确认的布局约定为准，重排工作在送入 SDK 前由客户侧集成代码完成。
+系统应支持将客户源端的 4 条双声道（stereo）音轨重排为 Agora 8 声道流后发送；声道顺序以双方确认的布局约定为准，重排工作在送入 SDK 前由客户侧集成代码完成。
 
-#### 场景9.1：TVU 当前发送布局（事实记录）
+#### 场景9.1：客户当前发送布局（事实记录）
 
-- 前置条件：TVU 源内容为 4 条 stereo 音轨（如 `VictoriaMulti.mkv`：4 × ac3、44.1 kHz、stereo，每轨 L/R 各 16bit）
-- 当：TVU 当前以单次写入 15360 字节（覆盖全部 4 轨）的方式组织 PCM：按 track 块序排列，每轨内部 L/R 逐样本交错（`[T1L,T1R]×N [T2L,T2R]×N [T3…] [T4…]`，每轨 3840 字节，即 15360/4）
+- 前置条件：客户源内容为 4 条 stereo 音轨（如 `VictoriaMulti.mkv`：4 × ac3、44.1 kHz、stereo，每轨 L/R 各 16bit）
+- 当：客户当前以单次写入 15360 字节（覆盖全部 4 轨）的方式组织 PCM：按 track 块序排列，每轨内部 L/R 逐样本交错（`[T1L,T1R]×N [T2L,T2R]×N [T3…] [T4…]`，每轨 3840 字节，即 15360/4）
 - 则：该布局与 Agora 8 声道流的声道顺序约定不一致，不能直接喂给 `sendAudioPcmData`
 - 且：15360 字节 = 8 声道 × 16bit × 960 样本 = 20 ms @ 48 kHz；`sendAudioPcmData` 按 10 ms 帧发送，单次写入需拆分/重组为 10 ms 帧
 
 #### 场景9.2：已确认的最终声道映射（2025-04 联调结论）
 
-- 前置条件：双方已通过 `abhi_audio_order_mapping.jpg`（TVU 印度研发提供）与 `alan_audio_order_mapping.png`（Agora 侧同步）对齐，沟通记录 `audio_mutil_channel_mapping.txt` 明确结论 "Confirmed that it should be correct."
+- 前置条件：双方已通过客户侧声道映射图（客户印度研发团队提供）与 Agora 侧声道映射图（Agora 侧同步）对齐，沟通记录 `audio_mutil_channel_mapping.txt` 明确结论 "Confirmed that it should be correct."
 - 当：将 4 条 stereo 轨映射进 8 声道流
 - 则：8 声道帧为**逐样本交错**布局，声道顺序为 CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R；即缓冲区按 `[T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R]` 每样本重复排列；声道对 (0,1)(2,3)(4,5)(6,7) 分别对应轨 1~4 的左右声道（客户 8 声道为 4 个独立立体声对，非 7.1 环绕布局）
 - 且：该声道配对与 8 声道 OPUSMC 编码 4 个 coupled stream 的配对 (0,1)(2,3)(4,5)(6,7) 一致（场景4.1 映射表）；`Agora_Order_Expectation.xlsx` 中按声道分块（LLLL…RRRR…）的画法为排查过程中的中间产物，不是最终约定
@@ -357,7 +357,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 - 前置条件：完成布局映射集成
 - 当：发送 8 声道 Channel ID 类素材（或 4 条内容可区分的 stereo 轨）
 - 则：接收端逐声道验证（场景8.2/8.3），声道 i 的内容与源端约定轨道一致，无串轨、无左右颠倒
-- 且：该回归用例应覆盖 TVU 实际源端（4×stereo）而非仅覆盖现成 8 声道 WAV
+- 且：该回归用例应覆盖客户实际源端（4×stereo）而非仅覆盖现成 8 声道 WAV
 
 ---
 
@@ -370,7 +370,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 | 多声道 PCM 音频发送 | 3~8 声道 48 kHz 16bit PCM 经 OPUSMC 发布，10ms/帧 | 发送节奏 10 ms/帧；性能报告须按 3~8 声道给出测量环境、p95 帧间隔偏差、CPU 和内存基线 | 远端解码声道数与发送一致 | P0 | 已交付（v4.2.32 / v4.4.30.130），后续版本回归 | — | 不涉及 | 当前 Demo：sample_send_pcm_multiopus |
 | 多声道 WAV 文件发送 | RIFF 解析，16bit 直发、24bit 转 16bit；非 48 kHz、非法位深和声道数不一致在连接前报错 | 同 PCM 发送 | 日志打印 WAV 头信息（采样率/声道/位深） | P0 | 同上 | — | 不涉及 | 当前 Demo：sample_send_wav_multiopus |
 | 预编码多声道 Opus 发送 | 8 声道 Opus 裸流（640B/20ms）经编码帧接口发布 | 20 ms/帧 | 远端可解码播放 | P0 | 同上 | — | 不涉及 | sample：sample_send_opus8；素材 8ch_2.opus |
-| 4×双声道音轨→8 声道布局映射 | TVU 源端 4 条 stereo 轨（track 块序）重排为 Agora 8 声道逐样本交错流（声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R，已双方确认），44.1 kHz 源重采样至 48 kHz，20 ms 写入拆分为 10 ms 帧 | 重排不引入额外端到端可感知延迟 | 端到端逐声道内容一致、无串轨、无杂音 | P0 | 已验证（2025-04-14 客户确认解决） | — | 不涉及 | 最终映射见场景9.2 |
+| 4×双声道音轨→8 声道布局映射 | 客户源端 4 条 stereo 轨（track 块序）重排为 Agora 8 声道逐样本交错流（声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R，已双方确认），44.1 kHz 源重采样至 48 kHz，20 ms 写入拆分为 10 ms 帧 | 重排不引入额外端到端可感知延迟 | 端到端逐声道内容一致、无串轨、无杂音 | P0 | 已验证（2025-04-14 客户确认解决） | — | 不涉及 | 最终映射见场景9.2 |
 | 编码配置与能力协商 | payload 123/124/125 与声道映射、回退/强制不回退规则生效 | — | 编码器日志可确认配置生效 | P0 | 同上 | — | 不涉及 | 含 codec_unfallback |
 | 接收多声道（PCM 回调） | 按用户回调多声道解码 PCM，可落盘 | 10 ms 帧回调 | 落盘文件逐声道可核对 | P0 | 同上 | — | 不涉及 | 当前 Demo：sample_receive_pcm_multiopus |
 | 接收多声道（编码帧） | 订阅端接收 OPUSMC 编码帧 | — | 回调的 codec 与原始帧可落盘核对；声道数/采样率由协商或业务上下文提供 | P1 | 同上 | — | 不涉及 | 当前 Demo：sample_receive_encoded_audio |
@@ -381,7 +381,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 
 | 产出物 | 产出物描述 | Jira（可选） | 是否必须 | 交付时间 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| 开发包/服务 | Agora-RTC-x86_64-linux-gnu 与 Agora-RTC-aarch64-linux-gnu，release/4.4.30.130_tvu 分支正式版（当前最新 4.4.30.149），含 debug 符号包 | ASS-2272 | 必须 | 已交付，后续按修复节奏 | 内网 repo 与 CDN 双通道 |
+| 开发包/服务 | Agora-RTC-x86_64-linux-gnu 与 Agora-RTC-aarch64-linux-gnu，release/4.4.30.130 交付分支正式版（当前最新 4.4.30.149），含 debug 符号包 | ASS-2272 | 必须 | 已交付，后续按修复节奏 | 内网 repo 与 CDN 双通道 |
 | 性能测试报告 | 多声道码率/CPU/内存基线（按声道数分档） | 待补充 | 【待明确】 | 待补充 | 弱网 CC 适配结论待补 |
 | 体验测试报告 | 多声道收发主观/客观验证报告（逐声道一致性、回退场景表现） | 待补充 | 必须 | 已有 QA 验证（v4.4.30.130，2025-04-23） | Web SDK 4.20.1-200 Test Report 已有 |
 | API 文档 | 多声道私有参数与 sample 使用说明 | 待补充 | 必须 | 待补充 | 当前仅有内部设计文档（ExT-1485178709/ExT-1485178492） |
@@ -435,9 +435,9 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 | 1 | 能力协商回退的目标格式：Linux 设计文档记"回退到单声道（mono）"，Web 设计文档记"回退到双声道（dual-channel）"，两处表述不一致，需以实际版本行为为准 | 兼容性 | 研发 / QA | 待确认 |
 | 2 | 多声道流在云录制、水晶球等云端链路上的表现与计费影响 | 协同 | PM / 服务端 | 待确认 |
 | 3 | 客户 VID、需求 Reporter 与期望交付版本号需在需求 Jira 中补齐 | 流程 | PM | 待确认 |
-| 4 | 3/5/7 奇数声道在 Native 端可自适应解码，但 TVU 实际业务是否使用奇数声道（当前素材与 sample 均按 4/6/8 验证） | 场景 | 客户 / PM | 待确认 |
+| 4 | 3/5/7 奇数声道在 Native 端可自适应解码，但客户实际业务是否使用奇数声道（当前素材与 sample 均按 4/6/8 验证） | 场景 | 客户 / PM | 待确认 |
 | 5 | 预编码 Opus 发送是否需支持 8 声道以外的预编码素材及 ogg 封装解析 | 功能边界 | 客户 / PM | 待确认 |
-| 6 | ~~布局粒度解释待确认~~ **已确认**：最终布局为 8 声道逐样本交错，声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R（见场景9.2）；2025-04 排查的接收端杂音问题根因即发送端 audio layout 错误（源数据逐样本交错 LRLR…，客户侧按平面块序 LLL…RRR… 读取），2025-04-14 客户确认问题解决。另：`tvu_order.xlsx` 中"每轨每写 120 样本"标注与 15360 字节总量（= 960 样本/声道/写）的换算出入不影响结论，以实际集成为准 | 集成约定 | Agora 侧（Alan / 李乾坤）与 TVU（Abhishek）双方 | 已确认（2025-04-14） |
+| 6 | ~~布局粒度解释待确认~~ **已确认**：最终布局为 8 声道逐样本交错，声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R（见场景9.2）；2025-04 排查的接收端杂音问题根因即发送端 audio layout 错误（源数据逐样本交错 LRLR…，客户侧按平面块序 LLL…RRR… 读取），2025-04-14 客户确认问题解决。另：客户布局约定表中"每轨每写 120 样本"标注与 15360 字节总量（= 960 样本/声道/写）的换算出入不影响结论，以实际集成为准 | 集成约定 | Agora 侧与客户侧双方研发 | 已确认（2025-04-14） |
 
 ---
 
@@ -454,7 +454,7 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 | 设置了 `che.audio.codec_unfallback` 但没生效？ | 检查设置位置：该参数必须设在 `service->getAgoraParameter()` 上，且在 `service->createRtcConnection()` 之前；设在 `connection->getAgoraParameter()` 上不生效。注意与 payload type 系列参数（connect 前、connection 级）的设置位置不同 |
 | 8ch_2.opus 是什么格式？ | 8 声道 48 kHz Opus 裸帧流（非 ogg 封装），固定 640 字节/帧（20 ms），供 `sample_send_opus8` 直接读帧发送 |
 | 为什么发送端能听到声音但接收端只有 2 声道？ | 大概率走了混音/播放路径（混音恒 2 声道）或能力协商回退；检查是否使用 `onPlaybackAudioFrameBeforeMixing` 且回调声道数配置与发送端一致，并确认无回退发生 |
-| TVU 的 4 条立体声轨怎么接入 8 声道发送？ | 不能直接把 4 轨 track 块序 buffer 喂给 SDK。需先在客户侧完成：① 4×stereo 解码 PCM 重采样到 48 kHz（源为 44.1 kHz AC-3，经 shared memory 中转）；② 按已确认映射重排为 8 声道**逐样本交错**布局：声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R（即声道对 (0,1)(2,3)(4,5)(6,7) 对应轨 1~4）；③ 将 15360 字节（20 ms）写入拆分为 10 ms 帧调用 `sendAudioPcmData`（`numOfChannels=8`、`sampleRate=48000`，配合 payload 125 + `custom_channel_num=8`）。映射正确性用 Channel ID 素材按场景9.4 回归验证 |
+| 客户的 4 条立体声轨怎么接入 8 声道发送？ | 不能直接把 4 轨 track 块序 buffer 喂给 SDK。需先在客户侧完成：① 4×stereo 解码 PCM 重采样到 48 kHz（源为 44.1 kHz AC-3，经 shared memory 中转）；② 按已确认映射重排为 8 声道**逐样本交错**布局：声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R（即声道对 (0,1)(2,3)(4,5)(6,7) 对应轨 1~4）；③ 将 15360 字节（20 ms）写入拆分为 10 ms 帧调用 `sendAudioPcmData`（`numOfChannels=8`、`sampleRate=48000`，配合 payload 125 + `custom_channel_num=8`）。映射正确性用 Channel ID 素材按场景9.4 回归验证 |
 
 ---
 
@@ -479,9 +479,9 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 - `References/LinuxSampleCodes/sample_send_opus8.cpp` 与 `References/LinuxSampleCodes/8ch_2.opus`
 - 接收 sample：`example/yuv_pcm/sample_receive_yuv_pcm.cpp`、`example/encoded_audio/sample_receive_encoded_audio.cpp`、`example/mixed_audio/sample_receive_mixed_audio.cpp`
 - 设计文档：`References/Docs/ExT-1485178709-100726-0959-56_en.md`（Linux SDK 多声道）、`References/Docs/ExT-1485178492-100726-1000-58_en.md`（Web SDK 多声道）
-- 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（TVU Linux SDK ARM Version 交付记录）
+- 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Linux SDK ARM Version 交付记录）
 - Web 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（USAGE.md、src/Multiopus.vue）
-- 沟通记录：`References/沟通记录/`（`沟通记录2025.txt`——2025-04 杂音问题排查与布局确认全过程；`audio_mutil_channel_mapping.txt` + `abhi_audio_order_mapping.jpg` + `alan_audio_order_mapping.png`——最终确认的声道映射；企业微信截图 ×2；tvu_order.xlsx；Agora_Order_Expectation.xlsx；VictoriaMulti.mkv）
+- 沟通记录：`References/沟通记录/`（`沟通记录2025.txt`——2025-04 杂音问题排查与布局确认全过程；`audio_mutil_channel_mapping.txt` + 客户侧/Agora 侧声道映射图——最终确认的声道映射；企业微信截图 ×2；客户布局约定表；Agora_Order_Expectation.xlsx；VictoriaMulti.mkv）
 - 音频素材元数据：`References/LinuxSampleCodes/0715_v4.2.32/example/out/public/*_metadata.txt`（ffprobe 实测：8_Channel_ID_signed_16_bit_pcm.wav = 48 kHz/8ch/16bit；6_Channel_ID.wav = 44.1 kHz/6ch(5.1)；4_Channel_ID.wav = 44.1 kHz/4ch）
 
 ### 音频素材清单（已验证元数据）
@@ -497,8 +497,8 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 | `6_Channel_ID.wav` | WAV pcm_s16le | 44100 | 6（5.1 布局） | 16bit | 约 5.8 s | 六声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `4_Channel_ID.wav` | WAV pcm_s16le | 44100 | 4 | 16bit | 约 5.8 s | 四声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `send_audio_16k_1ch.pcm` | raw PCM | 16000 | 1 | 16bit | — | 普通单声道基线（非多声道） | SDK 包 `test_data/`（sync-data.sh 下载） |
-| `VictoriaMulti.mkv` | MKV：1 × mpeg4 视频 + 4 × ac3 音频流 | 44100 | 每轨 2（stereo），共 8 | fltp | 约 4 min | TVU 源端 4×双声道承载 8 声道的实际内容样例（布局映射用） | `References/沟通记录/VictoriaMulti.mkv`（ffprobe 实测） |
-| `tvu_order.xlsx` / `Agora_Order_Expectation.xlsx` | 布局约定文档（非音频，排查过程中间产物） | — | — | — | — | TVU 当前布局（track 块序）与排查中期望布局的对比材料；**最终确认映射以 `abhi_audio_order_mapping.jpg` / `alan_audio_order_mapping.png` 为准**（逐样本交错，T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R） | `References/沟通记录/`（企业微信沟通截图佐证） |
+| `VictoriaMulti.mkv` | MKV：1 × mpeg4 视频 + 4 × ac3 音频流 | 44100 | 每轨 2（stereo），共 8 | fltp | 约 4 min | 客户源端 4×双声道承载 8 声道的实际内容样例（布局映射用） | `References/沟通记录/VictoriaMulti.mkv`（ffprobe 实测） |
+| 客户布局约定表 / `Agora_Order_Expectation.xlsx` | 布局约定文档（非音频，排查过程中间产物） | — | — | — | — | 客户当前布局（track 块序）与排查中期望布局的对比材料；**最终确认映射以双方确认的声道映射图为准**（逐样本交错，T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R） | `References/沟通记录/`（企业微信沟通截图佐证） |
 
 注：Channel ID 系列素材各声道内容可区分，用于接收端逐声道核对；44.1 kHz 素材仅作素材格式参考，多声道发送必须使用 48 kHz 版本。
 
@@ -508,6 +508,6 @@ TVU Networks 在 Linux 服务器端（含 ARM 架构）使用 Agora Linux SDK �
 | --- | --- | --- | --- |
 | v0.1 | 2026-08-12 | 初稿：基于 multiopus 系列 sample 与多声道设计文档收敛发送/接收/音频文件需求 | Kimi Code |
 | v0.2 | 2026-08-12 | 特别说明：`che.audio.codec_unfallback` 必须在 `service->getAgoraParameter()` 上且 `createRtcConnection()` 之前设置才生效（场景4.2/4.4、6.4、FAQ） | Kimi Code |
-| v0.3 | 2026-08-12 | 新增需求点9：TVU 4×双声道音轨（track 块序）→ Agora 8 声道流的布局映射，含 TVU/Agora 双公布局事实、48 kHz 重采样、10 ms 帧拆分与端到端声道回归；同步更新 2.1 客户原始需求、6.4 能力差距、8.1 验收表、待确认问题6、FAQ、附录素材清单（依据 `References/沟通记录/`） | Kimi Code |
+| v0.3 | 2026-08-12 | 新增需求点9：客户 4×双声道音轨（track 块序）→ Agora 8 声道流的布局映射，含客户/Agora 双公布局事实、48 kHz 重采样、10 ms 帧拆分与端到端声道回归；同步更新 2.1 客户原始需求、6.4 能力差距、8.1 验收表、待确认问题6、FAQ、附录素材清单（依据 `References/沟通记录/`） | Kimi Code |
 | v0.4 | 2026-08-12 | 依据 `audio_mutil_channel_mapping.txt` 与两张映射图更正最终声道映射：8 声道逐样本交错、声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R（场景9.2 改写）；补充杂音问题根因（交错数据按平面块序读取）与 2025-04-14 已解决结论；待确认问题6 关闭；FAQ、8.1、附录同步更正 | Kimi Code |
 | v0.5 | 2026-08-12 | 全文一致性对齐：摘要与 6.1 功能点概述补入 4×双声道布局映射（第⑨项），文档基础信息需求版本更新为 v0.5，研发准入自检表述对齐 | Kimi Code |

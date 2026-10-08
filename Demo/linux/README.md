@@ -17,7 +17,7 @@
 | `sample_receive_encoded_audio` | 接收 | 需求点6（编码帧回调） | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`，不解码不播放 |
 | `sample_receive_mixed_audio` | 接收 | 需求点7（混音接收） | `onPlaybackAudioFrame` 混音输出（恒 2 声道，奇/偶声道分路）并落盘（100MB 切换文件） |
 
-> 需求点9（TVU 4×stereo → 8 声道布局映射）为集成侧约定，见下文「TVU 布局映射」。
+> 需求点9（4×stereo → 8 声道布局映射）为集成侧约定，见下文「4×stereo 布局映射」。
 
 ## 目录结构
 
@@ -224,9 +224,9 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例
 ffplay -f s16le -ar 48000 -ch_layout stereo received_mixed.pcm
 ```
 
-## TVU 布局映射（需求点9）
+## 4×stereo 布局映射（需求点9）
 
-TVU 源端 8 声道以 4 条双声道（stereo）音轨承载，按 **track 块序** 排列
+源端 8 声道以 4 条双声道（stereo）音轨承载，按 **track 块序** 排列
 （`[T1L,T1R]×N [T2L,T2R]×N [T3L,T3R]×N [T4L,T4R]×N`），**不能直接** 喂给
 `sendAudioPcmData`。需先在业务侧重排为 Agora 8 声道 **逐样本交错** 布局：
 
@@ -236,7 +236,7 @@ TVU 源端 8 声道以 4 条双声道（stereo）音轨承载，按 **track 块�
 ```
 
 - 声道对 (0,1)(2,3)(4,5)(6,7) 分别对应轨 1~4，与 8 声道 OPUSMC 4 个 coupled stream 的配对一致。
-- TVU 单次写入 15360 字节 = 8 声道 × 16bit × 960 样本 = 20ms @ 48kHz，送入 SDK 前需拆分为 10ms 帧。
+- 源端单次写入 15360 字节 = 8 声道 × 16bit × 960 样本 = 20ms @ 48kHz，送入 SDK 前需拆分为 10ms 帧。
 - 源为 44.1 kHz（AC-3 解码后 PCM）时必须先重采样到 48 kHz；重采样与重排顺序无关，但都须在 `sendAudioPcmData` 之前完成。
 - 该映射为 2025-04 联调双方确认结论（此前接收端杂音的根因即把逐样本交错数据按平面块序读取）。
 

@@ -1,7 +1,7 @@
 # Web Multi-Channel Audio (multiopus) Demo
 
 A multi-channel audio send/receive verification app based on the Agora Web SDK
-(`agora-rtc-sdk-ng@4.20.1-200`, the TVU multi-channel build). Tech stack: Vue3 + Vite + Naive UI.
+(`agora-rtc-sdk-ng@4.20.1-200`, the multi-channel custom build). Tech stack: Vue3 + Vite + Naive UI.
 See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
 
 [中文文档](README.md)
@@ -55,7 +55,7 @@ npm run dev   # default http://localhost:5173/
 Other scripts: `npm run build` (vue-tsc type check + build to `dist/`), `npm run preview`.
 
 > `agora-rtc-sdk-ng@4.20.1-200` is published on the public npm registry and installs directly.
-> If the download fails, ask Agora for the offline package of this TVU build, then place
+> If the download fails, ask Agora for the offline package of this custom build, then place
 > `AgoraRTC_N-production.js` and `rtc-sdk_en.d.ts` in a local directory and reference it from
 > `package.json` as `"agora-rtc-sdk-ng": "file:./vendor/agora-rtc-sdk-ng"`.
 
