@@ -110,6 +110,7 @@
             <span class="pct">{{ Math.round(v * 100) }}%</span>
           </div>
         </div>
+        <div class="meter-note" v-if="volumes.length">{{ m.meterNote }}</div>
       </div>
     </div>
   </div>
@@ -173,6 +174,8 @@ const messages = {
     multiChannel: "多声道 ✓",
     mono: "单声道 ✗",
     chUnit: "声道",
+    meterNote:
+      "注：音量柱为 dB 刻度（仅数字零显示 0%）；静音声道显示 ~10% ≈ -90dB 残余（不可闻），多来自素材静音段的 dither，属正常现象。",
     codecMulti: "多声道编码",
     codecOpus: "普通编码，非多声道",
     remoteCc: "远端音轨 channelCount（信令）",
@@ -221,6 +224,8 @@ const messages = {
     multiChannel: "Multi-channel ✓",
     mono: "Mono ✗",
     chUnit: "ch",
+    meterNote:
+      "Note: the bars use a dB scale (0% = digital zero only). A silent channel reading ~10% means an inaudible ~-90 dB residue, usually dither from the source material — this is normal.",
     codecMulti: "multi-channel codec",
     codecOpus: "standard codec, not multi-channel",
     remoteCc: "Remote track channelCount (signaling)",
@@ -556,6 +561,8 @@ async function subscribe() {
   }
   subscribing.value = false;
   remoteAudioTrack = track;
+  // 调试钩子：暴露到 window，便于控制台/自动化对远端流做逐声道 PCM 测量（如 ChannelSplitter RMS）
+  (window as any).__mcRemoteTrack = track;
   track.play();
   subscribed.value = true;
   subscribedUid.value = String(target.uid);
@@ -646,6 +653,7 @@ function resetDetection() {
   window.clearInterval(volumeTimer);
   window.clearInterval(codecTimer);
   remoteAudioTrack = null;
+  (window as any).__mcRemoteTrack = null;
 }
 
 async function leaveChannel() {
@@ -803,6 +811,12 @@ onBeforeUnmount(() => {
             color: #666;
           }
         }
+      }
+
+      .meter-note {
+        margin-top: 6px;
+        font-size: 12px;
+        color: #999;
       }
     }
   }

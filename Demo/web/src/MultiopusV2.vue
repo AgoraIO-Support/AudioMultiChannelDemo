@@ -80,11 +80,16 @@
         </n-button>
       </div>
 
-      <!-- 音量条（参考布局：简洁横条，60% 宽） -->
+      <!-- 音量条：与 Live Demo 1 对齐（CH 标签 + 横条 + 百分比） -->
       <div class="content volumes">
-        <div class="outer" v-for="(v, i) in volumes" :key="i">
-          <div class="inner" :style="{ width: `${v * 100}%` }"></div>
+        <div class="bar-row" v-for="(v, i) in volumes" :key="i">
+          <span class="ch">CH{{ i }}</span>
+          <div class="outer">
+            <div class="inner" :style="{ width: `${Math.round(v * 100)}%` }"></div>
+          </div>
+          <span class="pct">{{ Math.round(v * 100) }}%</span>
         </div>
+        <span v-if="volumes.length" class="volumes-note">{{ m.meterNote }}</span>
         <span v-if="!volumes.length" class="volumes-empty">{{ m.notSubscribed }}</span>
       </div>
     </div>
@@ -137,6 +142,8 @@ const messages = {
     subscribe: "订阅音频",
     unsubscribe: "取消订阅音频",
     notSubscribed: "尚未订阅",
+    meterNote:
+      "注：音量柱为 dB 刻度（仅数字零显示 0%）；静音声道显示 ~10% ≈ -90dB 残余（不可闻），多来自素材静音段的 dither，属正常现象。",
     joined: "加入成功",
     leftChannel: "已离开频道",
     loadingAudio: "正在加载音频文件",
@@ -173,6 +180,8 @@ const messages = {
     subscribe: "Subscribe",
     unsubscribe: "Unsubscribe",
     notSubscribed: "Not subscribed",
+    meterNote:
+      "Note: the bars use a dB scale (0% = digital zero only). A silent channel reading ~10% means an inaudible ~-90 dB residue, usually dither from the source material — this is normal.",
     joined: "Joined",
     leftChannel: "Left channel",
     loadingAudio: "Loading audio file",
@@ -541,21 +550,43 @@ onBeforeUnmount(() => {
       flex-direction: column;
       align-items: stretch;
 
-      .outer {
+      .bar-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         margin-top: 6px;
-        width: 60%;
-        height: 12px;
-        background-color: #ccc;
-        border-radius: 4px;
-        .inner {
-          height: 100%;
-          background-color: #2080f0;
+        .ch {
+          width: 40px;
+          font-size: 12px;
+          color: #666;
+        }
+        .outer {
+          flex: 1;
+          height: 12px;
+          background-color: #ccc;
           border-radius: 4px;
-          transition: width 0.2s;
+          overflow: hidden;
+          .inner {
+            height: 100%;
+            background-color: #2080f0;
+            border-radius: 4px;
+            transition: width 0.2s;
+          }
+        }
+        .pct {
+          width: 42px;
+          text-align: right;
+          font-size: 12px;
+          color: #666;
         }
       }
       .volumes-empty {
         font-size: 13px;
+        color: #999;
+      }
+      .volumes-note {
+        margin-top: 8px;
+        font-size: 12px;
         color: #999;
       }
     }

@@ -103,6 +103,7 @@ demo 结果面板按「音量数组长度为 4/6/8，或 codec = multiopus」给
 ## 常见问题
 
 - **「打开发布端 / 打开订阅端」两个链接是干什么的？** 双标签页自验证的入口：「打开发布端」以本端 UID 开新标签页加入并发布素材；「打开订阅端」以目标 UID 开新标签页、订阅本端 UID（subTo）的流做逐声道检测。两个链接都会把当前频道名带入新标签页（页面上链接上方也有同样说明）。
+- **订阅 Linux 发送的 8 声道流时，没发声的声道音量柱也显示 ~6~10%？** 两个原因叠加：① 音量表是 dB 宽量程刻度——`getVolumeLevels()` 的实现为 `(dBFS_RMS + 100) / 100`，只有精确数字零才显示 0%，-90dB 的不可闻残余就显示 ~10%（该实现无 Linux/Web 分支，读的是真实解码 PCM）；② Linux 发送用的 16bit 素材静音段带 -84dB dither，而 Web 发布用的 24bit 素材静音段是精确数字零，所以 web→web 显示 0（已用 24bit 素材在同一 Linux 发送端做对照实验：底数消失、min=0，确认素材 dither 为根源）。实测编码/传输/解码链路与最终播放 PCM 均无泄漏（详见 `Test/web_volume_meter_floor_linux2web.md`）。逐声道内容核对请以「声道选择 + 试听」为准；读音量柱时记住 ~10% ≈ -90dB ≈ 无声。
 
 - **订阅多声道流只有单/双声道？** 检查是否在 `createClient` 之前设置了 `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)`；未开启则按普通音频处理，只能解出单/双声道。
 - **token 报错 / 加入失败？** token 与 uid 绑定，两个标签页必须使用各自 uid 的 token（或 uid=0 通配 token）。demo 内 `APP_ID` 为明文演示凭证，正式使用请替换并在自己的服务端签发 token。

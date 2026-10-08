@@ -153,6 +153,17 @@ To listen to one channel: enter a single index (e.g. `3`) and choose mono, or en
   and subscribes to the Local UID's stream (subTo) for per-channel checking. Both links carry
   the current channel name into the new tab (the page shows the same explanation above the
   links).
+- **Silent channels still show ~6~10% on the volume bars for a Linux-sent 8-channel stream?**
+  Two compounding reasons: (1) the meter uses a wide dB scale — `getVolumeLevels()` computes
+  `(dBFS_RMS + 100) / 100`, so only exact digital zeros read 0%, and an inaudible -90 dB residue
+  already reads ~10% (the implementation has no Linux/Web branch and reads the real decoded PCM);
+  (2) the 16-bit WAV used by the Linux senders carries -84 dB dither in its silent sections, while
+  the 24-bit WAV used for Web publishing has exact digital zeros — which is why web→web reads 0
+  (confirmed by a control experiment: the same Linux sender with the 24-bit file shows no floor,
+  meter min = 0).
+  Measurements confirm no leakage in the encode/transport/decode chain or in the final playout PCM
+  (see `Test/web_volume_meter_floor_linux2web_en.md`). Use channel selection + listening as
+  the authoritative per-channel check; when reading the bars, remember ~10% ≈ -90 dB ≈ silence.
 
 - **Subscribed to a multi-channel stream but only hear mono/stereo?** Check that
   `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` is set before `createClient`. Without
