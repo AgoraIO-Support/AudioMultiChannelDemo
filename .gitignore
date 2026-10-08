@@ -1,8 +1,12 @@
 .DS_Store
 **/.DS_Store
 .vscode/
+xcuserdata/
 *.pem
 Resource/aws_test_server.txt
 *.mkv
 Demo/linux/build/
 Demo/linux/out/
+Demo/macOS/Pods/
+Demo/macOS/*.xcworkspace
+Demo/macOS/build/

@@ -1,0 +1,318 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2BB84BCDD80448E062D37681 /* Pods_MultiChannelAudioReceiver.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A72D67E2AF58505494E7788F /* Pods_MultiChannelAudioReceiver.framework */; };
+		5A000000000000000000000A /* MultiChannelAudioReceiverApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000007 /* MultiChannelAudioReceiverApp.swift */; };
+		5A000000000000000000000B /* AgoraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000008 /* AgoraManager.swift */; };
+		5A000000000000000000000C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000009 /* ContentView.swift */; };
+		5A0000000000000000000018 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000017 /* L10n.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		08AD01B54B0C4530013FB24F /* Pods-MultiChannelAudioReceiver.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MultiChannelAudioReceiver.debug.xcconfig"; path = "Target Support Files/Pods-MultiChannelAudioReceiver/Pods-MultiChannelAudioReceiver.debug.xcconfig"; sourceTree = "<group>"; };
+		2969ABD203D2AD27D968316D /* Pods-MultiChannelAudioReceiver.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MultiChannelAudioReceiver.release.xcconfig"; path = "Target Support Files/Pods-MultiChannelAudioReceiver/Pods-MultiChannelAudioReceiver.release.xcconfig"; sourceTree = "<group>"; };
+		5A0000000000000000000006 /* MultiChannelAudioReceiver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MultiChannelAudioReceiver.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A0000000000000000000007 /* MultiChannelAudioReceiverApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiChannelAudioReceiverApp.swift; sourceTree = "<group>"; };
+		5A0000000000000000000008 /* AgoraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgoraManager.swift; sourceTree = "<group>"; };
+		5A0000000000000000000009 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5A0000000000000000000017 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
+		A72D67E2AF58505494E7788F /* Pods_MultiChannelAudioReceiver.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_MultiChannelAudioReceiver.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5A000000000000000000000F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2BB84BCDD80448E062D37681 /* Pods_MultiChannelAudioReceiver.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5A0000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				5A0000000000000000000004 /* MultiChannelAudioReceiver */,
+				5A0000000000000000000005 /* Frameworks */,
+				5A0000000000000000000003 /* Products */,
+				F4141B24736B2DBA30DAC17E /* Pods */,
+			);
+			sourceTree = "<group>";
+		};
+		5A0000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5A0000000000000000000006 /* MultiChannelAudioReceiver.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5A0000000000000000000004 /* MultiChannelAudioReceiver */ = {
+			isa = PBXGroup;
+			children = (
+				5A0000000000000000000007 /* MultiChannelAudioReceiverApp.swift */,
+				5A0000000000000000000008 /* AgoraManager.swift */,
+				5A0000000000000000000009 /* ContentView.swift */,
+				5A0000000000000000000017 /* L10n.swift */,
+			);
+			path = MultiChannelAudioReceiver;
+			sourceTree = "<group>";
+		};
+		5A0000000000000000000005 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A72D67E2AF58505494E7788F /* Pods_MultiChannelAudioReceiver.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		F4141B24736B2DBA30DAC17E /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				08AD01B54B0C4530013FB24F /* Pods-MultiChannelAudioReceiver.debug.xcconfig */,
+				2969ABD203D2AD27D968316D /* Pods-MultiChannelAudioReceiver.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5A000000000000000000000D /* MultiChannelAudioReceiver */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A0000000000000000000014 /* Build configuration list for PBXNativeTarget "MultiChannelAudioReceiver" */;
+			buildPhases = (
+				015E763C3BBF61BC6479F24C /* [CP] Check Pods Manifest.lock */,
+				5A000000000000000000000E /* Sources */,
+				5A000000000000000000000F /* Frameworks */,
+				5A0000000000000000000010 /* Resources */,
+				4EEE50C97F31ED664DCD3FA2 /* [CP] Embed Pods Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MultiChannelAudioReceiver;
+			productName = MultiChannelAudioReceiver;
+			productReference = 5A0000000000000000000006 /* MultiChannelAudioReceiver.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5A0000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+					5A000000000000000000000D = {
+						CreatedOnToolsVersion = 16.2;
+					};
+				};
+			};
+			buildConfigurationList = 5A0000000000000000000011 /* Build configuration list for PBXProject "MultiChannelAudioReceiver" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 5A0000000000000000000002;
+			productRefGroup = 5A0000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5A000000000000000000000D /* MultiChannelAudioReceiver */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5A0000000000000000000010 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		015E763C3BBF61BC6479F24C /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-MultiChannelAudioReceiver-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		4EEE50C97F31ED664DCD3FA2 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioReceiver/Pods-MultiChannelAudioReceiver-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioReceiver/Pods-MultiChannelAudioReceiver-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioReceiver/Pods-MultiChannelAudioReceiver-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5A000000000000000000000E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A000000000000000000000A /* MultiChannelAudioReceiverApp.swift in Sources */,
+				5A000000000000000000000B /* AgoraManager.swift in Sources */,
+				5A000000000000000000000C /* ContentView.swift in Sources */,
+				5A0000000000000000000018 /* L10n.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5A0000000000000000000012 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		5A0000000000000000000013 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		5A0000000000000000000015 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 08AD01B54B0C4530013FB24F /* Pods-MultiChannelAudioReceiver.debug.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = PGSUQ7V7KG;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.agora.MultiChannelAudioReceiver;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		5A0000000000000000000016 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2969ABD203D2AD27D968316D /* Pods-MultiChannelAudioReceiver.release.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = PGSUQ7V7KG;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.agora.MultiChannelAudioReceiver;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5A0000000000000000000011 /* Build configuration list for PBXProject "MultiChannelAudioReceiver" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A0000000000000000000012 /* Debug */,
+				5A0000000000000000000013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A0000000000000000000014 /* Build configuration list for PBXNativeTarget "MultiChannelAudioReceiver" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A0000000000000000000015 /* Debug */,
+				5A0000000000000000000016 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5A0000000000000000000001 /* Project object */;
+}

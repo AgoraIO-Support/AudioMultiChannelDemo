@@ -1,0 +1,139 @@
+# macOS Multi-Channel Audio Receiver Demo (MultiChannelAudioReceiver)
+
+A **pure receiver** verification app built on the Agora Native SDK for macOS
+(`AgoraRtcEngine_macOS` 4.5.2, integrated via CocoaPods). It joins a channel as
+**audience**, receives a remote host's multi-channel (OPUSMC, payload types
+123/124/125, 48 kHz, 3~8 channels) or normal stereo/mono audio stream, and lets the
+tester **select which channels to hear and set per-channel volume** through Native SDK
+private parameters.
+
+[中文文档](README.md)
+
+## UI Language
+
+The UI is bilingual (**English / 中文**) and defaults to English. Switch it with the
+Language picker at the top of the main view — all visible text re-renders immediately —
+and the choice is persisted via `@AppStorage("uiLanguage")` across launches. The strings
+live in `MultiChannelAudioReceiver/L10n.swift` (lookup table + String(format:)
+interpolation); log and status lines are emitted in the language active at the time
+(already-appended log lines keep their original language).
+
+## Features
+
+- **Receive-only**: joins in `.liveBroadcasting` profile with the audience role,
+  `disableVideo()`, microphone never published, auto-subscribes remote audio (default).
+- **Remote user list**: driven by remote audio publish state — uids are added in the
+  `remoteAudioStateChangedOfUid` callback when audio is starting/decoding and removed on
+  `didOfflineOfUid`, so **only hosts actually publishing audio are listed; audience-role
+  clients never appear**. Pick the remote uid to control and watch its live received
+  bitrate (`remoteAudioStats`).
+- **Channel-count selector (1~8, default 8)**: a **pure display filter** — it only decides
+  how many channel rows are rendered and changes nothing you hear. It exists because the
+  Native SDK receiver has no callback reporting the remote stream's actual channel count,
+  so you align the UI with the sender's material manually: choose 2 for a normal stereo
+  stream (only channel 1/2 rows), keep 8 for an 8-channel stream, 3/5/7 accordingly. Two
+  caveats: with no remote user selected, switching it has no visible effect (channel rows
+  are not rendered then); hidden channels keep their volume state (all enabled at 100 by
+  default), so choosing 2 does NOT mute channels 3~8 of an 8-channel stream — use a row's
+  toggle to mute.
+- **Per-channel control**: each row has an enable toggle and a 0~100% volume slider,
+  applied immediately through the `che.audio.neteq.adjust_decoded_volume` private
+  parameter. All channels default to enabled at 100.
+- **Audio frame dump**: `che.audio.frame_dump` toggle; dump files go to the SDK default
+  location (the SDK's default log/dump directory; the app is unsandboxed).
+- **Log area**: scrolling log at the bottom covering join/leave, remote user events,
+  connection state changes and SDK errors.
+
+## Prerequisites
+
+- macOS 12.0+ (deployment target 12.0), Xcode 14+ (verified with Xcode 16.2)
+- CocoaPods (`pod` on PATH)
+
+## Build
+
+```bash
+cd Demo/macOS
+pod install        # integrates AgoraRtcEngine_macOS 4.5.2, creates MultiChannelAudioReceiver.xcworkspace
+open MultiChannelAudioReceiver.xcworkspace   # open the workspace in Xcode (NOT the xcodeproj)
+```
+
+Command-line build:
+
+```bash
+xcodebuild -workspace MultiChannelAudioReceiver.xcworkspace \
+    -scheme MultiChannelAudioReceiver -configuration Debug \
+    CODE_SIGNING_ALLOWED=NO build
+```
+
+The project uses ad-hoc signing (`CODE_SIGN_IDENTITY = "-"`), no entitlements and no
+sandbox, so local builds need no developer certificate.
+
+## Usage
+
+1. **Start a multi-channel sender** (e.g. the 8-channel WAV sender in Demo/linux):
+
+   ```bash
+   cd Demo/linux/out
+   ./sample_send_wav_multiopus --channelId <channel> --token <token> \
+       --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" \
+       --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
+   ```
+
+2. **Join the same channel from this app**: the App ID is pre-filled with the default
+   `43f818097c124394821bd44598b7ca9d` (your edits are persisted via `@AppStorage` across
+   launches); fill in Token (leave empty for projects without an App Certificate),
+   Channel ID and UID (0 = auto-assign), then
+   click "Join". The status line shows the connected state plus the assigned local UID.
+3. **Select the remote user**: pick the sender's uid in the "Remote Multi-Channel Control"
+   section
+   (the first remote is auto-selected). The current state of all 8 channel rows is
+   pushed to that uid immediately upon selection.
+4. **Listen per channel**: mute/enable a channel with its toggle, or drag its slider to
+   set the volume percentage. When the sender plays the Channel ID sample (each channel
+   carries distinguishable content), check channels one by one for cross-talk.
+5. For a normal stereo stream, set "Channels" to 2 so only channel 1/2 rows appear (a pure
+   display filter that does not change what you hear; if channels 3~8 are still audible,
+   that is because hidden rows stay enabled at their default 100% — mute them explicitly
+   with their toggles if needed).
+
+## Private parameters
+
+### Per-channel decoded volume `che.audio.neteq.adjust_decoded_volume`
+
+```json
+{"che.audio.neteq.adjust_decoded_volume":{"remoteUid": 109016691, "index": 1, "volume": 100}}
+```
+
+- `remoteUid`: target remote user uid;
+- `index`: **1-based** channel index (1~8);
+- `volume`: 0~100, a percentage. `100` = full volume (audible), `0` = muted.
+- "Selecting channels to hear" = set chosen channels to 100 and the rest to 0.
+
+### Audio frame dump `che.audio.frame_dump`
+
+```json
+{"che.audio.frame_dump":true}
+```
+
+When enabled, the SDK writes decoded audio frames to its default dump location for
+offline channel-content verification.
+
+## Notes
+
+- **No multi-channel parameter is needed on the receiver**: the Native SDK decodes OPUSMC
+  multi-channel streams adaptively under the 123/124/125 negotiation mechanism (including
+  odd channel counts 3/5/7), and receives normal stereo/mono streams without any special
+  handling. Payload type / `custom_channel_num` parameters are only required on the
+  **sender** side (see `Demo/linux/README.md`).
+- **Odd channel counts (3/5/7)**: decoded adaptively on the Native side; the Web side
+  (`Demo/web`) only supports even channel counts, so 3/5/7-channel streams do not apply.
+- **The channel-count selector only controls the UI rows**: switching it pushes no SDK
+  parameter; setting an `index` beyond the stream's actual channel count has no effect in
+  the SDK; whenever the selected uid changes, the state of all 8 rows (including hidden
+  ones) is re-applied so behavior stays deterministic.
+- **The volume parameter acts after decoding, before playout**: it only affects what this
+  client hears, not what other participants in the channel hear.
+- The macOS 4.5.2 SDK has no `didOccurWarning` callback; the log area reports
+  `didOccurError` plus connection state changes.
+- The app is unsandboxed and never captures the microphone (the audience role publishes
+  no audio track), so it does not request microphone permission.
