@@ -52,6 +52,7 @@
       </div>
 
       <!-- 角色链接：新标签页分别以 Publisher / Subscriber 身份打开 -->
+      <div class="links-hint">{{ m.linksHint }}</div>
       <div class="content links">
         <a :href="publisherLink" target="_blank">{{ m.openPublisher }} (uid: {{ myUid }})</a>
         <a :href="subscriberLink" target="_blank"
@@ -155,6 +156,8 @@ const messages = {
     channelCount: "声道数",
     openPublisher: "打开发布端",
     openSubscriber: "打开订阅端",
+    linksHint:
+      "双标签页自验证：「打开发布端」开一个新标签页，以本端 UID 加入并发布多声道素材；「打开订阅端」开另一个新标签页，以目标 UID 加入并订阅本端 UID（subTo）的流做逐声道检测。两个链接都会把当前频道名带入新标签页。",
     join: "加入频道",
     publish: "发布音频",
     unpublish: "停止发布",
@@ -201,6 +204,8 @@ const messages = {
     channelCount: "Channel count",
     openPublisher: "Open Publisher",
     openSubscriber: "Open Subscriber",
+    linksHint:
+      "Dual-tab self-verification: \"Open Publisher\" opens a new tab that joins as Local UID and publishes the multi-channel WAV; \"Open Subscriber\" opens another new tab that joins as Target UID and subscribes to Local UID's stream (subTo) for per-channel checking. Both links carry the current channel name into the new tab.",
     join: "Join",
     publish: "Publish",
     unpublish: "Unpublish",
@@ -710,6 +715,12 @@ onBeforeUnmount(() => {
       a {
         font-size: 14px;
       }
+    }
+    .links-hint {
+      margin: 8px;
+      padding: 0 8px;
+      font-size: 13px;
+      color: #888;
     }
     .operation {
       margin: 8px;

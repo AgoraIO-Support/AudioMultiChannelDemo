@@ -147,6 +147,13 @@ To listen to one channel: enter a single index (e.g. `3`) and choose mono, or en
 
 ## FAQ
 
+- **What do the "Open Publisher / Open Subscriber" links do?** They are the dual-tab
+  self-verification entry points: "Open Publisher" opens a new tab that joins as the Local UID
+  and publishes the WAV; "Open Subscriber" opens another new tab that joins as the Target UID
+  and subscribes to the Local UID's stream (subTo) for per-channel checking. Both links carry
+  the current channel name into the new tab (the page shows the same explanation above the
+  links).
+
 - **Subscribed to a multi-channel stream but only hear mono/stereo?** Check that
   `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` is set before `createClient`. Without
   it, the stream is handled as plain audio and only mono/stereo can be decoded.
