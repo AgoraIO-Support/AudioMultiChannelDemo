@@ -1,5 +1,6 @@
 .DS_Store
 **/.DS_Store
+.vscode/
 *.pem
 Resource/aws_test_server.txt
 *.mkv
