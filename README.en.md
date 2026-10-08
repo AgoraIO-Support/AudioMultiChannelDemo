@@ -1,4 +1,4 @@
-# AudioMultiChannelDemo
+# Agora Multi-Channel Audio (Multiopus) Demo
 
 [中文](README.md)
 
