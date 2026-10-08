@@ -5,7 +5,8 @@ A **pure receiver** verification app built on the Agora Native SDK for macOS
 **audience**, receives a remote host's multi-channel (OPUSMC, payload types
 123/124/125, 48 kHz, 3~8 channels) or normal stereo/mono audio stream, and lets the
 tester **select which channels to hear and set per-channel volume** through Native SDK
-private parameters.
+private parameters. See `Spec/native_sdk_audio_multichannel_spec.md` for the requirements
+baseline.
 
 [中文文档](README.md)
 

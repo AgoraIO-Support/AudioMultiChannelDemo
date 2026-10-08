@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-Delivery repository for the TVU Networks multi-channel audio (multiopus) project, including:
+Delivery repository for the multi-channel audio (multiopus) project, including:
 
 - A C++ demo for 3–8 channel audio send/receive on the Agora Linux SDK
 - A Web-side multi-channel verification demo (OPUSMC, payload types 123/124/125, 48 kHz only)
@@ -21,7 +21,7 @@ Delivery repository for the TVU Networks multi-channel audio (multiopus) project
 
 | Directory | Contents |
 | --- | --- |
-| `Spec/` | Requirement specifications (PRD): audio multi-channel for Linux SDK and Web SDK |
+| `Spec/` | Requirement specifications (PRD): audio multi-channel for Linux SDK, Web SDK, and Native SDK (macOS) |
 | `Demo/linux/` | Linux C++ demo: 3 send paths (raw PCM / 16-bit & 24-bit WAV / pre-encoded Opus) + 3 receive paths (decoded PCM / encoded frames / mixed audio), x86_64 + aarch64 |
 | `Demo/web/` | Web verification demo (Vue3 + Vite, agora-rtc-sdk-ng 4.20.1-200): multi-channel publish/subscribe, per-channel playback selection, per-channel volume |
 | `Demo/macOS/` | macOS receiver verification app (SwiftUI + AgoraRtcEngine_macOS 4.5.2, CocoaPods): audience-role receive-only for multi-channel/stereo streams, per-channel playback selection and volume, audio frame dump |
