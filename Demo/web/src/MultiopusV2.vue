@@ -206,7 +206,7 @@ watch(
 AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true);
 
 // 演示用 App ID 默认值（明文 demo 凭证，正式使用请在页面内替换）。
-const DEFAULT_APP_ID = "bbae89fd0cb14412883a3adf1ee57e4a";
+const DEFAULT_APP_ID = "43f818097c124394821bd44598b7ca9d";
 
 const urlParams = new URLSearchParams(location.search);
 

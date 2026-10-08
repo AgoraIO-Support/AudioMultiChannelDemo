@@ -253,7 +253,7 @@ AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true);
 
 // 演示用 App ID 默认值（明文 demo 凭证，仅供本地验证；生产环境请在页面内
 // 替换为自己的 App ID，并从自己的服务端动态获取 token）。
-const DEFAULT_APP_ID = "bbae89fd0cb14412883a3adf1ee57e4a";
+const DEFAULT_APP_ID = "43f818097c124394821bd44598b7ca9d";
 
 // 钩住 RTCPeerConnection，以便从底层 getStats() 读取实际收到的 codec
 // （opus = 普通单/双声道，multiopus = 多声道）。Agora SDK 不暴露内部 PC，
