@@ -8,6 +8,13 @@ TVU Networks 音频多声道（multiopus）项目交付仓库，包含：
 - Web 端多声道验证 demo（OPUSMC，payload type 123/124/125，仅 48 kHz）
 - 配套文档站与部署资料
 
+## 声道数支持说明
+
+- Linux SDK（Native 同）：支持 3/4/5/6/7/8 声道收发；3/5/7 需额外设置私参 `che.audio.custom_channel_num`（本仓库 demo 已按声道数自动处理）。
+- Web 验证端：仅支持 4/6/8 偶数声道解码。Linux 发送的 3/5/7 声道流 Web 端无法解码（解码器未实现奇数声道的 Opus 多流配置），`selectChannels` 等声道选择能力也随之不可用。
+- 实际互通验证（Web↔Native、Web↔Linux）仅覆盖 4/6/8 声道，3/5/7 未实测。
+- 若 3/5/7 声道内容需要触达 Web 端，建议发送端补一路静音声道凑成偶数声道（3→4、5→6、7→8）后发送，Web 端忽略该静音声道即可。
+
 ## 目录导航
 
 | 目录 | 内容 |

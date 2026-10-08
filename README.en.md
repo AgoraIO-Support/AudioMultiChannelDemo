@@ -1,10 +1,19 @@
 # AudioMultiChannelDemo
 
+[中文](README.md)
+
 Delivery repository for the TVU Networks multi-channel audio (multiopus) project, including:
 
 - A C++ demo for 3–8 channel audio send/receive on the Agora Linux SDK
 - A Web-side multi-channel verification demo (OPUSMC, payload types 123/124/125, 48 kHz only)
 - The accompanying documentation site and deployment materials
+
+## Channel Count Support
+
+- Linux SDK (same as Native): supports 3/4/5/6/7/8-channel send/receive; 3/5/7 require the extra private parameter `che.audio.custom_channel_num` (handled automatically by the demos in this repository).
+- Web verification demo: decodes even channel counts (4/6/8) only. A 3/5/7-channel stream sent from Linux cannot be decoded on the Web side (the decoder does not implement the odd-channel Opus multistream configurations), so channel-selection features such as `selectChannels` are unavailable for those streams as well.
+- Actual interop verification (Web↔Native, Web↔Linux) covers 4/6/8 channels only; 3/5/7 are untested.
+- If 3/5/7-channel content must reach Web clients, pad the stream with one silent channel at the sender to reach an even count (3→4, 5→6, 7→8) and have the Web side ignore the padded channel.
 
 ## Directory Guide
 
