@@ -1,6 +1,6 @@
 # Communication Records Backup: Customer Multi-Channel Audio Project (2025-04)
 
-> Purpose: the `References/沟通记录/` directory (~128 MB) is planned for deletion; this document
+> Purpose: the `References/沟通记录/` directory (~128 MB) was deleted on 2026-10-09; this document
 > archives the content of all its materials in text form. Compiled: 2026-10-09. The original
 > binary files (screenshots / xlsx / mkv) are not embedded; their contents are transcribed below.
 > **Anonymization note**: per this repo's pre-open-sourcing convention, the customer name is
@@ -151,6 +151,8 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 | #1–#4 | Audio ×4 | AC-3, 44100 Hz, stereo, 192 kb/s (4 stereo tracks carrying 8 channels) |
 
 - Container duration ~243.7 s (4:03.7), overall bitrate ~4367 kb/s.
+- Archival note: the file is not tracked by git (`.gitignore` excludes `*.mkv`); after the
+  directory deletion it is kept locally at `References/VictoriaMulti.mkv`.
 - Relation to the current docs: this material's "4×AC-3 stereo → 8 channels" layout is exactly
   the reordering scenario in `Demo/docs/linux-sdk-multichannel.html` §1.5; a 44.1 kHz source must
   be resampled to 48 kHz first, and each 15360-byte write must be split into 10 ms frames before

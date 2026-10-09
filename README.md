@@ -28,7 +28,7 @@
 | `Demo/docs/` | 多声道接入文档站（随 Web 构建发布到 `dist/docs/`） |
 | `Docs/` | 部署与运维文档（AWS 测试服务器部署、前端缓存管理） |
 | `LinuxSDKFolder/` | Agora Linux SDK v4.4.30.149（X86_64 / Aarch64，含符号包） |
-| `References/` | 参考材料（历史 sample、设计文档、沟通记录，不入 Docker 构建上下文） |
+| `References/` | 参考材料（历史 sample、设计文档、沟通记录的文字化备份，不入 Docker 构建上下文） |
 
 ## 快速开始
 

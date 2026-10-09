@@ -340,7 +340,7 @@
 
 #### 场景9.2：已确认的最终声道映射（2025-04 联调结论）
 
-- 前置条件：双方已通过客户侧声道映射图（客户印度研发团队提供）与 Agora 侧声道映射图（Agora 侧同步）对齐，沟通记录 `audio_mutil_channel_mapping.txt` 明确结论 "Confirmed that it should be correct."
+- 前置条件：双方已通过客户侧声道映射图（客户研发团队提供）与 Agora 侧声道映射图（Agora 侧同步）对齐，沟通记录 `audio_mutil_channel_mapping.txt` 明确结论 "Confirmed that it should be correct."（原文件已随 `References/沟通记录/` 于 2026-10-09 删除，内容存档见 `References/communication_records_backup.md` §2.2）
 - 当：将 4 条 stereo 轨映射进 8 声道流
 - 则：8 声道帧为**逐样本交错**布局，声道顺序为 CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R；即缓冲区按 `[T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R]` 每样本重复排列；声道对 (0,1)(2,3)(4,5)(6,7) 分别对应轨 1~4 的左右声道（客户 8 声道为 4 个独立立体声对，非 7.1 环绕布局）
 - 且：该声道配对与 8 声道 OPUSMC 编码 4 个 coupled stream 的配对 (0,1)(2,3)(4,5)(6,7) 一致（场景4.1 映射表）；`Agora_Order_Expectation.xlsx` 中按声道分块（LLLL…RRRR…）的画法为排查过程中的中间产物，不是最终约定
@@ -481,7 +481,7 @@
 - 设计文档：`References/Docs/ExT-1485178709-100726-0959-56_en.md`（Linux SDK 多声道）、`References/Docs/ExT-1485178492-100726-1000-58_en.md`（Web SDK 多声道）
 - 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Linux SDK ARM Version 交付记录）
 - Web 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（USAGE.md、src/Multiopus.vue）——已于 2026-10 移除，功能由 `Demo/web/` 继承
-- 沟通记录：`References/沟通记录/`（`沟通记录2025.txt`——2025-04 杂音问题排查与布局确认全过程；`audio_mutil_channel_mapping.txt` + 客户侧/Agora 侧声道映射图——最终确认的声道映射；企业微信截图 ×2；客户布局约定表；Agora_Order_Expectation.xlsx；VictoriaMulti.mkv）
+- 沟通记录：原 `References/沟通记录/` 已于 2026-10-09 删除；全部内容已文字化存档于 `References/communication_records_backup.md` / `communication_records_backup_en.md`（含 2025-04 杂音排查与布局确认全过程、最终确认的声道映射、双方布局表内容、VictoriaMulti.mkv 元数据）
 - 音频素材元数据：`References/LinuxSampleCodes/0715_v4.2.32/example/out/public/*_metadata.txt`（ffprobe 实测：8_Channel_ID_signed_16_bit_pcm.wav = 48 kHz/8ch/16bit；6_Channel_ID.wav = 44.1 kHz/6ch(5.1)；4_Channel_ID.wav = 44.1 kHz/4ch）
 
 ### 音频素材清单（已验证元数据）
@@ -497,8 +497,8 @@
 | `6_Channel_ID.wav` | WAV pcm_s16le | 44100 | 6（5.1 布局） | 16bit | 约 5.8 s | 六声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `4_Channel_ID.wav` | WAV pcm_s16le | 44100 | 4 | 16bit | 约 5.8 s | 四声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `send_audio_16k_1ch.pcm` | raw PCM | 16000 | 1 | 16bit | — | 普通单声道基线（非多声道） | SDK 包 `test_data/`（sync-data.sh 下载） |
-| `VictoriaMulti.mkv` | MKV：1 × mpeg4 视频 + 4 × ac3 音频流 | 44100 | 每轨 2（stereo），共 8 | fltp | 约 4 min | 客户源端 4×双声道承载 8 声道的实际内容样例（布局映射用） | `References/沟通记录/VictoriaMulti.mkv`（ffprobe 实测） |
-| 客户布局约定表 / `Agora_Order_Expectation.xlsx` | 布局约定文档（非音频，排查过程中间产物） | — | — | — | — | 客户当前布局（track 块序）与排查中期望布局的对比材料；**最终确认映射以双方确认的声道映射图为准**（逐样本交错，T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R） | `References/沟通记录/`（企业微信沟通截图佐证） |
+| `VictoriaMulti.mkv` | MKV：1 × mpeg4 视频 + 4 × ac3 音频流 | 44100 | 每轨 2（stereo），共 8 | fltp | 约 4 min | 客户源端 4×双声道承载 8 声道的实际内容样例（布局映射用） | 原 `References/沟通记录/VictoriaMulti.mkv`（已于 2026-10-09 随目录删除；ffprobe 元数据见 `References/communication_records_backup.md` §2.6） |
+| 客户布局约定表 / `Agora_Order_Expectation.xlsx` | 布局约定文档（非音频，排查过程中间产物） | — | — | — | — | 客户当前布局（track 块序）与排查中期望布局的对比材料；**最终确认映射以双方确认的声道映射图为准**（逐样本交错，T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R） | 原 `References/沟通记录/`（已于 2026-10-09 删除；内容存档见 `References/communication_records_backup.md` §2.3/§2.4） |
 
 注：Channel ID 系列素材各声道内容可区分，用于接收端逐声道核对；44.1 kHz 素材仅作素材格式参考，多声道发送必须使用 48 kHz 版本。
 
