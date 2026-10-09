@@ -38,7 +38,7 @@ of key points:
 
 - **04-07**: Alan first asked the customer to provide their Linux integration code; explained
   that the customer's 8 channels are **not 7.1 surround** but four L/R pairs — (0,1)(2,3)(4,5)(6,7);
-  shared a test channel (AppId `aab8b8f5a8cd4469a63042fcfafe7063`, channel `142651995438`,
+  shared a test channel (AppId `aab8b8f5************************7063`, channel `142651995438`,
   no token) so lqk could subscribe and listen, and tried dumping as well.
 - **04-08 morning**: Alan sent `AGORA_sample.txt` / `output.txt` / a screenshot; lqk
   repeatedly asked for the actual audio to identify the noise type (completely garbled noise vs
@@ -187,7 +187,7 @@ lqk 2025-4-7 15:18
 I need to listen to it — please provide the audio when you can.
 
 Alan 2025-4-7 15:20
-@lqk When convenient, just subscribe to this channel: AppId: aab8b8f5a8cd4469a63042fcfafe7063 Channel Name: 142651995438, no token needed.
+@lqk When convenient, just subscribe to this channel: AppId: aab8b8f5************************7063 Channel Name: 142651995438, no token needed.
 
 Alan 2025-4-7 15:22
 (re: "need to listen") ------ @lqk I'll also try dumping now.
