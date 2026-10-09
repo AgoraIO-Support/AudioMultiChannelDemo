@@ -1,14 +1,16 @@
-# 沟通记录备份：TVU 音频多声道项目（2025-04）
+# 沟通记录备份：客户音频多声道项目（2025-04）
 
 > 用途：`References/沟通记录/` 目录计划删除，本文档将其中全部材料的内容文字化存档。
 > 整理日期：2026-10-09。原始二进制文件（截图 / xlsx / mkv）不内嵌于本文档，内容均已转为文字与表格。
+> **脱敏说明**：按本仓库开源前的脱敏约定，客户名称与客户侧人名已隐去；原文件名中含客户
+> 标识的前缀在本文档中统一以 `customer_` 前缀代称。
 > English version: `communication_records_backup_en.md`
 
 ---
 
 ## 1. 背景与结论速览
 
-- **客户**：TVU（对接研发：Abhishek Srivastava 等）；Agora 侧：Alan Zeng（CSE）、李乾坤（SDK 研发）。
+- **客户**：某广电客户；Agora 侧：Alan Zeng（CSE）、李乾坤（SDK 研发）。
 - **场景**：客户 Linux 服务器把"4 条立体声轨承载 8 声道"的广播素材经 Agora RTC 发送（multiopus/OPUSMC），
   Web 端订阅验证。
 - **问题**：Web 端订阅听到杂音/内容错乱。
@@ -31,11 +33,11 @@ CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R。
 | --- | --- | --- |
 | `沟通记录2025.txt` | 文本，4.2 KB | 2025-04-07 ~ 04-14 企业微信沟通记录（全文见附录 A） |
 | `audio_mutil_channel_mapping.txt` | 文本，240 B | 映射确认对话记录（全文见 3.2） |
-| `abhi_audio_order_mapping.jpg` | 图片，45 KB | Abhishek 提供的映射表（通话中讨论的版本），内容见 3.2 |
+| `customer_audio_order_mapping.jpg` | 图片，45 KB | 客户研发提供的映射表（通话中讨论的版本），内容见 3.2 |
 | `alan_audio_order_mapping.png` | 图片，30 KB | Alan 同步确认后的声道-帧序号表，内容见 3.2 |
-| `tvu_order.xlsx` | Excel，13 KB | 客户当前发送顺序（两张候选表），内容见 3.3 |
+| `customer_order.xlsx` | Excel，13 KB | 客户当前发送顺序（两张候选表），内容见 3.3 |
 | `Agora_Order_Expectation.xlsx` | Excel，12 KB | Agora 期望顺序，内容见 3.4（含表述歧义说明） |
-| `企业微信截图_ccca…png` | 截图，309 KB | Abhishek 发送两份 xlsx 的对话上下文，内容见 3.5 |
+| `企业微信截图_ccca…png` | 截图，309 KB | 客户研发发送两份 xlsx 的对话上下文，内容见 3.5 |
 | `企业微信截图_31d7…png` | 截图，365 KB | VictoriaMulti.mkv 的 ffprobe 输出，内容见 3.5 |
 | `VictoriaMulti.mkv` | 视频，133 MB | 客户测试源文件；元数据见 3.6 |
 | `~$ltipleAudioChannel.docx` | 162 B | Office 临时锁文件，无内容价值，未备份 |
@@ -60,24 +62,25 @@ CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R。
 - **04-08 下午**：Alan 发客户测试源文件 `VictoriaMulti.mkv`；李乾坤指出服务器端不会直接读 mkv、
   应转 PCM 再读（客户侧经 shared memory 中转）；确认 4 条轨都是双声道、各轨时长有细微差异但影响
   不大，重点排查交织存储问题。
-- **04-09**：客户研发给出音频 layout（`tvu_order.xlsx` + 图）；Alan 回发 `Agora_Order_Expectation.xlsx`。
+- **04-09**：客户研发给出音频 layout（`customer_order.xlsx` + 图）；Alan 回发
+  `Agora_Order_Expectation.xlsx`。
 - **04-14**：Alan 确认：**问题解决，确实是发送端 audio layout 问题**。
 
 ### 3.2 声道映射确认（audio_mutil_channel_mapping.txt + 两张映射图）
 
-`audio_mutil_channel_mapping.txt` 全文：
+`audio_mutil_channel_mapping.txt` 全文（客户侧人名已脱敏）：
 
 ```text
 @Alan Zeng This is the mapping that we discussed in Call. Please verify again
-[abhi_audio_order_mapping.jpg]
+[customer_audio_order_mapping.jpg]
 
-Synced up with @Abhishek, the audio layout is like below
+Synced up with @<客户研发>, the audio layout is like below
 [alan_audio_order_mapping.png]
 
 Confirmed that it should be correct.
 ```
 
-**abhi_audio_order_mapping.jpg**（通话中讨论的映射，两行的表）：
+**customer_audio_order_mapping.jpg**（通话中讨论的映射，两行的表）：
 
 | CH1_1 | CH2_1 | CH3_1 | CH4_1 | CH5_1 | CH6_1 | CH7_1 | CH8_1 | CH1_2 | CH2_2 | … |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -89,7 +92,7 @@ Confirmed that it should be correct.
 **alan_audio_order_mapping.png**：纵向序号表 CH1_1…CH8_1、CH1_2…CH8_2、CH1_3、CH2_3…
 （声道-帧序号清单，与上图配套）。
 
-### 3.3 tvu_order.xlsx（客户当前顺序）
+### 3.3 customer_order.xlsx（客户当前顺序）
 
 参数块（两份 xlsx 相同）：
 
@@ -101,7 +104,7 @@ Confirmed that it should be correct.
 | 每轨单次写入数据量（L&R） | 15360 / 4 = 3840 字节 |
 | 每轨单次写入样本数（L&R） | 3840 / 32 = 120 |
 
-表 1（标题 "TVU Current Order"，track 块序：每轨 120 个样本的 L/R 交织为一块，再排下一轨）：
+表 1（标题为"客户当前顺序"，track 块序：每轨 120 个样本的 L/R 交织为一块，再排下一轨）：
 
 ```text
 T1L1 T1R1 T1L2 T1R2 … T1L120 T1R120 | T2L1 T2R1 … T2L120 T2R120 | T3… | T4L1 … T4L120 T4R120
@@ -129,13 +132,13 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 
 ### 3.5 企业微信截图 ×2
 
-- **截图_ccca…png**：Abhishek 先后发出 `tvu_order.xlsx`（"this is the current Order we are
+- **截图_ccca…png**：客户研发先后发出 `customer_order.xlsx`（"this is the current Order we are
   sending to Agora (4 tracks where each track has 2 channels L & R)"）与 `Agora_Order_Expectation.xlsx`
   （"can you confirm with the BE engineer that he expects this order from us?"），附图内预览与
   3.3/3.4 内容一致。
 - **截图_31d7…png**：`VictoriaMulti.mkv` 的 ffprobe 输出——1 路视频（mpeg4, 1920x1080）+
   **4 路音频流（均为 AC-3, 44100 Hz, stereo, 192 kb/s）**，各音频流时长略有差异
-  （约 4:00.571 ~ 4:00.606）。该截图佐证了李乾坤 04-08 的观察（"都是双声道的，但是 duration
+  （约 4:00.571 ~ 4:00.606）。该截图佐证了 04-08 的观察（"都是双声道的，但是 duration
   是有区别的"）。
 
 ### 3.6 VictoriaMulti.mkv（133 MB 测试源视频）
@@ -166,6 +169,8 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 ---
 
 ## 附录 A：沟通记录2025.txt 全文
+
+（原文中的客户文件名已按脱敏约定替换为 `customer_order.xlsx`，其余逐字保留。）
 
 ```text
 Alan 2025-4-7 15:16
@@ -250,7 +255,7 @@ Alan 2025-4-8 14:12
 "Alan(Alan Zeng)： [VictoriaMulti.mkv]" ------ @Alan(Alan Zeng)  他这个不是直接读取的吧，转成pcm再读取的吧
 
 Alan 2025-4-8 14:18
-应该有中转，听印度研发说，是shared memory.
+应该有中转，听客户研发说，是shared memory.
 
 Alan 2025-4-8 14:18
 我让他们重新确认audio channel layout
@@ -262,7 +267,7 @@ Alan 2025-4-8 14:19
 "liqiankun： 都是双声道的，但是duration是有区别的，不过这个可能影响不大，重点排查交织存储的问题吧 交织存储的LRLRLRLRLRLRLRLR ，但是他读取的时候按照LLLLLLLL RRRRRRRR的 [图片]" ------ @liqiankun  估计是你说的原因。
 
 李乾坤 2025-4-8 14:19
-"Alan(Alan Zeng)： 应该有中转，听印度研发说，是shared memory." ------ @Alan(Alan Zeng)  我意思是你发的不是他在server读取的内容，他在server上应该不会直接读取.mkv
+"Alan(Alan Zeng)： 应该有中转，听客户研发说，是shared memory." ------ @Alan(Alan Zeng)  我意思是你发的不是他在server读取的内容，他在server上应该不会直接读取.mkv
 
 Alan 2025-4-8 14:19
 等客户研发这边重新验证一下。
@@ -271,7 +276,7 @@ Alan 2025-4-8 14:19
 嗯，理解。不过这次是他们纯测试的代码。
 
 Alan 2025-4-9 13:33
-[tvu_order.xlsx]
+[customer_order.xlsx]
 
 Alan 2025-4-9 13:34
 [图片]

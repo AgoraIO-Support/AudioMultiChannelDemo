@@ -1,16 +1,18 @@
-# Communication Records Backup: TVU Multi-Channel Audio Project (2025-04)
+# Communication Records Backup: Customer Multi-Channel Audio Project (2025-04)
 
 > Purpose: the `References/沟通记录/` directory is planned for deletion; this document archives
 > the content of all its materials in text form. Compiled: 2026-10-09. The original binary files
 > (screenshots / xlsx / mkv) are not embedded; their contents are transcribed below.
+> **Anonymization note**: per this repo's pre-open-sourcing convention, the customer name and
+> customer-side personal names are removed; prefixes carrying customer identifiers in the original
+> filenames are referred to here with the generic `customer_` prefix.
 > 中文版：`communication_records_backup.md`
 
 ---
 
 ## 1. Background and conclusion at a glance
 
-- **Customer**: TVU (engineers incl. Abhishek Srivastava); Agora side: Alan Zeng (CSE),
-  Li Qiankun (SDK R&D).
+- **Customer**: a broadcast customer; Agora side: Alan Zeng (CSE), Li Qiankun (SDK R&D).
 - **Scenario**: the customer's Linux server sends broadcast material carried as "4 stereo tracks
   holding 8 channels" over Agora RTC (multiopus/OPUSMC); a Web client subscribes for verification.
 - **Symptom**: the Web subscriber heard garbled audio / scrambled content.
@@ -34,11 +36,11 @@ Original directory: `References/沟通记录/` (~128 MB).
 | --- | --- | --- |
 | `沟通记录2025.txt` | text, 4.2 KB | WeCom chat log 2025-04-07 ~ 04-14 (full translation in Appendix A) |
 | `audio_mutil_channel_mapping.txt` | text, 240 B | Mapping-confirmation conversation (full text in 3.2) |
-| `abhi_audio_order_mapping.jpg` | image, 45 KB | Mapping table provided by Abhishek (the version discussed on the call); see 3.2 |
+| `customer_audio_order_mapping.jpg` | image, 45 KB | Mapping table from the customer's engineer (the version discussed on the call); see 3.2 |
 | `alan_audio_order_mapping.png` | image, 30 KB | Alan's channel-frame index table after sync-up; see 3.2 |
-| `tvu_order.xlsx` | Excel, 13 KB | The customer's current send order (two candidate tables); see 3.3 |
+| `customer_order.xlsx` | Excel, 13 KB | The customer's current send order (two candidate tables); see 3.3 |
 | `Agora_Order_Expectation.xlsx` | Excel, 12 KB | Agora's expected order; see 3.4 (includes an ambiguity note) |
-| `企业微信截图_ccca…png` | screenshot, 309 KB | Chat context of Abhishek sending the two xlsx files; see 3.5 |
+| `企业微信截图_ccca…png` | screenshot, 309 KB | Chat context of the customer's engineer sending the two xlsx files; see 3.5 |
 | `企业微信截图_31d7…png` | screenshot, 365 KB | ffprobe output of VictoriaMulti.mkv; see 3.5 |
 | `VictoriaMulti.mkv` | video, 133 MB | The customer's test source file; metadata in 3.6 |
 | `~$ltipleAudioChannel.docx` | 162 B | Office lock file, no content value, not archived |
@@ -69,25 +71,25 @@ of key points:
   customer relays it via shared memory); he confirmed all 4 tracks are stereo, that slight
   duration differences across tracks do not matter much, and that the interleaving issue should
   be the focus.
-- **04-09**: the customer's engineer provided the audio layout (`tvu_order.xlsx` + an image);
-  Alan replied with `Agora_Order_Expectation.xlsx`.
+- **04-09**: the customer's engineer provided the audio layout (`customer_order.xlsx` + an
+  image); Alan replied with `Agora_Order_Expectation.xlsx`.
 - **04-14**: Alan confirmed: **problem solved — it was indeed the sender-side audio layout**.
 
 ### 3.2 Channel-mapping confirmation (audio_mutil_channel_mapping.txt + two mapping images)
 
-Full text of `audio_mutil_channel_mapping.txt`:
+Full text of `audio_mutil_channel_mapping.txt` (customer-side name anonymized):
 
 ```text
 @Alan Zeng This is the mapping that we discussed in Call. Please verify again
-[abhi_audio_order_mapping.jpg]
+[customer_audio_order_mapping.jpg]
 
-Synced up with @Abhishek, the audio layout is like below
+Synced up with @<customer's engineer>, the audio layout is like below
 [alan_audio_order_mapping.png]
 
 Confirmed that it should be correct.
 ```
 
-**abhi_audio_order_mapping.jpg** (the mapping discussed on the call — a two-row table):
+**customer_audio_order_mapping.jpg** (the mapping discussed on the call — a two-row table):
 
 | CH1_1 | CH2_1 | CH3_1 | CH4_1 | CH5_1 | CH6_1 | CH7_1 | CH8_1 | CH1_2 | CH2_2 | … |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -100,7 +102,7 @@ frame 2 likewise, etc.
 **alan_audio_order_mapping.png**: a vertical index list CH1_1…CH8_1, CH1_2…CH8_2, CH1_3,
 CH2_3… (a channel-frame index listing companion to the table above).
 
-### 3.3 tvu_order.xlsx (the customer's current order)
+### 3.3 customer_order.xlsx (the customer's current order)
 
 Parameter block (identical in both xlsx files):
 
@@ -112,8 +114,8 @@ Parameter block (identical in both xlsx files):
 | Per-track data per write (L&R) | 15360 / 4 = 3840 bytes |
 | Per-track samples per write (L&R) | 3840 / 32 = 120 |
 
-Table 1 (titled "TVU Current Order" — track-block order: one block holds a track's 120 samples
-with L/R interleaved inside the track, then the next track):
+Table 1 (titled as the customer's current order — track-block order: one block holds a track's
+120 samples with L/R interleaved inside the track, then the next track):
 
 ```text
 T1L1 T1R1 T1L2 T1R2 … T1L120 T1R120 | T2L1 T2R1 … T2L120 T2R120 | T3… | T4L1 … T4L120 T4R120
@@ -143,14 +145,14 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 
 ### 3.5 Two WeCom screenshots
 
-- **Screenshot_ccca…png**: Abhishek sent `tvu_order.xlsx` ("this is the current Order we are
-  sending to Agora (4 tracks where each track has 2 channels L & R)") followed by
-  `Agora_Order_Expectation.xlsx` ("can you confirm with the BE engineer that he expects this
-  order from us?"); the in-chat previews match the contents in 3.3/3.4.
+- **Screenshot_ccca…png**: the customer's engineer sent `customer_order.xlsx` ("this is the
+  current Order we are sending to Agora (4 tracks where each track has 2 channels L & R)")
+  followed by `Agora_Order_Expectation.xlsx` ("can you confirm with the BE engineer that he
+  expects this order from us?"); the in-chat previews match the contents in 3.3/3.4.
 - **Screenshot_31d7…png**: ffprobe output of `VictoriaMulti.mkv` — one video stream (mpeg4,
   1920x1080) plus **four audio streams (all AC-3, 44100 Hz, stereo, 192 kb/s)** with slightly
-  different durations (~4:00.571 to 4:00.606). This corroborates Li Qiankun's 04-08 observation
-  ("all tracks are stereo, but their durations differ slightly").
+  different durations (~4:00.571 to 4:00.606). This corroborates the 04-08 observation ("all
+  tracks are stereo, but their durations differ slightly").
 
 ### 3.6 VictoriaMulti.mkv (133 MB test source video)
 
@@ -182,6 +184,9 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 ---
 
 ## Appendix A: Full English translation of 沟通记录2025.txt
+
+(The customer filename in the original text has been replaced with `customer_order.xlsx` per the
+anonymization convention; everything else is translated faithfully.)
 
 ```text
 Alan 2025-4-7 15:16
@@ -270,7 +275,7 @@ Li Qiankun 2025-4-8 14:16
 (re: VictoriaMulti.mkv) ------ @Alan They don't read it directly, right? They convert to PCM first?
 
 Alan 2025-4-8 14:18
-There should be an intermediate step — per the India engineers, it's shared memory.
+There should be an intermediate step — per the customer's engineers, it's shared memory.
 
 Alan 2025-4-8 14:18
 I'll have them re-confirm the audio channel layout.
@@ -293,7 +298,7 @@ Alan 2025-4-8 14:19
 Yes, understood. Though this time it's purely their test code.
 
 Alan 2025-4-9 13:33
-[tvu_order.xlsx]
+[customer_order.xlsx]
 
 Alan 2025-4-9 13:34
 [image]
