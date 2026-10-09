@@ -2,8 +2,8 @@
 
 > 用途：`References/沟通记录/` 目录计划删除，本文档将其中全部材料的内容文字化存档。
 > 整理日期：2026-10-09。原始二进制文件（截图 / xlsx / mkv）不内嵌于本文档，内容均已转为文字与表格。
-> **脱敏说明**：按本仓库开源前的脱敏约定，客户名称与客户侧人名已隐去；原文件名中含客户
-> 标识的前缀在本文档中统一以 `customer_` 前缀代称。
+> **脱敏说明**：按本仓库开源前的脱敏约定，客户名称已隐去（客户侧工程师以名字 Abhi 代称）；
+> 原文件名中含客户公司标识的前缀在本文档中统一以 `customer_` 前缀代称。
 > English version: `communication_records_backup_en.md`
 
 ---
@@ -33,11 +33,11 @@ CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R。
 | --- | --- | --- |
 | `沟通记录2025.txt` | 文本，4.2 KB | 2025-04-07 ~ 04-14 企业微信沟通记录（全文见附录 A） |
 | `audio_mutil_channel_mapping.txt` | 文本，240 B | 映射确认对话记录（全文见 3.2） |
-| `customer_audio_order_mapping.jpg` | 图片，45 KB | 客户研发提供的映射表（通话中讨论的版本），内容见 3.2 |
+| `abhi_audio_order_mapping.jpg` | 图片，45 KB | 客户研发 Abhi 提供的映射表（通话中讨论的版本），内容见 3.2 |
 | `alan_audio_order_mapping.png` | 图片，30 KB | Alan 同步确认后的声道-帧序号表，内容见 3.2 |
 | `customer_order.xlsx` | Excel，13 KB | 客户当前发送顺序（两张候选表），内容见 3.3 |
 | `Agora_Order_Expectation.xlsx` | Excel，12 KB | Agora 期望顺序，内容见 3.4（含表述歧义说明） |
-| `企业微信截图_ccca…png` | 截图，309 KB | 客户研发发送两份 xlsx 的对话上下文，内容见 3.5 |
+| `企业微信截图_ccca…png` | 截图，309 KB | 客户研发 Abhi 发送两份 xlsx 的对话上下文，内容见 3.5 |
 | `企业微信截图_31d7…png` | 截图，365 KB | VictoriaMulti.mkv 的 ffprobe 输出，内容见 3.5 |
 | `VictoriaMulti.mkv` | 视频，133 MB | 客户测试源文件；元数据见 3.6 |
 | `~$ltipleAudioChannel.docx` | 162 B | Office 临时锁文件，无内容价值，未备份 |
@@ -68,19 +68,19 @@ CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R。
 
 ### 3.2 声道映射确认（audio_mutil_channel_mapping.txt + 两张映射图）
 
-`audio_mutil_channel_mapping.txt` 全文（客户侧人名已脱敏）：
+`audio_mutil_channel_mapping.txt` 全文：
 
 ```text
 @Alan Zeng This is the mapping that we discussed in Call. Please verify again
-[customer_audio_order_mapping.jpg]
+[abhi_audio_order_mapping.jpg]
 
-Synced up with @<客户研发>, the audio layout is like below
+Synced up with @Abhi, the audio layout is like below
 [alan_audio_order_mapping.png]
 
 Confirmed that it should be correct.
 ```
 
-**customer_audio_order_mapping.jpg**（通话中讨论的映射，两行的表）：
+**abhi_audio_order_mapping.jpg**（客户研发 Abhi 提供、通话中讨论的映射，两行的表）：
 
 | CH1_1 | CH2_1 | CH3_1 | CH4_1 | CH5_1 | CH6_1 | CH7_1 | CH8_1 | CH1_2 | CH2_2 | … |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -132,7 +132,7 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 
 ### 3.5 企业微信截图 ×2
 
-- **截图_ccca…png**：客户研发先后发出 `customer_order.xlsx`（"this is the current Order we are
+- **截图_ccca…png**：客户研发 Abhi 先后发出 `customer_order.xlsx`（"this is the current Order we are
   sending to Agora (4 tracks where each track has 2 channels L & R)"）与 `Agora_Order_Expectation.xlsx`
   （"can you confirm with the BE engineer that he expects this order from us?"），附图内预览与
   3.3/3.4 内容一致。

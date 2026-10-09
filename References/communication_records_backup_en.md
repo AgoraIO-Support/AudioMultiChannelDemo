@@ -3,9 +3,10 @@
 > Purpose: the `References/沟通记录/` directory is planned for deletion; this document archives
 > the content of all its materials in text form. Compiled: 2026-10-09. The original binary files
 > (screenshots / xlsx / mkv) are not embedded; their contents are transcribed below.
-> **Anonymization note**: per this repo's pre-open-sourcing convention, the customer name and
-> customer-side personal names are removed; prefixes carrying customer identifiers in the original
-> filenames are referred to here with the generic `customer_` prefix.
+> **Anonymization note**: per this repo's pre-open-sourcing convention, the customer name is
+> removed (the customer-side engineer is referred to by the first name Abhi); prefixes carrying
+> customer identifiers in the original filenames are referred to here with the generic
+> `customer_` prefix.
 > 中文版：`communication_records_backup.md`
 
 ---
@@ -36,11 +37,11 @@ Original directory: `References/沟通记录/` (~128 MB).
 | --- | --- | --- |
 | `沟通记录2025.txt` | text, 4.2 KB | WeCom chat log 2025-04-07 ~ 04-14 (full translation in Appendix A) |
 | `audio_mutil_channel_mapping.txt` | text, 240 B | Mapping-confirmation conversation (full text in 3.2) |
-| `customer_audio_order_mapping.jpg` | image, 45 KB | Mapping table from the customer's engineer (the version discussed on the call); see 3.2 |
+| `abhi_audio_order_mapping.jpg` | image, 45 KB | Mapping table provided by Abhi, the customer's engineer (the version discussed on the call); see 3.2 |
 | `alan_audio_order_mapping.png` | image, 30 KB | Alan's channel-frame index table after sync-up; see 3.2 |
 | `customer_order.xlsx` | Excel, 13 KB | The customer's current send order (two candidate tables); see 3.3 |
 | `Agora_Order_Expectation.xlsx` | Excel, 12 KB | Agora's expected order; see 3.4 (includes an ambiguity note) |
-| `企业微信截图_ccca…png` | screenshot, 309 KB | Chat context of the customer's engineer sending the two xlsx files; see 3.5 |
+| `企业微信截图_ccca…png` | screenshot, 309 KB | Chat context of Abhi (the customer's engineer) sending the two xlsx files; see 3.5 |
 | `企业微信截图_31d7…png` | screenshot, 365 KB | ffprobe output of VictoriaMulti.mkv; see 3.5 |
 | `VictoriaMulti.mkv` | video, 133 MB | The customer's test source file; metadata in 3.6 |
 | `~$ltipleAudioChannel.docx` | 162 B | Office lock file, no content value, not archived |
@@ -77,19 +78,19 @@ of key points:
 
 ### 3.2 Channel-mapping confirmation (audio_mutil_channel_mapping.txt + two mapping images)
 
-Full text of `audio_mutil_channel_mapping.txt` (customer-side name anonymized):
+Full text of `audio_mutil_channel_mapping.txt`:
 
 ```text
 @Alan Zeng This is the mapping that we discussed in Call. Please verify again
-[customer_audio_order_mapping.jpg]
+[abhi_audio_order_mapping.jpg]
 
-Synced up with @<customer's engineer>, the audio layout is like below
+Synced up with @Abhi, the audio layout is like below
 [alan_audio_order_mapping.png]
 
 Confirmed that it should be correct.
 ```
 
-**customer_audio_order_mapping.jpg** (the mapping discussed on the call — a two-row table):
+**abhi_audio_order_mapping.jpg** (provided by Abhi; the mapping discussed on the call — a two-row table):
 
 | CH1_1 | CH2_1 | CH3_1 | CH4_1 | CH5_1 | CH6_1 | CH7_1 | CH8_1 | CH1_2 | CH2_2 | … |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -145,7 +146,7 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 
 ### 3.5 Two WeCom screenshots
 
-- **Screenshot_ccca…png**: the customer's engineer sent `customer_order.xlsx` ("this is the
+- **Screenshot_ccca…png**: Abhi (the customer's engineer) sent `customer_order.xlsx` ("this is the
   current Order we are sending to Agora (4 tracks where each track has 2 channels L & R)")
   followed by `Agora_Order_Expectation.xlsx` ("can you confirm with the BE engineer that he
   expects this order from us?"); the in-chat previews match the contents in 3.3/3.4.
