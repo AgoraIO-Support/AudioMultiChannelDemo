@@ -1,6 +1,9 @@
 # AWS 测试服务器部署手册 — 音频多声道 Demo
 
 > 记录 2026-08-18 将 `Demo/linux` 与 `Demo/web` 部署到 AWS 测试服务器的完整步骤与细节，供后续复用/更新部署时参考。
+>
+> 更新记录：2026-10-09 按第 4 节流程完成一次更新部署（Web dist 含 docs，Linux 源码同步 + 镜像重建），
+> 并按第 5 节坑 6 完成一次磁盘清理（77% → 48%）。
 
 ## 1. 服务器与域名概况
 
@@ -221,6 +224,13 @@ docker rm -f multiopus-web   # 如需一并下线
    出现页面能开但 WAV 404。
 4. **服务器内存 1.9 GB**，不要在服务器上跑 `npm ci`/vite build；Web 产物一律本地构建后上传。
 5. **Linux demo 容器必须 `--network host`**，否则 RTC UDP 媒体可能不通。
+6. **磁盘占用的真正大头在 `/var/lib/containerd`**（2026-10-09 清理记录）。本机 Docker 启用了
+   containerd 镜像存储：镜像与构建缓存都落在 `/var/lib/containerd`，`/var/lib/docker` 里只有
+   rootfs 桩（约 800 MB）。排查磁盘时 `du -sh /var/lib/docker` 会严重低估，以
+   `docker system df` 为准。当时 19G 盘用到 77%，其中构建缓存 5.7G（`docker builder prune -f`
+   可回收）、无标签 dangling 镜像数百 MB（`docker image prune -f` 可回收），清理后降到 48%。
+   另注意 `sudo du -sh /var/lib/docker/*` 这种写法：glob 由非 root shell 展开、目录不可列时
+   会静默展开失败，要写成 `sudo bash -c 'du -sh /var/lib/docker/*'`。
 
 ## 6. 相关文件索引
 
