@@ -9,9 +9,12 @@ FROM debian:bookworm-slim AS builder
 
 ARG TARGETARCH
 # demo 镜像不锁定 apt 版本：bookworm 源滚动更新，锁死版本反而易构建失败
+# ffmpeg 开发包仅 sample_send_mkv_multiopus 需要（pkg-config + libav*）
 # hadolint ignore=DL3008
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential cmake \
+    pkg-config libavformat-dev libavcodec-dev libavutil-dev \
+    libswresample-dev libswscale-dev \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
@@ -36,6 +39,13 @@ RUN set -eux; \
     cp -R /src/Demo/linux/public /src/Demo/linux/out/
 
 FROM debian:bookworm-slim
+
+# sample_send_mkv_multiopus 的运行期 ffmpeg 库（bookworm 59/57/4/6 对应 FFmpeg 5.1）
+# hadolint ignore=DL3008
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+    libavformat59 libavcodec59 libavutil57 libswresample4 libswscale6 \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=builder /src/Demo/linux/out/ /app/

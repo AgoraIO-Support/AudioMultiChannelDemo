@@ -15,9 +15,11 @@ Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) 
 | `sample_send_pcm_multiopus` | Send | Req. 1 (PCM send), Req. 4 (private params & negotiation) | Raw PCM multi-channel send, 10 ms frames, 3~8 channels configurable |
 | `sample_send_wav_multiopus` | Send | Req. 2 (WAV send), Req. 4 | Multi-channel WAV send: RIFF parsing, 16-bit sent as-is, 24-bit converted to 16-bit, unsupported bit depth, channel count, and non-48 kHz rejected before connecting |
 | `sample_send_opus8` | Send | Req. 3 (pre-encoded Opus send) | 8-channel raw Opus stream (640 bytes per 20 ms frame), `AUDIO_CODEC_OPUSMC` + `MIX_DISABLED` |
+| `sample_send_mkv_multiopus` | Send | Req. 1/4/9 (MKV 4xstereo asset) | Decodes MKV with ffmpeg: 4 AC-3 stereo tracks resampled/reordered into 8-channel 48 kHz audio, plus mpeg4 video converted to I420 and sent on PTS cadence (the only sample that depends on ffmpeg) |
 | `sample_receive_pcm_multiopus` | Receive | Req. 5 (decoded PCM callback) | Per-user multi-channel PCM via `onPlaybackAudioFrameBeforeMixing`, written to disk (new file every 100 MB) |
 | `sample_receive_encoded_audio` | Receive | Req. 6 (encoded frame callback) | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`, no decoding, no playback |
 | `sample_receive_mixed_audio` | Receive | Req. 7 (mixed-audio receive) | Mixed output via `onPlaybackAudioFrame` (always 2 channels, odd/even channels split), written to disk (new file every 100 MB) |
+| `sample_receive_av_multiopus` | Receive | Req. 5 + video receive | Multi-channel PCM dump plus I420 frames via `IVideoFrameObserver2` dumped to a YUV file, with periodic progress logs |
 
 > Req. 9 (4×stereo → 8-channel layout mapping) is an integration-side convention;
 > see "4×Stereo Layout Mapping" below.
@@ -29,10 +31,11 @@ Demo/linux/
 ├── CMakeLists.txt            # Top level; SDK path set via AGORA_SDK_DIR
 ├── build.sh                  # Helper script: ./build.sh [x86_64|aarch64] [clean]
 ├── common/                   # Copied from LinuxSDKFolder/X86_64 example/common (matches SDK v4.4.30.149)
-├── multiopus/                # 3 sender samples
-├── receive/                  # 3 receiver samples
+├── multiopus/                # 4 sender samples
+├── receive/                  # 4 receiver samples
 ├── public/                   # Assets: 8ch_2.opus, 8_Channel_ID_signed_16_bit_pcm.wav (+ same-name .raw.pcm),
-│                             # 4/6_Channel_ID_48k.wav (48 kHz resampled), 8_Channel_ID_24bit.wav (24-bit verification asset)
+│                             # 4/6_Channel_ID_48k.wav (48 kHz resampled), 8_Channel_ID_24bit.wav (24-bit verification asset),
+│                             # VictoriaMulti.mkv (1 mpeg4 1080p stream + 4 AC-3 44.1 kHz stereo tracks = 8 channels; not committed to git)
 └── out/                      # Build output (binaries + copy of public assets)
 ```
 
@@ -160,6 +163,35 @@ carries either a token or an appId (pass the appId when no certificate is enable
 ./sample_receive_mixed_audio --channelId <name> --token <token> --audioFile received_mixed.pcm
 ```
 
+### 7. Send an MKV file (4xstereo audio tracks + video)
+
+Asset: `public/VictoriaMulti.mkv` (1 mpeg4 1920x1080 stream + 4 AC-3 44.1 kHz stereo tracks,
+carrying 8 channels in total). At startup, ffmpeg decodes the 4 audio tracks once, resamples
+them to 48 kHz, and reorders them into interleaved 8-channel PCM at
+`/tmp/VictoriaMulti_8ch48k.pcm` (an up-to-date converted file is reused, see the logs). Audio is
+then sent in 10 ms frames and video on a per-frame PTS cadence, each looping independently.
+Channel count 8 / payload type 125 / 48000 Hz are hardcoded:
+
+```bash
+# This sample depends on ffmpeg (libavformat/libavcodec/libavutil/libswresample/libswscale);
+# install the matching -dev packages for a local build. The Docker image already has them.
+./sample_send_mkv_multiopus --channelId <name> --token <token> --userId 8899 \
+    --videoFile public/VictoriaMulti.mkv
+```
+
+### 8. Receive multi-channel audio + video (AV dump)
+
+```bash
+./sample_receive_av_multiopus --channelId <name> --token <token> --userId 8898 \
+    --remoteUserId 8899 --audioFile received_av_8ch.pcm --videoFile received_video.yuv
+```
+
+- Audio dumps to 48 kHz / N-channel / 16-bit interleaved PCM (same as
+  `sample_receive_pcm_multiopus`);
+- Video dumps as raw I420 frames (~3 MB per frame at 1080p; a new file every 100 MB). Play it
+  back with `ffplay -f rawvideo -pix_fmt yuv420p -s 1920x1080 received_video.yuv`;
+- Without `--remoteUserId`, the sample subscribes to audio and video of all remote users.
+
 ### Force no fallback (codec_unfallback)
 
 All sender samples accept the `--codecUnfallback` flag (note: it takes a value — pass `1`;
@@ -283,8 +315,15 @@ The buffer repeats [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] for every sample
   `EncodedAudioFrameInfo` exactly.
 - **Asset location**: after building, `build.sh` copies `public/` into `out/`; samples read
   files with relative paths by default.
-- Sender samples handle audio only; no video sending (the h264 part of the reference sample
-  was removed).
+- **The MKV sender needs ffmpeg**: `sample_send_mkv_multiopus` is the only target that depends
+  on ffmpeg (libavformat/libavcodec/libavutil/libswresample/libswscale). Local builds need
+  `pkg-config` and the matching `-dev` packages; the Dockerfile installs the dev packages in the
+  builder stage and the runtime libraries in the final stage. `public/VictoriaMulti.mkv`
+  (~133 MB) is excluded from git by the root `.gitignore` (`*.mkv`) — drop it into `public/`
+  yourself; the Docker build packs it into the image.
+- **Video sending is limited to the MKV sample**: the other sender samples handle audio only
+  (the h264 part of the reference sample was removed). `sample_send_mkv_multiopus` runs audio
+  and video on separate threads with independent loops and does not do strict AV sync.
 - The mixing/playback path always outputs 2 channels (odd channels mixed to one side, even
   channels to the other). For per-channel data, use `sample_receive_pcm_multiopus` or
   `sample_receive_encoded_audio`.
