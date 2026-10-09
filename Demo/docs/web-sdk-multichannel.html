@@ -140,6 +140,9 @@
           <tr><td>Chrome 94 / 95</td><td>相关接口默认关闭，需手动开启，不推荐</td></tr>
           <tr><td>Chrome 96 ~ 109</td><td>96 起正式支持；取消订阅后的重协商差异已做兼容</td></tr>
           <tr><td>Chrome 110+</td><td>完全支持（推荐）</td></tr>
+          <tr><td>Edge 79+（Chromium 内核）</td><td>预期与 Chrome 等价（未经官方验证，建议实测后再采用）</td></tr>
+          <tr><td>Android Chrome / WebView（内核 96+）</td><td>引擎继承，预期可用（未经官方验证）；移动端限制：外放立体声 downmix、需用户手势出声、后台标签页挂起</td></tr>
+          <tr><td>iOS 所有浏览器 / WKWebView</td><td><strong>不支持</strong>（App Store 政策下均为 WebKit 引擎，无 multiopus 路径）</td></tr>
           <tr><td>Safari / Firefox</td><td><strong>不支持</strong>；加入多声道频道行为未定义——可能无声或仅立体声</td></tr>
         </tbody>
       </table>
@@ -412,6 +415,9 @@ await client.publish(track);</code></pre>
           <tr><td>Chrome 94 / 95</td><td>The relevant interfaces are disabled by default and must be enabled manually — not recommended</td></tr>
           <tr><td>Chrome 96 – 109</td><td>Official support starts at 96; the renegotiation differences after unsubscribing have been made compatible</td></tr>
           <tr><td>Chrome 110+</td><td>Fully supported (recommended)</td></tr>
+          <tr><td>Edge 79+ (Chromium-based)</td><td>Expected to be equivalent to Chrome (not officially verified — test before adopting)</td></tr>
+          <tr><td>Android Chrome / WebView (kernel 96+)</td><td>Engine-inherited, expected to work (not officially verified); mobile limits: stereo output downmix, user gesture required for audio, background-tab suspension</td></tr>
+          <tr><td>All iOS browsers / WKWebView</td><td><strong>Not supported</strong> (WebKit engine under App Store policy — no multiopus path)</td></tr>
           <tr><td>Safari / Firefox</td><td><strong>Not supported</strong>; joining a multi-channel channel has undefined behavior — possibly silence or stereo only</td></tr>
         </tbody>
       </table>
@@ -566,8 +572,8 @@ await client.publish(track);</code></pre>
 
   <footer class="site-footer">
     <div class="container">
-      <span data-lang="zh">内容依据：Web 多声道设计文档（ExT-1485178492）与 Spec/web_sdk_audio_multichannel_spec.md；示例代码取自 Demo/web。</span>
-      <span data-lang="en">Sources: Web multi-channel design doc (ExT-1485178492) and Spec/web_sdk_audio_multichannel_spec.md; code samples are taken from Demo/web.</span>
+      <span data-lang="zh">内容依据：Web 多声道设计文档（ExT-1485178492）与 Spec/web_sdk_audio_multichannel_spec.md；示例代码取自 Demo/web。浏览器侧背景与多端支持分析见 References/chromium_webrtc_multi_channel_audio_references.md。</span>
+      <span data-lang="en">Sources: Web multi-channel design doc (ExT-1485178492) and Spec/web_sdk_audio_multichannel_spec.md; code samples are taken from Demo/web. For browser-side background and multi-endpoint support analysis, see References/chromium_webrtc_multi_channel_audio_references_en.md.</span>
     </div>
   </footer>
 

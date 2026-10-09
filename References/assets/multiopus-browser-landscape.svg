@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 400" role="img" aria-labelledby="t">
+  <title id="t">Multi-channel audio (multiopus) support landscape by browser engine: Chromium, WebKit, Gecko</title>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <!-- Chromium column -->
+    <rect x="24" y="14" width="276" height="326" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="162" y="40" font-size="12.5" font-weight="600" fill="#1f2329" text-anchor="middle">Chromium engine</text>
+    <rect x="40" y="56" width="244" height="52" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="58" cy="82" r="6" fill="#16a34a"/>
+    <text x="74" y="78" font-size="10.5" font-weight="600" fill="#1f2329">Desktop Chrome 96+</text>
+    <text x="74" y="94" font-size="9.5" fill="#5a6069">via Agora SDK switch + ORTC</text>
+    <rect x="40" y="116" width="244" height="52" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="58" cy="142" r="6" fill="#16a34a"/>
+    <text x="74" y="138" font-size="10.5" font-weight="600" fill="#1f2329">Edge 79+</text>
+    <text x="74" y="154" font-size="9.5" fill="#5a6069">follows Chromium · Dolby AC-3 is playback-only</text>
+    <rect x="40" y="176" width="244" height="52" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="58" cy="202" r="6" fill="#d97706"/>
+    <text x="74" y="198" font-size="10.5" font-weight="600" fill="#1f2329">Android Chrome 96+</text>
+    <text x="74" y="214" font-size="9.5" fill="#5a6069">engine OK · stereo out · autoplay · background</text>
+    <rect x="40" y="236" width="244" height="52" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="58" cy="262" r="6" fill="#d97706"/>
+    <text x="74" y="258" font-size="10.5" font-weight="600" fill="#1f2329">Android WebView 96+</text>
+    <text x="74" y="274" font-size="9.5" fill="#5a6069">kernel version + permission mapping required</text>
+    <rect x="40" y="296" width="244" height="36" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="58" cy="314" r="6" fill="#d97706"/>
+    <text x="74" y="310" font-size="10.5" font-weight="600" fill="#1f2329">Electron</text>
+    <text x="74" y="324" font-size="9.5" fill="#5a6069">inherits Chromium, unverified</text>
+
+    <!-- WebKit column -->
+    <rect x="316" y="14" width="256" height="326" rx="8" fill="#f4f6f9" stroke="#e2e5ea"/>
+    <text x="444" y="40" font-size="12.5" font-weight="600" fill="#1f2329" text-anchor="middle">WebKit engine</text>
+    <rect x="332" y="56" width="224" height="52" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="350" cy="82" r="6" fill="#dc2626"/>
+    <text x="366" y="78" font-size="10.5" font-weight="600" fill="#1f2329">Safari (macOS / iOS)</text>
+    <text x="366" y="94" font-size="9.5" fill="#5a6069">no RTC multi-channel Opus path</text>
+    <rect x="332" y="116" width="224" height="52" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="350" cy="142" r="6" fill="#dc2626"/>
+    <text x="366" y="138" font-size="10.5" font-weight="600" fill="#1f2329">iOS Chrome / all iOS browsers</text>
+    <text x="366" y="154" font-size="9.5" fill="#5a6069">WebKit shell — any version unsupported</text>
+    <rect x="332" y="176" width="224" height="52" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="350" cy="202" r="6" fill="#dc2626"/>
+    <text x="366" y="198" font-size="10.5" font-weight="600" fill="#1f2329">WKWebView</text>
+    <text x="366" y="214" font-size="9.5" fill="#5a6069">same WebKit WebRTC stack</text>
+    <text x="332" y="252" font-size="9.5" fill="#5a6069">Separate paths, none cover RTC:</text>
+    <text x="332" y="268" font-size="9.5" fill="#5a6069">media playback (CAF only) · Web Audio</text>
+    <text x="332" y="284" font-size="9.5" fill="#5a6069">(local multi-channel) · WebCodecs</text>
+    <text x="332" y="300" font-size="9.5" fill="#5a6069">(AudioDecoder, STP 214+)</text>
+
+    <!-- Gecko column -->
+    <rect x="588" y="14" width="268" height="326" rx="8" fill="#f4f6f9" stroke="#e2e5ea"/>
+    <text x="722" y="40" font-size="12.5" font-weight="600" fill="#1f2329" text-anchor="middle">Gecko engine</text>
+    <rect x="604" y="56" width="236" height="52" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="622" cy="82" r="6" fill="#dc2626"/>
+    <text x="638" y="78" font-size="10.5" font-weight="600" fill="#1f2329">Firefox WebRTC</text>
+    <text x="638" y="94" font-size="9.5" fill="#5a6069">libwebrtc-based · multiopus not advertised</text>
+    <rect x="604" y="116" width="236" height="72" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <circle cx="622" cy="136" r="6" fill="#d97706"/>
+    <text x="638" y="132" font-size="10.5" font-weight="600" fill="#1f2329">Firefox media playback</text>
+    <text x="638" y="148" font-size="9.5" fill="#5a6069">Ogg Opus only, since Firefox 17</text>
+    <text x="638" y="162" font-size="9.5" fill="#5a6069">≤ 8ch · family 1 · downmix to stereo</text>
+    <text x="638" y="176" font-size="9.5" fill="#5a6069">(bug 748144) — unrelated to RTC</text>
+
+    <!-- legend -->
+    <rect x="24" y="352" width="832" height="36" rx="8" fill="#f4f6f9"/>
+    <circle cx="48" cy="370" r="6" fill="#16a34a"/>
+    <text x="62" y="374" font-size="10.5" fill="#1f2329">Supported (with Agora SDK private switch)</text>
+    <circle cx="330" cy="370" r="6" fill="#d97706"/>
+    <text x="344" y="374" font-size="10.5" fill="#1f2329">Engine-inherited / unverified / device-limited</text>
+    <circle cx="650" cy="370" r="6" fill="#dc2626"/>
+    <text x="664" y="374" font-size="10.5" fill="#1f2329">Not supported</text>
+  </g>
+</svg>

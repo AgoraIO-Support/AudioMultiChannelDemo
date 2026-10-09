@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" role="img" aria-labelledby="t">
+  <title id="t">multiopus negotiation: standard WebRTC clients never advertise it; the Agora Web SDK enables it with a private switch and ORTC</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6069"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <!-- lane A -->
+    <rect x="24" y="14" width="832" height="118" rx="8" fill="#f4f6f9"/>
+    <text x="44" y="38" font-size="11.5" font-weight="600" fill="#1f2329">Standard WebRTC client (stock Chrome / Edge / Firefox WebRTC stack)</text>
+    <rect x="44" y="50" width="230" height="62" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="159" y="74" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">CreateBuiltinAudioEncoderFactory()</text>
+    <text x="159" y="92" font-size="10" fill="#5a6069" text-anchor="middle">encoder exists in libwebrtc</text>
+    <line x1="274" y1="81" x2="296" y2="81" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="298" y="50" width="230" height="62" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="413" y="74" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">NotAdvertised&lt;AudioEncoderMultiChannelOpus&gt;</text>
+    <text x="413" y="92" font-size="10" fill="#5a6069" text-anchor="middle">AppendSupportedEncoders() = empty</text>
+    <line x1="528" y1="81" x2="550" y2="81" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="552" y="50" width="284" height="62" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="694" y="74" font-size="10.5" font-weight="600" fill="#1f2329" text-anchor="middle">SDP offer: opus only</text>
+    <text x="694" y="92" font-size="10" fill="#5a6069" text-anchor="middle">multiopus usable only passively (when offered)</text>
+
+    <!-- lane B -->
+    <rect x="24" y="146" width="832" height="118" rx="8" fill="#eaf1ff"/>
+    <text x="44" y="170" font-size="11.5" font-weight="600" fill="#1f2329">Agora Web SDK (multi-channel build 4.20.1-100 / -200)</text>
+    <rect x="44" y="182" width="230" height="62" rx="8" fill="#ffffff" stroke="#165dff"/>
+    <text x="159" y="200" font-size="9.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">AgoraRTC.setParameter(</text>
+    <text x="159" y="214" font-size="9.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">"ENABLE_MULTIOPUS_CODEC", true)</text>
+    <text x="159" y="232" font-size="10" fill="#ad6800" text-anchor="middle">must be before createClient()</text>
+    <line x1="274" y1="213" x2="296" y2="213" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="298" y="182" width="230" height="62" rx="8" fill="#ffffff" stroke="#165dff"/>
+    <text x="413" y="206" font-size="10.5" font-weight="600" fill="#1f2329" text-anchor="middle">ORTC negotiation with VOS</text>
+    <text x="413" y="222" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#5a6069" text-anchor="middle">encodingName: "multiopus"</text>
+    <text x="413" y="236" font-size="10" fill="#5a6069" text-anchor="middle">48 kHz · fmtp mapping params</text>
+    <line x1="528" y1="213" x2="550" y2="213" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="552" y="182" width="284" height="62" rx="8" fill="#165dff"/>
+    <text x="694" y="206" font-size="10.5" font-weight="600" fill="#ffffff" text-anchor="middle">Active multi-channel send / receive</text>
+    <text x="694" y="224" font-size="10" fill="#cfe0ff" text-anchor="middle">payload types 123 / 124 / 125 by channel count</text>
+    <text x="694" y="238" font-size="10" fill="#cfe0ff" text-anchor="middle">3–8ch (Web decodes even counts only)</text>
+
+    <!-- bottom band -->
+    <rect x="24" y="276" width="832" height="20" rx="6" fill="#f4f6f9"/>
+    <text x="440" y="290" font-size="10.5" fill="#5a6069" text-anchor="middle">Same libwebrtc capability — the difference is whether multiopus is advertised / negotiated</text>
+  </g>
+</svg>

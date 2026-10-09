@@ -60,7 +60,7 @@
       <ul>
         <li><strong>Web 仅偶数声道解码</strong>：4/6/8 可用；3/5/7 声道流对 Web 端不适用。</li>
         <li><strong>最多 8 声道</strong>：本功能支持 3~8 声道，16 声道及以上不支持。</li>
-        <li><strong>浏览器要求</strong>：Chrome 96+（推荐 110+）；Safari / Firefox 不支持，加入多声道频道行为未定义（可能无声或仅立体声）。</li>
+        <li><strong>浏览器要求</strong>：Chrome 96+（推荐 110+）；Edge 79+ 跟随 Chrome（Chromium 内核，预期等价、未经官方验证）；Safari / Firefox 不支持，加入多声道频道行为未定义（可能无声或仅立体声）；iOS 上所有浏览器均为 WebKit 引擎，不支持；Android Chrome / WebView（内核 96+）预期可用但未经官方验证（外放立体声等移动端限制）。</li>
         <li><strong>不支持端回退规则</strong>：Linux 发送时，不支持多声道的端加入会触发发送端回退为普通 Opus（可用私参 <code>che.audio.codec_unfallback</code> 强制不回退）；Web 发送时不回退，该不支持端无声。使用多声道时应保证频道内所有参与者均支持多声道。</li>
       </ul>
 
@@ -150,9 +150,9 @@
       <h1>Agora Audio Multi-Channel (multiopus)</h1>
       <p class="subtitle">Overview · Integration guides · End-to-end verification (Linux SDK + Web SDK)</p>
 
-      <h2>What is audio multi-channel</h2>
+      <h2>What is multi-channel audio</h2>
       <p>
-        The audio multi-channel feature is based on <strong>Opus multistream encoding (OPUSMC)</strong>:
+        The multi-channel audio feature is based on <strong>Opus multistream encoding (OPUSMC)</strong>:
         it carries <strong>3 to 8 audio channels</strong> in a single RTC audio stream. A sender
         (for example, the Linux SDK) encodes multi-channel material into an OPUSMC stream and
         distributes it over SD-RTN; receivers (Web / Native / Linux) can then select individual
@@ -186,7 +186,7 @@
       <ul>
         <li><strong>Even channel counts only on Web</strong>: 4/6/8 channels work; 3/5/7-channel streams are not applicable to Web receivers.</li>
         <li><strong>Maximum 8 channels</strong>: this feature supports 3 to 8 channels; 16 channels and above are not supported.</li>
-        <li><strong>Browser requirement</strong>: Chrome 96+ (110+ recommended); Safari and Firefox are not supported — behavior in a multi-channel channel is undefined (possibly silence or stereo only).</li>
+        <li><strong>Browser requirement</strong>: Chrome 96+ (110+ recommended); Edge 79+ follows Chrome (Chromium-based, expected equivalent, not officially verified); Safari and Firefox are not supported — behavior in a multi-channel channel is undefined (possibly silence or stereo only); all browsers on iOS are WebKit-based and unsupported; Android Chrome / WebView (kernel 96+) are expected to work but are not officially verified (mobile limits such as stereo output).</li>
         <li><strong>Fallback rules for unsupported endpoints</strong>: when Linux is sending, an endpoint without multi-channel support joining the channel triggers the sender to fall back to plain Opus (the private parameter <code>che.audio.codec_unfallback</code> can force no-fallback); when Web is sending, no fallback occurs and the unsupported endpoint hears nothing. All participants in the channel should support multi-channel when using this feature.</li>
       </ul>
 
@@ -278,8 +278,8 @@
 
   <footer class="site-footer">
     <div class="container">
-      <span data-lang="zh">内容依据：多声道设计文档（ExT-1485178709 / ExT-1485178492）与 Spec/ 下 PRD；示例代码取自 Demo/linux 与 Demo/web。</span>
-      <span data-lang="en">Sources: multi-channel design docs (ExT-1485178709 / ExT-1485178492) and the PRDs under Spec/; code samples are taken from Demo/linux and Demo/web.</span>
+      <span data-lang="zh">内容依据：多声道设计文档（ExT-1485178709 / ExT-1485178492）与 Spec/ 下 PRD；示例代码取自 Demo/linux 与 Demo/web。浏览器侧背景与多端支持分析见 References/chromium_webrtc_multi_channel_audio_references.md。</span>
+      <span data-lang="en">Sources: multi-channel design docs (ExT-1485178709 / ExT-1485178492) and the PRDs under Spec/; code samples are taken from Demo/linux and Demo/web. For browser-side background and multi-endpoint support analysis, see References/chromium_webrtc_multi_channel_audio_references_en.md.</span>
     </div>
   </footer>
 
