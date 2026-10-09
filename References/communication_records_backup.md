@@ -10,7 +10,7 @@
 
 ## 1. 背景与结论速览
 
-- **客户**：某广电客户；Agora 侧：Alan Zeng（CSE）、李乾坤（SDK 研发）。
+- **客户**：某广电客户；Agora 侧：Alan Zeng（CSE）、lqk（SDK 研发）。
 - **场景**：客户 Linux 服务器把"4 条立体声轨承载 8 声道"的广播素材经 Agora RTC 发送（multiopus/OPUSMC），
   Web 端订阅验证。
 - **问题**：Web 端订阅听到杂音/内容错乱。
@@ -52,14 +52,14 @@ CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R。
 
 - **04-07**：Alan 先请客户提供 Linux 集成代码；说明客户 8 声道**不是 7.1 环绕**，而是
   (0,1)(2,3)(4,5)(6,7) 四组左右声道对；提供测试频道（AppId `aab8b8f5a8cd4469a63042fcfafe7063`、
-  频道 `142651995438`、无 token）供李乾坤订阅试听，并尝试 dump。
-- **04-08 上午**：Alan 发出 `AGORA_sample.txt` / `output.txt` / 截图；李乾坤多次要求拿到具体音频，
-  以判断杂音类型（完全杂乱噪声 vs 能听到人声）；李乾坤发现客户代码假设"每条 track 长度严格一致、
+  频道 `142651995438`、无 token）供lqk订阅试听，并尝试 dump。
+- **04-08 上午**：Alan 发出 `AGORA_sample.txt` / `output.txt` / 截图；lqk多次要求拿到具体音频，
+  以判断杂音类型（完全杂乱噪声 vs 能听到人声）；lqk发现客户代码假设"每条 track 长度严格一致、
   每 track 严格 2 声道"，但代码中又出现单声道 track 的迹象，二者矛盾；客户提供 iOS app 订阅录音
   `far_in_48000hz_2ch.wav`。
-- **04-08 11:56（关键判断）**：李乾坤提出——**源数据多声道是交织存储（LRLRLR…），但读取时按
+- **04-08 11:56（关键判断）**：lqk提出——**源数据多声道是交织存储（LRLRLR…），但读取时按
   平面块序（LLLL…RRRR…）读了**。
-- **04-08 下午**：Alan 发客户测试源文件 `VictoriaMulti.mkv`；李乾坤指出服务器端不会直接读 mkv、
+- **04-08 下午**：Alan 发客户测试源文件 `VictoriaMulti.mkv`；lqk指出服务器端不会直接读 mkv、
   应转 PCM 再读（客户侧经 shared memory 中转）；确认 4 条轨都是双声道、各轨时长有细微差异但影响
   不大，重点排查交织存储问题。
 - **04-09**：客户研发给出音频 layout（`customer_order.xlsx` + 图）；Alan 回发
@@ -182,14 +182,14 @@ Alan 2025-4-7 15:16
 Alan 2025-4-7 15:17
 客户的8声道，不是7.1声道，是0,1一个左右声道，2，3一个左右声道，4，5一个左右声道，6，7一个左右声道这样子。
 
-李乾坤 2025-4-7 15:18
+lqk 2025-4-7 15:18
 需要听一下的，有空提供一下音频吧
 
 Alan 2025-4-7 15:20
-@liqiankun  如果你方便的时候，只要订阅这个频道就可以：   AppId : aab8b8f5a8cd4469a63042fcfafe7063 Channel Name: 142651995438 no token needed.
+@lqk  如果你方便的时候，只要订阅这个频道就可以：   AppId : aab8b8f5a8cd4469a63042fcfafe7063 Channel Name: 142651995438 no token needed.
 
 Alan 2025-4-7 15:22
-"liqiankun： 需要听一下的，有空提供一下音频吧" ------ @liqiankun  dump，我现在也尝试一下
+"lqk： 需要听一下的，有空提供一下音频吧" ------ @lqk  dump，我现在也尝试一下
 
 Alan 2025-4-8 10:22
 [AGORA_sample.txt]
@@ -200,19 +200,19 @@ Alan 2025-4-8 10:22
 Alan 2025-4-8 10:23
 [图片]
 
-李乾坤 2025-4-8 10:48
+lqk 2025-4-8 10:48
 另外我上面已经说了很多次了，希望能拿到具体的音频，看下杂音到底是什么杂音？ 所以听不清到底一点都听不清，完全杂乱的噪声，还是能听到有人说话。
 
 Alan 2025-4-8 10:56
-"liqiankun： 另外我上面已经说了很多次了，希望能拿到具体的音频，看下杂音到底是什么杂音？ 所以听不清到底一点都听不清，完全杂乱的噪声，还是能听到有人说话。" ------ @liqiankun  这个可以提供录音的。
+"lqk： 另外我上面已经说了很多次了，希望能拿到具体的音频，看下杂音到底是什么杂音？ 所以听不清到底一点都听不清，完全杂乱的噪声，还是能听到有人说话。" ------ @lqk  这个可以提供录音的。
 
 Alan 2025-4-8 10:57
 看起来是跟web sdk api关联不大，我看怎么来排查判断问题发生点。
 
-李乾坤 2025-4-8 10:58
+lqk 2025-4-8 10:58
 [图片] 用户每条track的长度是不是确定严格一致的，每条track的声道数是不是严格2声道，我看他代码都是在这个假设的基础上的。
 
-李乾坤 2025-4-8 10:59
+lqk 2025-4-8 10:59
 但是从他下面的代码有看出他的track可能有一个channel，所以这两个可能有点矛盾
 
 Alan 2025-4-8 10:59
@@ -221,7 +221,7 @@ Alan 2025-4-8 10:59
 Alan 2025-4-8 11:00
 最好我让他给一个能每次复现的demo吧
 
-李乾坤 2025-4-8 11:00
+lqk 2025-4-8 11:00
 把他的原始音频拿过来听听
 
 Alan 2025-4-8 11:00
@@ -233,14 +233,14 @@ Alan 2025-4-8 11:49
 Alan 2025-4-8 11:49
 [far_in_48000hz_2ch.wav]
 
-李乾坤 2025-4-8 11:56
+lqk 2025-4-8 11:56
 听起来有可能是源数据多声道是交织存储的LRLRLRLRLRLRLRLR ，但是他读取的时候按照LLLLLLLL RRRRRRRR的
 
 Alan 2025-4-8 12:02
 好，下午我跟客户研发语音开会对一下吧
 
 Alan 2025-4-8 14:11
-@liqiankun [图片]
+@lqk [图片]
 
 Alan 2025-4-8 14:11
 我让客户再测试一下
@@ -249,9 +249,9 @@ Alan 2025-4-8 14:11
 [VictoriaMulti.mkv]
 
 Alan 2025-4-8 14:12
-"Alan(Alan Zeng)： [VictoriaMulti.mkv]" ------ @liqiankun  这个是测试源文件audio file.
+"Alan(Alan Zeng)： [VictoriaMulti.mkv]" ------ @lqk  这个是测试源文件audio file.
 
-李乾坤 2025-4-8 14:16
+lqk 2025-4-8 14:16
 "Alan(Alan Zeng)： [VictoriaMulti.mkv]" ------ @Alan(Alan Zeng)  他这个不是直接读取的吧，转成pcm再读取的吧
 
 Alan 2025-4-8 14:18
@@ -260,13 +260,13 @@ Alan 2025-4-8 14:18
 Alan 2025-4-8 14:18
 我让他们重新确认audio channel layout
 
-李乾坤 2025-4-8 14:18
+lqk 2025-4-8 14:18
 都是双声道的，但是duration是有区别的，不过这个可能影响不大，重点排查交织存储的问题吧 交织存储的LRLRLRLRLRLRLRLR ，但是他读取的时候按照LLLLLLLL RRRRRRRR的 [图片]
 
 Alan 2025-4-8 14:19
-"liqiankun： 都是双声道的，但是duration是有区别的，不过这个可能影响不大，重点排查交织存储的问题吧 交织存储的LRLRLRLRLRLRLRLR ，但是他读取的时候按照LLLLLLLL RRRRRRRR的 [图片]" ------ @liqiankun  估计是你说的原因。
+"lqk： 都是双声道的，但是duration是有区别的，不过这个可能影响不大，重点排查交织存储的问题吧 交织存储的LRLRLRLRLRLRLRLR ，但是他读取的时候按照LLLLLLLL RRRRRRRR的 [图片]" ------ @lqk  估计是你说的原因。
 
-李乾坤 2025-4-8 14:19
+lqk 2025-4-8 14:19
 "Alan(Alan Zeng)： 应该有中转，听客户研发说，是shared memory." ------ @Alan(Alan Zeng)  我意思是你发的不是他在server读取的内容，他在server上应该不会直接读取.mkv
 
 Alan 2025-4-8 14:19
@@ -282,13 +282,13 @@ Alan 2025-4-9 13:34
 [图片]
 
 Alan 2025-4-9 13:35
-@liqiankun  这个是客户研发，给的音频layout，
+@lqk  这个是客户研发，给的音频layout，
 
 Alan 2025-4-9 13:37
 [Agora_Order_Expectation.xlsx]
 
 Alan 2025-4-14 13:37
-@liqiankun  问题解决，感谢技术支持！ 确实是发送端audio layout问题。
+@lqk  问题解决，感谢技术支持！ 确实是发送端audio layout问题。
 
 Alan 2025-4-14 13:38
 [图片]

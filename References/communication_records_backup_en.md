@@ -12,7 +12,7 @@
 
 ## 1. Background and conclusion at a glance
 
-- **Customer**: a broadcast customer; Agora side: Alan Zeng (CSE), Li Qiankun (SDK R&D).
+- **Customer**: a broadcast customer; Agora side: Alan Zeng (CSE), lqk (SDK R&D).
 - **Scenario**: the customer's Linux server sends broadcast material carried as "4 stereo tracks
   holding 8 channels" over Agora RTC (multiopus/OPUSMC); a Web client subscribes for verification.
 - **Symptom**: the Web subscriber heard garbled audio / scrambled content.
@@ -57,16 +57,16 @@ of key points:
 - **04-07**: Alan first asked the customer to provide their Linux integration code; explained
   that the customer's 8 channels are **not 7.1 surround** but four L/R pairs — (0,1)(2,3)(4,5)(6,7);
   shared a test channel (AppId `aab8b8f5a8cd4469a63042fcfafe7063`, channel `142651995438`,
-  no token) so Li Qiankun could subscribe and listen, and tried dumping as well.
-- **04-08 morning**: Alan sent `AGORA_sample.txt` / `output.txt` / a screenshot; Li Qiankun
+  no token) so lqk could subscribe and listen, and tried dumping as well.
+- **04-08 morning**: Alan sent `AGORA_sample.txt` / `output.txt` / a screenshot; lqk
   repeatedly asked for the actual audio to identify the noise type (completely garbled noise vs
-  audible speech); Li noticed the customer's code assumes "every track has strictly identical
+  audible speech); lqk noticed the customer's code assumes "every track has strictly identical
   length and strictly 2 channels", yet elsewhere in the code a track appeared to have a single
   channel — contradictory; the customer provided an iOS-app subscription recording
   `far_in_48000hz_2ch.wav`.
-- **04-08 11:56 (key insight)**: Li Qiankun proposed — **the source multi-channel data is stored
+- **04-08 11:56 (key insight)**: lqk proposed — **the source multi-channel data is stored
   interleaved (LRLRLR…), but the customer read it as planar blocks (LLLL…RRRR…)**.
-- **04-08 afternoon**: Alan sent the customer's test source file `VictoriaMulti.mkv`; Li noted
+- **04-08 afternoon**: Alan sent the customer's test source file `VictoriaMulti.mkv`; lqk noted
   the server side would not read the mkv directly — it must be converted to PCM first (the
   customer relays it via shared memory); he confirmed all 4 tracks are stereo, that slight
   duration differences across tracks do not matter much, and that the interleaving issue should
@@ -198,14 +198,14 @@ Because the customer's integration code references the code we gave them.
 Alan 2025-4-7 15:17
 The customer's 8 channels are not 7.1 — it's (0,1) as one L/R pair, (2,3), (4,5), (6,7), like that.
 
-Li Qiankun 2025-4-7 15:18
+lqk 2025-4-7 15:18
 I need to listen to it — please provide the audio when you can.
 
 Alan 2025-4-7 15:20
-@liqiankun When convenient, just subscribe to this channel: AppId: aab8b8f5a8cd4469a63042fcfafe7063 Channel Name: 142651995438, no token needed.
+@lqk When convenient, just subscribe to this channel: AppId: aab8b8f5a8cd4469a63042fcfafe7063 Channel Name: 142651995438, no token needed.
 
 Alan 2025-4-7 15:22
-(re: "need to listen") ------ @liqiankun I'll also try dumping now.
+(re: "need to listen") ------ @lqk I'll also try dumping now.
 
 Alan 2025-4-8 10:22
 [AGORA_sample.txt]
@@ -216,21 +216,21 @@ Alan 2025-4-8 10:22
 Alan 2025-4-8 10:23
 [image]
 
-Li Qiankun 2025-4-8 10:48
+lqk 2025-4-8 10:48
 As I've said several times above, I hope to get the actual audio to see what the noise really is.
 Is it completely unintelligible, totally scrambled noise, or can you still hear someone talking?
 
 Alan 2025-4-8 10:56
-(re: the above) ------ @liqiankun A recording can be provided.
+(re: the above) ------ @lqk A recording can be provided.
 
 Alan 2025-4-8 10:57
 Looks unrelated to the Web SDK API; let me figure out how to locate the problem point.
 
-Li Qiankun 2025-4-8 10:58
+lqk 2025-4-8 10:58
 [image] Is the length of each of the user's tracks strictly identical, and is each track strictly
 2-channel? Their code seems built on these assumptions.
 
-Li Qiankun 2025-4-8 10:59
+lqk 2025-4-8 10:59
 But further down in their code it looks like a track may have one channel — so those two
 assumptions may contradict each other.
 
@@ -240,7 +240,7 @@ Looks like it — I'll ask the customer's engineers to clarify.
 Alan 2025-4-8 11:00
 Best if they give us a demo that reproduces it every time.
 
-Li Qiankun 2025-4-8 11:00
+lqk 2025-4-8 11:00
 Bring their original audio and let's listen.
 
 Alan 2025-4-8 11:00
@@ -252,7 +252,7 @@ This is the effect of the iOS app subscription.
 Alan 2025-4-8 11:49
 [far_in_48000hz_2ch.wav]
 
-Li Qiankun 2025-4-8 11:56
+lqk 2025-4-8 11:56
 It sounds like the source multi-channel data may be stored interleaved LRLRLRLR…, but they read
 it as LLLLLLLL RRRRRRRR.
 
@@ -260,7 +260,7 @@ Alan 2025-4-8 12:02
 OK, I'll get on a voice call with their engineers this afternoon to align.
 
 Alan 2025-4-8 14:11
-@liqiankun [image]
+@lqk [image]
 
 Alan 2025-4-8 14:11
 I'll have the customer test again.
@@ -269,9 +269,9 @@ Alan 2025-4-8 14:11
 [VictoriaMulti.mkv]
 
 Alan 2025-4-8 14:12
-(re: VictoriaMulti.mkv) ------ @liqiankun This is the test source audio file.
+(re: VictoriaMulti.mkv) ------ @lqk This is the test source audio file.
 
-Li Qiankun 2025-4-8 14:16
+lqk 2025-4-8 14:16
 (re: VictoriaMulti.mkv) ------ @Alan They don't read it directly, right? They convert to PCM first?
 
 Alan 2025-4-8 14:18
@@ -280,14 +280,14 @@ There should be an intermediate step — per the customer's engineers, it's shar
 Alan 2025-4-8 14:18
 I'll have them re-confirm the audio channel layout.
 
-Li Qiankun 2025-4-8 14:18
+lqk 2025-4-8 14:18
 All tracks are stereo, but their durations differ slightly — that probably doesn't matter much;
 focus on the interleaving issue: stored interleaved LRLRLR… but read as LLLLLLLL RRRRRRRR. [image]
 
 Alan 2025-4-8 14:19
-(re: the above) ------ @liqiankun It's probably exactly what you said.
+(re: the above) ------ @lqk It's probably exactly what you said.
 
-Li Qiankun 2025-4-8 14:19
+lqk 2025-4-8 14:19
 (re: "shared memory") ------ @Alan What I mean is, what you sent isn't what he reads on the
 server — he surely doesn't read the .mkv directly on the server.
 
@@ -304,13 +304,13 @@ Alan 2025-4-9 13:34
 [image]
 
 Alan 2025-4-9 13:35
-@liqiankun This is the audio layout from the customer's engineers.
+@lqk This is the audio layout from the customer's engineers.
 
 Alan 2025-4-9 13:37
 [Agora_Order_Expectation.xlsx]
 
 Alan 2025-4-14 13:37
-@liqiankun Problem solved — thanks for the support! It was indeed the sender-side audio layout.
+@lqk Problem solved — thanks for the support! It was indeed the sender-side audio layout.
 
 Alan 2025-4-14 13:38
 [image]
