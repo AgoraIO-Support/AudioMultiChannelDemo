@@ -1,6 +1,6 @@
 # 沟通记录备份：客户音频多声道项目（2025-04）
 
-> 用途：`References/沟通记录/` 目录计划删除，本文档将其中全部材料的内容文字化存档。
+> 用途：`References/沟通记录/` 目录（约 128 MB）计划删除，本文档将其中全部材料的内容文字化存档。
 > 整理日期：2026-10-09。原始二进制文件（截图 / xlsx / mkv）不内嵌于本文档，内容均已转为文字与表格。
 > **脱敏说明**：按本仓库开源前的脱敏约定，客户名称已隐去（客户侧工程师以名字 Abhi 代称）；
 > 原文件名中含客户公司标识的前缀在本文档中统一以 `customer_` 前缀代称。
@@ -18,64 +18,47 @@
   **逐样本交错（sample-interleaved）8 声道布局**不一致。
 - **解决**：2025-04-14 客户确认"确实是发送端 audio layout 问题"，按通话确认的映射重排后解决。
 
-**最终确认的映射**（通话确认，见 3.2）：8 声道逐帧交织，第 n 帧为
+**最终确认的映射**（通话确认，见 2.2）：8 声道逐帧交织，第 n 帧为
 `[T1Ln, T1Rn, T2Ln, T2Rn, T3Ln, T3Rn, T4Ln, T4Rn]`，即
 CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R。
 （即本仓库 `Demo/docs/linux-sdk-multichannel.html` §1.5 记录的标准布局。）
 
 ---
 
-## 2. 材料清单与内容化存档
+## 2. 各材料详细内容
 
-原目录：`References/沟通记录/`（约 128 MB）。
-
-| 文件 | 类型/大小 | 内容摘要 |
-| --- | --- | --- |
-| `沟通记录2025.txt` | 文本，4.2 KB | 2025-04-07 ~ 04-14 企业微信沟通记录（全文见附录 A） |
-| `audio_mutil_channel_mapping.txt` | 文本，240 B | 映射确认对话记录（全文见 3.2） |
-| `abhi_audio_order_mapping.jpg` | 图片，45 KB | 客户研发 Abhi 提供的映射表（通话中讨论的版本），内容见 3.2 |
-| `alan_audio_order_mapping.png` | 图片，30 KB | Alan 同步确认后的声道-帧序号表，内容见 3.2 |
-| `customer_order.xlsx` | Excel，13 KB | 客户当前发送顺序（两张候选表），内容见 3.3 |
-| `Agora_Order_Expectation.xlsx` | Excel，12 KB | Agora 期望顺序，内容见 3.4（含表述歧义说明） |
-| `企业微信截图_ccca…png` | 截图，309 KB | 客户研发 Abhi 发送两份 xlsx 的对话上下文，内容见 3.5 |
-| `企业微信截图_31d7…png` | 截图，365 KB | VictoriaMulti.mkv 的 ffprobe 输出，内容见 3.5 |
-| `VictoriaMulti.mkv` | 视频，133 MB | 客户测试源文件；元数据见 3.6 |
-| `~$ltipleAudioChannel.docx` | 162 B | Office 临时锁文件，无内容价值，未备份 |
-
----
-
-## 3. 各材料详细内容
-
-### 3.1 沟通记录2025.txt（聊天全文）
+### 2.1 沟通记录2025.txt（聊天全文）
 
 2025-04-07 ~ 04-14 的企业微信沟通记录，完整原文见**附录 A**。要点时间线：
 
 - **04-07**：Alan 先请客户提供 Linux 集成代码；说明客户 8 声道**不是 7.1 环绕**，而是
   (0,1)(2,3)(4,5)(6,7) 四组左右声道对；提供测试频道（AppId `aab8b8f5a8cd4469a63042fcfafe7063`、
-  频道 `142651995438`、无 token）供lqk订阅试听，并尝试 dump。
-- **04-08 上午**：Alan 发出 `AGORA_sample.txt` / `output.txt` / 截图；lqk多次要求拿到具体音频，
-  以判断杂音类型（完全杂乱噪声 vs 能听到人声）；lqk发现客户代码假设"每条 track 长度严格一致、
+  频道 `142651995438`、无 token）供 lqk 订阅试听，并尝试 dump。
+- **04-08 上午**：Alan 发出 `AGORA_sample.txt` / `output.txt` / 截图；lqk 多次要求拿到具体音频，
+  以判断杂音类型（完全杂乱噪声 vs 能听到人声）；lqk 发现客户代码假设"每条 track 长度严格一致、
   每 track 严格 2 声道"，但代码中又出现单声道 track 的迹象，二者矛盾；客户提供 iOS app 订阅录音
   `far_in_48000hz_2ch.wav`。
-- **04-08 11:56（关键判断）**：lqk提出——**源数据多声道是交织存储（LRLRLR…），但读取时按
+- **04-08 11:56（关键判断）**：lqk 提出——**源数据多声道是交织存储（LRLRLR…），但读取时按
   平面块序（LLLL…RRRR…）读了**。
-- **04-08 下午**：Alan 发客户测试源文件 `VictoriaMulti.mkv`；lqk指出服务器端不会直接读 mkv、
+- **04-08 下午**：Alan 发客户测试源文件 `VictoriaMulti.mkv`；lqk 指出服务器端不会直接读 mkv、
   应转 PCM 再读（客户侧经 shared memory 中转）；确认 4 条轨都是双声道、各轨时长有细微差异但影响
   不大，重点排查交织存储问题。
 - **04-09**：客户研发给出音频 layout（`customer_order.xlsx` + 图）；Alan 回发
   `Agora_Order_Expectation.xlsx`。
 - **04-14**：Alan 确认：**问题解决，确实是发送端 audio layout 问题**。
 
-### 3.2 声道映射确认（audio_mutil_channel_mapping.txt + 两张映射图）
+### 2.2 声道映射确认（audio_mutil_channel_mapping.txt + 两张映射图）
 
 `audio_mutil_channel_mapping.txt` 全文：
 
 ```text
-@Alan This is the mapping that we discussed in Call. Please verify again
+@Alan This is the mapping that we discussed in Call . Please verify again
 [abhi_audio_order_mapping.jpg]
+
 
 Synced up with @Abhi, the audio layout is like below
 [alan_audio_order_mapping.png]
+
 
 Confirmed that it should be correct.
 ```
@@ -92,7 +75,7 @@ Confirmed that it should be correct.
 **alan_audio_order_mapping.png**：纵向序号表 CH1_1…CH8_1、CH1_2…CH8_2、CH1_3、CH2_3…
 （声道-帧序号清单，与上图配套）。
 
-### 3.3 customer_order.xlsx（客户当前顺序）
+### 2.3 customer_order.xlsx（客户当前顺序）
 
 参数块（两份 xlsx 相同）：
 
@@ -116,9 +99,9 @@ T1L1 T1R1 T1L2 T1R2 … T1L120 T1R120 | T2L1 T2R1 … T2L120 T2R120 | T3… | T4
 T1L1 T1L2 … T1L120 T2L1 … T2L120 T3L1 … T4L120 | T1R1 T1R2 … T1R120 T2R1 … T4R120
 ```
 
-### 3.4 Agora_Order_Expectation.xlsx（Agora 期望顺序）
+### 2.4 Agora_Order_Expectation.xlsx（Agora 期望顺序）
 
-参数块同 3.3。其后为图例（T1L1 = Track 1 Left sample 1，16 bit；L+R 一对 32 bit）与
+参数块同 2.3。其后为图例（T1L1 = Track 1 Left sample 1，16 bit；L+R 一对 32 bit）与
 "Agora Expected Order" 表，其 ORDER 行按单元格原文为：
 
 ```text
@@ -126,25 +109,25 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 ```
 
 > **存档说明（歧义提示）**：该行字面呈现为"先全部 L 再全部 R"的平面序，与通话后最终确认的
-> 逐帧交织映射（3.2）不一致。该表为沟通中快速绘制的示意，**最终有效约定以 3.2 的映射图与
+> 逐帧交织映射（2.2）不一致。该表为沟通中快速绘制的示意，**最终有效约定以 2.2 的映射图与
 > 2025-04-14 的解决确认为准**；本仓库现行文档（`Demo/docs/linux-sdk-multichannel.html` §1.5）
 > 记录的逐样本交错布局即最终约定。
 
-### 3.5 企业微信截图 ×2
+### 2.5 企业微信截图 ×2
 
 - **截图_ccca…png**：客户研发 Abhi 先后发出 `customer_order.xlsx`（"this is the current Order we are
   sending to Agora (4 tracks where each track has 2 channels L & R)"）与 `Agora_Order_Expectation.xlsx`
   （"can you confirm with the BE engineer that he expects this order from us?"），附图内预览与
-  3.3/3.4 内容一致。
+  2.3/2.4 内容一致。
 - **截图_31d7…png**：`VictoriaMulti.mkv` 的 ffprobe 输出——1 路视频（mpeg4, 1920x1080）+
   **4 路音频流（均为 AC-3, 44100 Hz, stereo, 192 kb/s）**，各音频流时长略有差异
   （约 4:00.571 ~ 4:00.606）。该截图佐证了 04-08 的观察（"都是双声道的，但是 duration
   是有区别的"）。
 
-### 3.6 VictoriaMulti.mkv（133 MB 测试源视频）
+### 2.6 VictoriaMulti.mkv（133 MB 测试源视频）
 
 - 角色：客户的测试源文件；服务器侧不直接读 mkv，而是解码后经 shared memory 中转出 PCM。
-- 元数据（2026-10-09 本地 ffprobe 复核，与 3.5 截图一致）：
+- 元数据（2026-10-09 本地 ffprobe 复核，与 2.5 截图一致）：
 
 | 流 | 类型 | 参数 |
 | --- | --- | --- |
@@ -158,7 +141,7 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 
 ---
 
-## 4. 与现行文档的对应关系
+## 3. 与现行文档的对应关系
 
 | 沟通记录内容 | 现行位置 |
 | --- | --- |

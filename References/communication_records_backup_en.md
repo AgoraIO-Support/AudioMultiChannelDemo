@@ -1,8 +1,8 @@
 # Communication Records Backup: Customer Multi-Channel Audio Project (2025-04)
 
-> Purpose: the `References/沟通记录/` directory is planned for deletion; this document archives
-> the content of all its materials in text form. Compiled: 2026-10-09. The original binary files
-> (screenshots / xlsx / mkv) are not embedded; their contents are transcribed below.
+> Purpose: the `References/沟通记录/` directory (~128 MB) is planned for deletion; this document
+> archives the content of all its materials in text form. Compiled: 2026-10-09. The original
+> binary files (screenshots / xlsx / mkv) are not embedded; their contents are transcribed below.
 > **Anonymization note**: per this repo's pre-open-sourcing convention, the customer name is
 > removed (the customer-side engineer is referred to by the first name Abhi); prefixes carrying
 > customer identifiers in the original filenames are referred to here with the generic
@@ -22,35 +22,16 @@
 - **Resolution**: on 2025-04-14 the customer confirmed "it was indeed the sender-side audio
   layout"; fixed by reordering to the mapping agreed on the call.
 
-**Final confirmed mapping** (agreed on the call; see 3.2): 8 channels interleaved frame by frame;
+**Final confirmed mapping** (agreed on the call; see 2.2): 8 channels interleaved frame by frame;
 frame n is `[T1Ln, T1Rn, T2Ln, T2Rn, T3Ln, T3Rn, T4Ln, T4Rn]`, i.e.
 CH1=T1L, CH2=T1R, CH3=T2L, CH4=T2R, CH5=T3L, CH6=T3R, CH7=T4L, CH8=T4R.
 (This is the standard layout documented in `Demo/docs/linux-sdk-multichannel.html` §1.5.)
 
 ---
 
-## 2. Material inventory and content archive
+## 2. Detailed content of each artifact
 
-Original directory: `References/沟通记录/` (~128 MB).
-
-| File | Type / size | Content summary |
-| --- | --- | --- |
-| `沟通记录2025.txt` | text, 4.2 KB | WeCom chat log 2025-04-07 ~ 04-14 (full translation in Appendix A) |
-| `audio_mutil_channel_mapping.txt` | text, 240 B | Mapping-confirmation conversation (full text in 3.2) |
-| `abhi_audio_order_mapping.jpg` | image, 45 KB | Mapping table provided by Abhi, the customer's engineer (the version discussed on the call); see 3.2 |
-| `alan_audio_order_mapping.png` | image, 30 KB | Alan's channel-frame index table after sync-up; see 3.2 |
-| `customer_order.xlsx` | Excel, 13 KB | The customer's current send order (two candidate tables); see 3.3 |
-| `Agora_Order_Expectation.xlsx` | Excel, 12 KB | Agora's expected order; see 3.4 (includes an ambiguity note) |
-| `企业微信截图_ccca…png` | screenshot, 309 KB | Chat context of Abhi (the customer's engineer) sending the two xlsx files; see 3.5 |
-| `企业微信截图_31d7…png` | screenshot, 365 KB | ffprobe output of VictoriaMulti.mkv; see 3.5 |
-| `VictoriaMulti.mkv` | video, 133 MB | The customer's test source file; metadata in 3.6 |
-| `~$ltipleAudioChannel.docx` | 162 B | Office lock file, no content value, not archived |
-
----
-
-## 3. Detailed content of each artifact
-
-### 3.1 沟通记录2025.txt (full chat log)
+### 2.1 沟通记录2025.txt (full chat log)
 
 WeCom chat from 2025-04-07 to 04-14; a full English translation is in **Appendix A**. Timeline
 of key points:
@@ -76,21 +57,24 @@ of key points:
   image); Alan replied with `Agora_Order_Expectation.xlsx`.
 - **04-14**: Alan confirmed: **problem solved — it was indeed the sender-side audio layout**.
 
-### 3.2 Channel-mapping confirmation (audio_mutil_channel_mapping.txt + two mapping images)
+### 2.2 Channel-mapping confirmation (audio_mutil_channel_mapping.txt + two mapping images)
 
 Full text of `audio_mutil_channel_mapping.txt`:
 
 ```text
-@Alan This is the mapping that we discussed in Call. Please verify again
+@Alan This is the mapping that we discussed in Call . Please verify again
 [abhi_audio_order_mapping.jpg]
+
 
 Synced up with @Abhi, the audio layout is like below
 [alan_audio_order_mapping.png]
 
+
 Confirmed that it should be correct.
 ```
 
-**abhi_audio_order_mapping.jpg** (provided by Abhi; the mapping discussed on the call — a two-row table):
+**abhi_audio_order_mapping.jpg** (provided by Abhi; the mapping discussed on the call — a
+two-row table):
 
 | CH1_1 | CH2_1 | CH3_1 | CH4_1 | CH5_1 | CH6_1 | CH7_1 | CH8_1 | CH1_2 | CH2_2 | … |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -103,7 +87,7 @@ frame 2 likewise, etc.
 **alan_audio_order_mapping.png**: a vertical index list CH1_1…CH8_1, CH1_2…CH8_2, CH1_3,
 CH2_3… (a channel-frame index listing companion to the table above).
 
-### 3.3 customer_order.xlsx (the customer's current order)
+### 2.3 customer_order.xlsx (the customer's current order)
 
 Parameter block (identical in both xlsx files):
 
@@ -129,9 +113,9 @@ R series):
 T1L1 T1L2 … T1L120 T2L1 … T2L120 T3L1 … T4L120 | T1R1 T1R2 … T1R120 T2R1 … T4R120
 ```
 
-### 3.4 Agora_Order_Expectation.xlsx (Agora's expected order)
+### 2.4 Agora_Order_Expectation.xlsx (Agora's expected order)
 
-Same parameter block as 3.3, followed by the legend (T1L1 = Track 1 Left sample 1, 16 bit;
+Same parameter block as 2.3, followed by the legend (T1L1 = Track 1 Left sample 1, 16 bit;
 an L+R pair is 32 bit) and the "Agora Expected Order" table, whose ORDER row reads, cell by cell:
 
 ```text
@@ -139,27 +123,27 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 ```
 
 > **Archival note (ambiguity)**: read literally, this row presents a planar "all L, then all R"
-> order, which does not match the frame-interleaved mapping confirmed after the call (3.2). The
+> order, which does not match the frame-interleaved mapping confirmed after the call (2.2). The
 > sheet was drawn quickly during the conversation and is illustrative; **the binding agreement is
-> the mapping image in 3.2 plus the 2025-04-14 resolution confirmation**; the sample-interleaved
+> the mapping image in 2.2 plus the 2025-04-14 resolution confirmation**; the sample-interleaved
 > layout documented in `Demo/docs/linux-sdk-multichannel.html` §1.5 is that final agreement.
 
-### 3.5 Two WeCom screenshots
+### 2.5 Two WeCom screenshots
 
 - **Screenshot_ccca…png**: Abhi (the customer's engineer) sent `customer_order.xlsx` ("this is the
   current Order we are sending to Agora (4 tracks where each track has 2 channels L & R)")
   followed by `Agora_Order_Expectation.xlsx` ("can you confirm with the BE engineer that he
-  expects this order from us?"); the in-chat previews match the contents in 3.3/3.4.
+  expects this order from us?"); the in-chat previews match the contents in 2.3/2.4.
 - **Screenshot_31d7…png**: ffprobe output of `VictoriaMulti.mkv` — one video stream (mpeg4,
   1920x1080) plus **four audio streams (all AC-3, 44100 Hz, stereo, 192 kb/s)** with slightly
   different durations (~4:00.571 to 4:00.606). This corroborates the 04-08 observation ("all
   tracks are stereo, but their durations differ slightly").
 
-### 3.6 VictoriaMulti.mkv (133 MB test source video)
+### 2.6 VictoriaMulti.mkv (133 MB test source video)
 
 - Role: the customer's test source file; the server does not read the mkv directly — it is
   decoded and relayed as PCM via shared memory.
-- Metadata (re-verified locally with ffprobe on 2026-10-09, matching the screenshot in 3.5):
+- Metadata (re-verified locally with ffprobe on 2026-10-09, matching the screenshot in 2.5):
 
 | Stream | Type | Parameters |
 | --- | --- | --- |
@@ -174,7 +158,7 @@ T1L1 T1L2 T1L3 T1L4 … T1L120 | T2L1 … T2L120 | T3L1 … T3L120 | T4L1 … T4
 
 ---
 
-## 4. Mapping to current documentation
+## 3. Mapping to current documentation
 
 | Communication-record content | Current location |
 | --- | --- |
