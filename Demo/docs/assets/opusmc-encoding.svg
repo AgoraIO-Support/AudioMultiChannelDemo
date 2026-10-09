@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 320" role="img" aria-labelledby="t">
+  <title id="t">OPUSMC multistream encoding: 8 channels encoded by 4 coupled Opus encoder instances</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6069"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <!-- input -->
+    <rect x="24" y="108" width="170" height="104" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="109" y="134" font-size="12.5" font-weight="600" fill="#1f2329" text-anchor="middle">8-channel PCM</text>
+    <text x="109" y="154" font-size="10.5" fill="#5a6069" text-anchor="middle">48 kHz · 16-bit</text>
+    <text x="109" y="170" font-size="10.5" fill="#5a6069" text-anchor="middle">sample-interleaved</text>
+    <text x="109" y="186" font-size="10.5" fill="#5a6069" text-anchor="middle">10 ms frames</text>
+
+    <!-- channel pair arrows -->
+    <line x1="194" y1="132" x2="284" y2="50" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <text x="234" y="86" font-size="10" fill="#5a6069" text-anchor="middle">ch 0 + 1</text>
+    <line x1="194" y1="148" x2="284" y2="118" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <text x="234" y="128" font-size="10" fill="#5a6069" text-anchor="middle">ch 2 + 3</text>
+    <line x1="194" y1="164" x2="284" y2="186" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <text x="234" y="170" font-size="10" fill="#5a6069" text-anchor="middle">ch 4 + 5</text>
+    <line x1="194" y1="180" x2="284" y2="254" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <text x="234" y="212" font-size="10" fill="#5a6069" text-anchor="middle">ch 6 + 7</text>
+
+    <!-- encoders -->
+    <rect x="286" y="24" width="140" height="48" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="356" y="44" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">Opus encoder</text>
+    <text x="356" y="60" font-size="10" fill="#5a6069" text-anchor="middle">#1 · coupled</text>
+    <rect x="286" y="92" width="140" height="48" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="356" y="112" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">Opus encoder</text>
+    <text x="356" y="128" font-size="10" fill="#5a6069" text-anchor="middle">#2 · coupled</text>
+    <rect x="286" y="160" width="140" height="48" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="356" y="180" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">Opus encoder</text>
+    <text x="356" y="196" font-size="10" fill="#5a6069" text-anchor="middle">#3 · coupled</text>
+    <rect x="286" y="228" width="140" height="48" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="356" y="248" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">Opus encoder</text>
+    <text x="356" y="264" font-size="10" fill="#5a6069" text-anchor="middle">#4 · coupled</text>
+
+    <!-- stream arrows -->
+    <line x1="426" y1="48" x2="604" y2="142" stroke="#165dff" stroke-width="1.3" marker-end="url(#arr)"/>
+    <text x="512" y="92" font-size="10" font-weight="700" fill="#165dff" text-anchor="middle">S0</text>
+    <line x1="426" y1="116" x2="604" y2="170" stroke="#165dff" stroke-width="1.3" marker-end="url(#arr)"/>
+    <text x="512" y="140" font-size="10" font-weight="700" fill="#165dff" text-anchor="middle">S1</text>
+    <line x1="426" y1="184" x2="604" y2="198" stroke="#165dff" stroke-width="1.3" marker-end="url(#arr)"/>
+    <text x="512" y="188" font-size="10" font-weight="700" fill="#165dff" text-anchor="middle">S2</text>
+    <line x1="426" y1="252" x2="604" y2="226" stroke="#165dff" stroke-width="1.3" marker-end="url(#arr)"/>
+    <text x="512" y="236" font-size="10" font-weight="700" fill="#165dff" text-anchor="middle">S3</text>
+
+    <!-- one RTC stream box -->
+    <rect x="604" y="84" width="252" height="156" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="730" y="112" font-size="13" font-weight="600" fill="#1f2329" text-anchor="middle">One RTC audio stream</text>
+    <rect x="650" y="126" width="160" height="22" rx="11" fill="#165dff"/>
+    <text x="730" y="141" font-size="11" fill="#ffffff" text-anchor="middle">OPUSMC · PT 125</text>
+    <text x="624" y="174" font-size="11" fill="#1f2329">coupled_streams = 4</text>
+    <text x="624" y="194" font-size="11" fill="#1f2329">num_streams = 4</text>
+    <text x="624" y="216" font-size="11" fill="#1f2329">channel_mapping = 0,1,2,3,4,5,6,7</text>
+
+    <!-- odd-channel note -->
+    <text x="440" y="300" font-size="11" fill="#5a6069" text-anchor="middle">Odd channel count: the leftover channel forms its own mono stream —</text>
+    <text x="440" y="316" font-size="11" fill="#5a6069" text-anchor="middle">e.g. 5 ch = 2 coupled + 1 mono (PT 124, num_streams = 3).</text>
+  </g>
+</svg>

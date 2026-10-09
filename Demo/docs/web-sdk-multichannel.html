@@ -7,8 +7,8 @@
     data-title-zh="Web SDK 音频多声道（multiopus）文档"
     data-title-en="Web SDK Audio Multi-Channel (multiopus) Docs"
   >Web SDK 音频多声道（multiopus）文档</title>
-  <link rel="stylesheet" href="assets/style.css?v=444c987">
-  <meta name="build-id" content="444c987">
+  <link rel="stylesheet" href="assets/style.css?v=3c1da0d">
+  <meta name="build-id" content="3c1da0d">
   </head>
 <body>
   <header class="site-header">
@@ -56,8 +56,15 @@
         <code>AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)</code>。
         <strong>必须在 <code>AgoraRTC.createClient()</code> 之前设置</strong>，创建 client 后再设置不生效。
         未开启时订阅端按普通单/双声道处理，无法解出多声道。开启后订阅/发布走 ORTC multiopus 协商
-        （payload type 123、clockRate 48000、fmtp 含 channel_mapping / coupled_streams / num_streams）。
+        （payload type 123/124/125，按声道数区分，见本文第三章与首页映射表；clockRate 48000、fmtp 含 channel_mapping / coupled_streams / num_streams）。
       </p>
+
+      <figure class="doc-figure">
+        <img src="assets/web-subscribe-flow.svg" alt="Web SDK multi-channel subscribe chain: ENABLE_MULTIOPUS_CODEC must be set before createClient">
+        <figcaption>
+          <span data-lang="zh">图：Web 订阅链路 —— ENABLE_MULTIOPUS_CODEC 必须在 createClient 之前设置，否则多声道协商不生效。</span><span data-lang="en">Web subscribe chain: ENABLE_MULTIOPUS_CODEC must be set before createClient(); otherwise multi-channel negotiation never happens.</span>
+        </figcaption>
+      </figure>
 
       <h3>1.2 多声道发布</h3>
       <p>
@@ -97,7 +104,7 @@
           </tr>
           <tr>
             <td><code>stereo</code></td>
-            <td>所选声道中的 <strong>0,2,4,6… 声道混入左</strong>、<strong>1,3,5,7… 声道混入右</strong>，输出立体声。例如选 <code>0,1,2,3</code> 时 0、2 在左，1、3 在右</td>
+            <td>按<strong>声道序号（0 起）的奇偶</strong>混音，与在所选列表中的位置无关：序号 <strong>0,2,4,6… 入左</strong>、<strong>1,3,5,7… 入右</strong>，输出立体声。例如选 <code>0,1,2,3</code> 时 0、2 在左，1、3 在右；选 <code>1,2</code> 时则 2 在左、1 在右</td>
           </tr>
           <tr>
             <td><code>mono</code></td>
@@ -109,6 +116,13 @@
         声道选择基于 Insertable Streams（MediaStreamTrackProcessor / Generator）实现，
         绕开 Chrome WebAudio 缺陷（chromium issue 1116042），可播放 8 个声道的任意组合。
       </p>
+
+      <figure class="doc-figure">
+        <img src="assets/selectchannels-modes.svg" alt="The three selectChannels modes: surround, stereo (even to left, odd to right), and mono">
+        <figcaption>
+          <span data-lang="zh">图：selectChannels 三种模式的混音方式 —— surround 按协商协议输出；stereo 偶数声道→左、奇数声道→右；mono 全部混为单声道。</span><span data-lang="en">How the three selectChannels modes mix channels — surround: negotiated-protocol output; stereo: even indexes → left, odd indexes → right; mono: everything mixed together.</span>
+        </figcaption>
+      </figure>
 
       <h3>1.5 getVolumeLevels 逐声道音量</h3>
       <p>
@@ -211,7 +225,7 @@ await client.publish(track);</code></pre>
       </table>
       <p>
         getStats 读取底层 codec 需 hook <code>RTCPeerConnection.getStats()</code>（demo 层手段，
-        非 SDK 公开 API），可按 800 ms 轮询、最多 6 次以容忍协商延迟。
+        非 SDK 公开 API），本仓库 demo 按 800 ms 间隔持续轮询，既容忍协商延迟，也可观测订阅期间的回退。
       </p>
 
       <h3>2.4 Demo 与在线验证</h3>
@@ -233,6 +247,13 @@ await client.publish(track);</code></pre>
           T1L,T1R,…,T4R 布局映射。
         </li>
       </ul>
+
+      <figure class="doc-figure">
+        <img src="assets/live-demo-8ch-volume-ui.png" alt="Live demo screenshot: 8 per-channel volume bars for a Linux-published stream in Chrome">
+        <figcaption>
+          <span data-lang="zh">图：在线 Demo 实测 —— Linux 发布的 8 声道流在 Chrome 订阅端呈现 8 路音量条（codec 判定为 multiopus）。</span><span data-lang="en">Live demo: the 8-channel stream published from Linux renders 8 per-channel volume bars in Chrome (codec detected as multiopus).</span>
+        </figcaption>
+      </figure>
 
       <h2>三、ORTC 协商与技术细节</h2>
       <p>
@@ -300,9 +321,16 @@ await client.publish(track);</code></pre>
         It <strong>must be set before <code>AgoraRTC.createClient()</code></strong>; setting it after the
         client is created has no effect. Without the switch, a subscriber treats the stream as plain
         mono/stereo and cannot decode the multiple channels. With the switch on, subscribe and publish
-        negotiate multiopus over ORTC (payload type 123, clockRate 48000, fmtp with
+        negotiate multiopus over ORTC (payload types 123/124/125 by channel count — see Chapter 3 below and the mapping table on the home page; clockRate 48000, fmtp with
         channel_mapping / coupled_streams / num_streams).
       </p>
+
+      <figure class="doc-figure">
+        <img src="assets/web-subscribe-flow.svg" alt="Web SDK multi-channel subscribe chain: ENABLE_MULTIOPUS_CODEC must be set before createClient">
+        <figcaption>
+          <span data-lang="zh">图：Web 订阅链路 —— ENABLE_MULTIOPUS_CODEC 必须在 createClient 之前设置，否则多声道协商不生效。</span><span data-lang="en">Web subscribe chain: ENABLE_MULTIOPUS_CODEC must be set before createClient(); otherwise multi-channel negotiation never happens.</span>
+        </figcaption>
+      </figure>
 
       <h3>1.2 Multi-channel publishing</h3>
       <p>
@@ -346,7 +374,7 @@ await client.publish(track);</code></pre>
           </tr>
           <tr>
             <td><code>stereo</code></td>
-            <td>Mixes the selected <strong>channels 0,2,4,6… into the left</strong> and <strong>1,3,5,7… into the right</strong>, producing stereo. For example, with <code>0,1,2,3</code> selected, channels 0 and 2 go left and 1 and 3 go right</td>
+            <td>Mixes by the <strong>parity of the channel index (0-based)</strong>, independent of position in the selected list: indexes <strong>0,2,4,6… go left</strong> and <strong>1,3,5,7… go right</strong>, producing stereo. For example, with <code>0,1,2,3</code> selected, channels 0 and 2 go left and 1 and 3 go right; with <code>1,2</code> selected, channel 2 goes left and 1 goes right</td>
           </tr>
           <tr>
             <td><code>mono</code></td>
@@ -359,6 +387,13 @@ await client.publish(track);</code></pre>
         Generator) to work around a Chrome WebAudio defect (chromium issue 1116042), making it
         possible to play any combination of the 8 channels.
       </p>
+
+      <figure class="doc-figure">
+        <img src="assets/selectchannels-modes.svg" alt="The three selectChannels modes: surround, stereo (even to left, odd to right), and mono">
+        <figcaption>
+          <span data-lang="zh">图：selectChannels 三种模式的混音方式 —— surround 按协商协议输出；stereo 偶数声道→左、奇数声道→右；mono 全部混为单声道。</span><span data-lang="en">How the three selectChannels modes mix channels — surround: negotiated-protocol output; stereo: even indexes → left, odd indexes → right; mono: everything mixed together.</span>
+        </figcaption>
+      </figure>
 
       <h3>1.5 Per-channel volume with getVolumeLevels</h3>
       <p>
@@ -388,7 +423,7 @@ await client.publish(track);</code></pre>
       </ul>
 
       <!-- ================= Integration guide ================= -->
-      <h2 id="integration">2. Integration Guide</h2>
+      <h2>2. Integration Guide</h2>
 
       <h3>2.1 Subscribe chain (typical scenario)</h3>
       <pre><code>// 1. Enable multiopus (must be before createClient)
@@ -462,8 +497,7 @@ await client.publish(track);</code></pre>
       </table>
       <p>
         Reading the underlying codec requires hooking <code>RTCPeerConnection.getStats()</code>
-        (a demo-level technique, not a public SDK API); poll every 800 ms, up to 6 times, to tolerate
-        negotiation delay.
+        (a demo-level technique, not a public SDK API). This repo's demo polls every 800 ms continuously — tolerating negotiation delay and catching any fallback during subscription.
       </p>
 
       <h3>2.4 Demos and online verification</h3>
@@ -487,6 +521,13 @@ await client.publish(track);</code></pre>
           T1L,T1R,…,T4R layout mapping.
         </li>
       </ul>
+
+      <figure class="doc-figure">
+        <img src="assets/live-demo-8ch-volume-ui.png" alt="Live demo screenshot: 8 per-channel volume bars for a Linux-published stream in Chrome">
+        <figcaption>
+          <span data-lang="zh">图：在线 Demo 实测 —— Linux 发布的 8 声道流在 Chrome 订阅端呈现 8 路音量条（codec 判定为 multiopus）。</span><span data-lang="en">Live demo: the 8-channel stream published from Linux renders 8 per-channel volume bars in Chrome (codec detected as multiopus).</span>
+        </figcaption>
+      </figure>
 
       <h2>3. ORTC Negotiation and Technical Details</h2>
       <p>
@@ -530,6 +571,6 @@ await client.publish(track);</code></pre>
     </div>
   </footer>
 
-  <script src="assets/i18n.js?v=444c987"></script>
+  <script src="assets/i18n.js?v=3c1da0d"></script>
 </body>
 </html>

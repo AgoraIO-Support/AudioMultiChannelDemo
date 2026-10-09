@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 430" role="img" aria-labelledby="t">
+  <title id="t">Reordering 4 stereo tracks in block order into the sample-interleaved 8-channel layout</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#165dff"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <!-- left panel: source layout -->
+    <rect x="24" y="40" width="344" height="306" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="40" y="68" font-size="12" font-weight="600" fill="#1f2329">Source — 4 × stereo tracks (block order)</text>
+
+    <rect x="40" y="88" width="84" height="48" rx="6" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="82" y="109" font-size="11" font-weight="600" fill="#1f2329" text-anchor="middle">Track 1</text>
+    <text x="82" y="125" font-size="9.5" fill="#5a6069" text-anchor="middle">stereo pair</text>
+    <rect x="132" y="88" width="220" height="48" rx="6" fill="#f6f7f9" stroke="#d6dae0"/>
+    <text x="242" y="117" font-size="10.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">L R · L R · L R · L R …</text>
+    <text x="344" y="102" font-size="9" fill="#5a6069" text-anchor="end">× N samples</text>
+
+    <rect x="40" y="148" width="84" height="48" rx="6" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="82" y="169" font-size="11" font-weight="600" fill="#1f2329" text-anchor="middle">Track 2</text>
+    <text x="82" y="185" font-size="9.5" fill="#5a6069" text-anchor="middle">stereo pair</text>
+    <rect x="132" y="148" width="220" height="48" rx="6" fill="#f6f7f9" stroke="#d6dae0"/>
+    <text x="242" y="177" font-size="10.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">L R · L R · L R · L R …</text>
+    <text x="344" y="162" font-size="9" fill="#5a6069" text-anchor="end">× N samples</text>
+
+    <rect x="40" y="208" width="84" height="48" rx="6" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="82" y="229" font-size="11" font-weight="600" fill="#1f2329" text-anchor="middle">Track 3</text>
+    <text x="82" y="245" font-size="9.5" fill="#5a6069" text-anchor="middle">stereo pair</text>
+    <rect x="132" y="208" width="220" height="48" rx="6" fill="#f6f7f9" stroke="#d6dae0"/>
+    <text x="242" y="237" font-size="10.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">L R · L R · L R · L R …</text>
+    <text x="344" y="222" font-size="9" fill="#5a6069" text-anchor="end">× N samples</text>
+
+    <rect x="40" y="268" width="84" height="48" rx="6" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="82" y="289" font-size="11" font-weight="600" fill="#1f2329" text-anchor="middle">Track 4</text>
+    <text x="82" y="305" font-size="9.5" fill="#5a6069" text-anchor="middle">stereo pair</text>
+    <rect x="132" y="268" width="220" height="48" rx="6" fill="#f6f7f9" stroke="#d6dae0"/>
+    <text x="242" y="297" font-size="10.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">L R · L R · L R · L R …</text>
+    <text x="344" y="282" font-size="9" fill="#5a6069" text-anchor="end">× N samples</text>
+
+    <text x="40" y="334" font-size="10" fill="#5a6069">each block = one stereo pair, N consecutive samples</text>
+
+    <!-- reorder arrow -->
+    <line x1="368" y1="193" x2="486" y2="193" stroke="#165dff" stroke-width="2" marker-end="url(#arr)"/>
+    <text x="427" y="172" font-size="11.5" font-weight="600" fill="#165dff" text-anchor="middle">reorder</text>
+    <text x="427" y="216" font-size="9.5" fill="#5a6069" text-anchor="middle">app side, per sample</text>
+
+    <!-- right panel: interleaved layout -->
+    <rect x="494" y="40" width="362" height="306" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="510" y="68" font-size="12" font-weight="600" fill="#1f2329">SDK input — sample-interleaved 8 channels</text>
+
+    <g font-size="9.5" font-weight="700" fill="#165dff" text-anchor="middle">
+      <rect x="510" y="86" width="36" height="22" rx="5" fill="#eaf1ff" stroke="#165dff"/><text x="528" y="101">ch0</text>
+      <rect x="550" y="86" width="36" height="22" rx="5" fill="#eaf1ff" stroke="#165dff"/><text x="568" y="101">ch1</text>
+      <rect x="590" y="86" width="36" height="22" rx="5" fill="#eaf1ff" stroke="#165dff"/><text x="608" y="101">ch2</text>
+      <rect x="630" y="86" width="36" height="22" rx="5" fill="#eaf1ff" stroke="#165dff"/><text x="648" y="101">ch3</text>
+      <rect x="670" y="86" width="36" height="22" rx="5" fill="#eaf1ff" stroke="#165dff"/><text x="688" y="101">ch4</text>
+      <rect x="710" y="86" width="36" height="22" rx="5" fill="#eaf1ff" stroke="#165dff"/><text x="728" y="101">ch5</text>
+      <rect x="750" y="86" width="36" height="22" rx="5" fill="#eaf1ff" stroke="#165dff"/><text x="768" y="101">ch6</text>
+      <rect x="790" y="86" width="36" height="22" rx="5" fill="#eaf1ff" stroke="#165dff"/><text x="808" y="101">ch7</text>
+    </g>
+
+    <rect x="510" y="114" width="340" height="150" rx="6" fill="#f6f7f9" stroke="#d6dae0"/>
+    <g font-size="9.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">
+      <rect x="514" y="122" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="532" y="143">T1L</text>
+      <rect x="554" y="122" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="572" y="143">T1R</text>
+      <rect x="594" y="122" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="612" y="143">T2L</text>
+      <rect x="634" y="122" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="652" y="143">T2R</text>
+      <rect x="674" y="122" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="692" y="143">T3L</text>
+      <rect x="714" y="122" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="732" y="143">T3R</text>
+      <rect x="754" y="122" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="772" y="143">T4L</text>
+      <rect x="794" y="122" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="812" y="143">T4R</text>
+
+      <rect x="514" y="162" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="532" y="183">T1L</text>
+      <rect x="554" y="162" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="572" y="183">T1R</text>
+      <rect x="594" y="162" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="612" y="183">T2L</text>
+      <rect x="634" y="162" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="652" y="183">T2R</text>
+      <rect x="674" y="162" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="692" y="183">T3L</text>
+      <rect x="714" y="162" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="732" y="183">T3R</text>
+      <rect x="754" y="162" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="772" y="183">T4L</text>
+      <rect x="794" y="162" width="36" height="34" rx="4" fill="#ffffff" stroke="#d6dae0"/><text x="812" y="183">T4R</text>
+    </g>
+    <text x="680" y="220" font-size="15" fill="#5a6069" text-anchor="middle">⋮</text>
+    <text x="680" y="240" font-size="9.5" fill="#5a6069" text-anchor="middle">repeats for every sample k</text>
+
+    <text x="510" y="282" font-size="10" fill="#5a6069">one 10 ms frame = 480 samples × 8 ch × 16-bit = 7,680 bytes</text>
+    <text x="510" y="300" font-size="10" fill="#5a6069">a 20 ms source write (15,360 B) must be split into 10 ms frames</text>
+
+    <!-- bottom band -->
+    <rect x="24" y="362" width="832" height="52" rx="8" fill="#eaf1ff"/>
+    <rect x="24" y="362" width="4" height="52" rx="2" fill="#165dff"/>
+    <text x="444" y="382" font-size="11" fill="#1f2329" text-anchor="middle">CH1=T1L · CH2=T1R · CH3=T2L · CH4=T2R · CH5=T3L · CH6=T3R · CH7=T4L · CH8=T4R — 4 stereo pairs, not 7.1 surround</text>
+    <text x="444" y="400" font-size="11" fill="#1f2329" text-anchor="middle">44.1 kHz sources → resample to 48 kHz first · resample and reorder in either order, both before sendAudioPcmData</text>
+  </g>
+</svg>

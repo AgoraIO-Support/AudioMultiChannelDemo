@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 280" role="img" aria-labelledby="t">
+  <title id="t">Web SDK multi-channel subscribe chain</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6069"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <!-- timing warning tag -->
+    <rect x="40" y="36" width="158" height="20" rx="10" fill="#fff7e6" stroke="#ffd591"/>
+    <text x="119" y="50" font-size="10" fill="#ad6800" text-anchor="middle">must precede createClient()</text>
+
+    <!-- step 1 -->
+    <rect x="24" y="64" width="190" height="104" rx="8" fill="#ffffff" stroke="#165dff" stroke-width="1.5"/>
+    <text x="119" y="90" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">AgoraRTC.setParameter(</text>
+    <text x="119" y="108" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">"ENABLE_MULTIOPUS_CODEC",</text>
+    <text x="119" y="126" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">true)</text>
+    <text x="119" y="150" font-size="10" fill="#5a6069" text-anchor="middle">global switch, set once</text>
+    <line x1="214" y1="116" x2="236" y2="116" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- step 2 -->
+    <rect x="238" y="64" width="150" height="104" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="313" y="90" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">createClient(</text>
+    <text x="313" y="108" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">{ mode: "rtc" })</text>
+    <text x="313" y="150" font-size="10" fill="#5a6069" text-anchor="middle">ORTC multiopus negotiation</text>
+    <line x1="388" y1="116" x2="410" y2="116" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- step 3 -->
+    <rect x="412" y="64" width="140" height="104" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="482" y="90" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">client.join(</text>
+    <text x="482" y="108" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">appId, channel,</text>
+    <text x="482" y="126" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">token, uid)</text>
+    <text x="482" y="150" font-size="10" fill="#5a6069" text-anchor="middle">join the channel</text>
+    <line x1="552" y1="116" x2="574" y2="116" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- step 4 -->
+    <rect x="576" y="64" width="150" height="104" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="651" y="90" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">client.subscribe(</text>
+    <text x="651" y="108" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">user, "audio")</text>
+    <text x="651" y="126" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">track.play()</text>
+    <text x="651" y="150" font-size="10" fill="#5a6069" text-anchor="middle">decodes automatically</text>
+    <line x1="726" y1="116" x2="748" y2="116" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- step 5 -->
+    <rect x="750" y="64" width="106" height="104" rx="8" fill="#165dff"/>
+    <text x="803" y="92" font-size="11" font-weight="600" fill="#ffffff" text-anchor="middle">multiopus</text>
+    <text x="803" y="112" font-size="11.5" font-weight="700" fill="#ffffff" text-anchor="middle">4 / 6 / 8 ch</text>
+    <text x="803" y="132" font-size="9.5" fill="#cfe0ff" text-anchor="middle">PT 123/124/125</text>
+    <text x="803" y="148" font-size="9.5" fill="#cfe0ff" text-anchor="middle">48 kHz only</text>
+
+    <!-- outcomes -->
+    <polyline points="803,168 803,180 640,180 640,194" fill="none" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="803" y1="180" x2="803" y2="194" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="556" y="198" width="168" height="56" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="640" y="222" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">getVolumeLevels()</text>
+    <text x="640" y="240" font-size="10" fill="#5a6069" text-anchor="middle">array length = channel count</text>
+    <rect x="740" y="198" width="116" height="56" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="798" y="218" font-size="9.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">selectChannels(</text>
+    <text x="798" y="232" font-size="9.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">[...], mode)</text>
+    <text x="798" y="248" font-size="9" fill="#5a6069" text-anchor="middle">surround / stereo / mono</text>
+  </g>
+</svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" role="img" aria-labelledby="t">
+  <title id="t">End-to-end multi-channel audio architecture</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6069"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <!-- Sender card -->
+    <rect x="20" y="56" width="250" height="252" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="36" y="82" font-size="11" font-weight="700" fill="#165dff" letter-spacing="1">SENDER</text>
+    <text x="36" y="100" font-size="14" font-weight="600" fill="#1f2329">Linux Server</text>
+    <text x="36" y="116" font-size="10.5" fill="#5a6069">x86_64 / aarch64 · C++</text>
+    <rect x="40" y="128" width="210" height="50" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="145" y="148" font-size="12" font-weight="600" fill="#1f2329" text-anchor="middle">Multi-channel material</text>
+    <text x="145" y="166" font-size="10.5" fill="#5a6069" text-anchor="middle">PCM · WAV · pre-encoded Opus</text>
+    <line x1="145" y1="180" x2="145" y2="194" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="40" y="196" width="210" height="50" rx="8" fill="#165dff"/>
+    <text x="145" y="216" font-size="12" font-weight="600" fill="#ffffff" text-anchor="middle">OPUSMC encode</text>
+    <text x="145" y="234" font-size="10.5" fill="#cfe0ff" text-anchor="middle">multistream Opus · 48 kHz only</text>
+    <rect x="40" y="258" width="56" height="22" rx="11" fill="#f3f4f6" stroke="#e2e5ea"/>
+    <text x="68" y="273" font-size="10.5" fill="#1f2329" text-anchor="middle">3–8 ch</text>
+    <rect x="102" y="258" width="94" height="22" rx="11" fill="#f3f4f6" stroke="#e2e5ea"/>
+    <text x="149" y="273" font-size="10.5" fill="#1f2329" text-anchor="middle">PT 123/124/125</text>
+    <rect x="202" y="258" width="48" height="22" rx="11" fill="#f3f4f6" stroke="#e2e5ea"/>
+    <text x="226" y="273" font-size="10.5" fill="#1f2329" text-anchor="middle">48 kHz</text>
+
+    <!-- SD-RTN cloud -->
+    <line x1="270" y1="182" x2="300" y2="182" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <ellipse cx="375" cy="182" rx="64" ry="42" fill="#eaf1ff" stroke="#165dff" stroke-width="1.2"/>
+    <text x="375" y="179" font-size="13" font-weight="700" fill="#165dff" text-anchor="middle">SD-RTN</text>
+    <text x="375" y="196" font-size="10" fill="#5a6069" text-anchor="middle">one RTC audio stream</text>
+    <line x1="439" y1="182" x2="481" y2="182" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- Web receiver card -->
+    <rect x="490" y="36" width="370" height="180" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="506" y="60" font-size="11" font-weight="700" fill="#165dff" letter-spacing="1">RECEIVER</text>
+    <text x="506" y="78" font-size="14" font-weight="600" fill="#1f2329">Web — Chrome 96+</text>
+    <rect x="506" y="92" width="106" height="64" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="559" y="114" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">Decode</text>
+    <text x="559" y="130" font-size="10" fill="#5a6069" text-anchor="middle">even counts only</text>
+    <text x="559" y="145" font-size="10" fill="#5a6069" text-anchor="middle">4 / 6 / 8 ch</text>
+    <line x1="612" y1="124" x2="626" y2="124" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="628" y="92" width="106" height="64" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="681" y="114" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">Channel select</text>
+    <text x="681" y="130" font-size="10" fill="#5a6069" text-anchor="middle">selectChannels()</text>
+    <text x="681" y="145" font-size="10" fill="#5a6069" text-anchor="middle">surround / stereo / mono</text>
+    <line x1="734" y1="124" x2="748" y2="124" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="750" y="92" width="94" height="64" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="797" y="114" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">Monitoring</text>
+    <text x="797" y="130" font-size="10" fill="#5a6069" text-anchor="middle">getVolumeLevels()</text>
+    <text x="797" y="145" font-size="10" fill="#5a6069" text-anchor="middle">per-channel bars</text>
+    <text x="506" y="186" font-size="10.5" fill="#5a6069">Subscribe then play() — decoding is automatic once the switch is on.</text>
+    <text x="506" y="204" font-size="10.5" fill="#5a6069">Verdict: codec shows multiopus, volume array length = channel count.</text>
+
+    <!-- Linux / Native receiver card -->
+    <rect x="490" y="228" width="370" height="124" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="506" y="252" font-size="11" font-weight="700" fill="#165dff" letter-spacing="1">RECEIVER</text>
+    <text x="506" y="270" font-size="14" font-weight="600" fill="#1f2329">Linux / Native SDK</text>
+    <text x="506" y="294" font-size="11" fill="#1f2329">•  Per-user decoded PCM callback (N ch, matches sender)</text>
+    <text x="506" y="314" font-size="11" fill="#1f2329">•  Encoded frame callback — forward / custom decode</text>
+    <text x="506" y="334" font-size="11" fill="#1f2329">•  Mixed output — always 2 ch (odd → L, even → R)</text>
+
+    <!-- Warning strip -->
+    <rect x="20" y="370" width="840" height="42" rx="8" fill="#fff7e6" stroke="#ffd591"/>
+    <text x="440" y="386" font-size="11" fill="#ad6800" text-anchor="middle">Unsupported endpoint (Safari / Firefox / Chrome &lt; 96): behavior is undefined —</text>
+    <text x="440" y="402" font-size="11" fill="#ad6800" text-anchor="middle">a Linux sender falls back to plain Opus; a Web sender keeps multiopus and that endpoint hears silence.</text>
+  </g>
+</svg>
