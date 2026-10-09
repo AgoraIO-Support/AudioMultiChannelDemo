@@ -10,7 +10,7 @@
 
 ## 1. 背景与结论速览
 
-- **客户**：某广电客户；Agora 侧：Alan Zeng（CSE）、lqk（SDK 研发）。
+- **客户**：某广电客户；Agora 侧：Alan（CSE）、lqk（SDK 研发）。
 - **场景**：客户 Linux 服务器把"4 条立体声轨承载 8 声道"的广播素材经 Agora RTC 发送（multiopus/OPUSMC），
   Web 端订阅验证。
 - **问题**：Web 端订阅听到杂音/内容错乱。
@@ -71,7 +71,7 @@ CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R。
 `audio_mutil_channel_mapping.txt` 全文：
 
 ```text
-@Alan Zeng This is the mapping that we discussed in Call. Please verify again
+@Alan This is the mapping that we discussed in Call. Please verify again
 [abhi_audio_order_mapping.jpg]
 
 Synced up with @Abhi, the audio layout is like below
@@ -249,10 +249,10 @@ Alan 2025-4-8 14:11
 [VictoriaMulti.mkv]
 
 Alan 2025-4-8 14:12
-"Alan(Alan Zeng)： [VictoriaMulti.mkv]" ------ @lqk  这个是测试源文件audio file.
+"Alan： [VictoriaMulti.mkv]" ------ @lqk  这个是测试源文件audio file.
 
 lqk 2025-4-8 14:16
-"Alan(Alan Zeng)： [VictoriaMulti.mkv]" ------ @Alan(Alan Zeng)  他这个不是直接读取的吧，转成pcm再读取的吧
+"Alan： [VictoriaMulti.mkv]" ------ @Alan  他这个不是直接读取的吧，转成pcm再读取的吧
 
 Alan 2025-4-8 14:18
 应该有中转，听客户研发说，是shared memory.
@@ -267,7 +267,7 @@ Alan 2025-4-8 14:19
 "lqk： 都是双声道的，但是duration是有区别的，不过这个可能影响不大，重点排查交织存储的问题吧 交织存储的LRLRLRLRLRLRLRLR ，但是他读取的时候按照LLLLLLLL RRRRRRRR的 [图片]" ------ @lqk  估计是你说的原因。
 
 lqk 2025-4-8 14:19
-"Alan(Alan Zeng)： 应该有中转，听客户研发说，是shared memory." ------ @Alan(Alan Zeng)  我意思是你发的不是他在server读取的内容，他在server上应该不会直接读取.mkv
+"Alan： 应该有中转，听客户研发说，是shared memory." ------ @Alan  我意思是你发的不是他在server读取的内容，他在server上应该不会直接读取.mkv
 
 Alan 2025-4-8 14:19
 等客户研发这边重新验证一下。

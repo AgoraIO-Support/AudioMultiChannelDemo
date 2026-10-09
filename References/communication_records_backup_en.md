@@ -13,7 +13,7 @@
 
 ## 1. Background and conclusion at a glance
 
-- **Customer**: a broadcast customer; Agora side: Alan Zeng (CSE), lqk (SDK R&D).
+- **Customer**: a broadcast customer; Agora side: Alan (CSE), lqk (SDK R&D).
 - **Scenario**: the customer's Linux server sends broadcast material carried as "4 stereo tracks
   holding 8 channels" over Agora RTC (multiopus/OPUSMC); a Web client subscribes for verification.
 - **Symptom**: the Web subscriber heard garbled audio / scrambled content.
@@ -81,7 +81,7 @@ of key points:
 Full text of `audio_mutil_channel_mapping.txt`:
 
 ```text
-@Alan Zeng This is the mapping that we discussed in Call. Please verify again
+@Alan This is the mapping that we discussed in Call. Please verify again
 [abhi_audio_order_mapping.jpg]
 
 Synced up with @Abhi, the audio layout is like below

@@ -76,10 +76,10 @@ Alan 2025-4-8 14:11
 [VictoriaMulti.mkv]
 
 Alan 2025-4-8 14:12
-“Alan(Alan Zeng)： [VictoriaMulti.mkv]” ------ @lqk  这个是测试源文件audio file.
+“Alan： [VictoriaMulti.mkv]” ------ @lqk  这个是测试源文件audio file.
 
 lqk 2025-4-8 14:16
-“Alan(Alan Zeng)： [VictoriaMulti.mkv]” ------ @Alan(Alan Zeng)  他这个不是直接读取的吧，转成pcm再读取的吧
+“Alan： [VictoriaMulti.mkv]” ------ @Alan  他这个不是直接读取的吧，转成pcm再读取的吧
 
 Alan 2025-4-8 14:18
 应该有中转，听印度研发说，是shared memory.
@@ -94,7 +94,7 @@ Alan 2025-4-8 14:19
 “lqk： 都是双声道的，但是duration是有区别的，不过这个可能影响不大，重点排查交织存储的问题吧 交织存储的LRLRLRLRLRLRLRLR ，但是他读取的时候按照LLLLLLLL RRRRRRRR的 [图片]” ------ @lqk  估计是你说的原因。
 
 lqk 2025-4-8 14:19
-“Alan(Alan Zeng)： 应该有中转，听印度研发说，是shared memory.” ------ @Alan(Alan Zeng)  我意思是你发的不是他在server读取的内容，他在server上应该不会直接读取.mkv
+“Alan： 应该有中转，听印度研发说，是shared memory.” ------ @Alan  我意思是你发的不是他在server读取的内容，他在server上应该不会直接读取.mkv
 
 Alan 2025-4-8 14:19
 等客户研发这边重新验证一下。
