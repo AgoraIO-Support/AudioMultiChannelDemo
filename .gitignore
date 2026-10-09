@@ -5,6 +5,7 @@ xcuserdata/
 *.pem
 Resource/aws_test_server.txt
 *.mkv
+!Demo/linux/public/VictoriaMulti.mkv
 Demo/linux/build/
 Demo/linux/out/
 Demo/macOS/Pods/
