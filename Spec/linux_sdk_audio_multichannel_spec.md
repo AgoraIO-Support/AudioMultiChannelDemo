@@ -135,7 +135,7 @@
 | `IAudioFrameObserverBase::onPlaybackAudioFrameBeforeMixing` + `ILocalUser::setPlaybackAudioFrameBeforeMixingParameters` | `References/LinuxSampleCodes/0715_v4.2.32/example/yuv_pcm/sample_receive_yuv_pcm.cpp:106,280` | 按远端用户回调解码后 PCM（16bit 交错） | 回调声道数/采样率可设置，需与发送端声道数一致以拿到完整多声道 | 可复用 |
 | `RtcConnectionConfiguration::audioRecvEncodedFrame` + `IAudioEncodedFrameReceiver::onEncodedAudioFrameReceived` | `References/LinuxSampleCodes/v4.4.30.130_verified0805/agora_rtc_sdk/example/encoded_audio/sample_receive_encoded_audio.cpp:139,43` | 订阅端直接接收编码音频帧 | 需同时 `enableAudioRecordingOrPlayout=false`；不解码不播放 | 可复用 |
 | 混音音频回调（`onMixedAudioFrame` 路径） | `References/LinuxSampleCodes/0715_v4.2.32/example/mixed_audio/sample_receive_mixed_audio.cpp` | 获取频道混音后音频 | 多声道混音输出恒为 2 声道 | 可复用 |
-| Web 端 `ENABLE_MULTIOPUS_CODEC` / `selectChannels` / `getVolumeLevels` | `References/AlexGongs/quick-demo-multiopus/src/Multiopus.vue`；Web 多声道设计文档（ExT-1485178492） | Web 端多声道解码、声道选择播放、逐声道音量 | 需 Chrome 96+；仅偶数声道解码 | 可复用（验证链路） |
+| Web 端 `ENABLE_MULTIOPUS_CODEC` / `selectChannels` / `getVolumeLevels` | `References/AlexGongs/quick-demo-multiopus/src/Multiopus.vue`（该参考 demo 已于 2026-10 移除，继承者为 `Demo/web/`）；Web 多声道设计文档（ExT-1485178492） | Web 端多声道解码、声道选择播放、逐声道音量 | 需 Chrome 96+；仅偶数声道解码 | 可复用（验证链路） |
 
 **API 间关系**：发送两条路径（PCM 原帧 / 编码帧）互斥，同一条 custom audio track 二选一；多声道私参是发送路径生效的前提（决定 OPUSMC 编码与 payload 协商）；接收三条路径（按用户 PCM、编码帧、混音）可按需独立开启，编码帧路径与播放路径互斥（`enableAudioRecordingOrPlayout=false`）。
 
@@ -480,7 +480,7 @@
 - 接收 sample：`example/yuv_pcm/sample_receive_yuv_pcm.cpp`、`example/encoded_audio/sample_receive_encoded_audio.cpp`、`example/mixed_audio/sample_receive_mixed_audio.cpp`
 - 设计文档：`References/Docs/ExT-1485178709-100726-0959-56_en.md`（Linux SDK 多声道）、`References/Docs/ExT-1485178492-100726-1000-58_en.md`（Web SDK 多声道）
 - 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Linux SDK ARM Version 交付记录）
-- Web 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（USAGE.md、src/Multiopus.vue）
+- Web 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（USAGE.md、src/Multiopus.vue）——已于 2026-10 移除，功能由 `Demo/web/` 继承
 - 沟通记录：`References/沟通记录/`（`沟通记录2025.txt`——2025-04 杂音问题排查与布局确认全过程；`audio_mutil_channel_mapping.txt` + 客户侧/Agora 侧声道映射图——最终确认的声道映射；企业微信截图 ×2；客户布局约定表；Agora_Order_Expectation.xlsx；VictoriaMulti.mkv）
 - 音频素材元数据：`References/LinuxSampleCodes/0715_v4.2.32/example/out/public/*_metadata.txt`（ffprobe 实测：8_Channel_ID_signed_16_bit_pcm.wav = 48 kHz/8ch/16bit；6_Channel_ID.wav = 44.1 kHz/6ch(5.1)；4_Channel_ID.wav = 44.1 kHz/4ch）
 
@@ -491,7 +491,7 @@
 | `8ch_2.opus` | Opus 裸帧流（非 ogg），640 字节/帧 | 48000 | 8 | — | 约 112 s（3,575,680 字节 ÷ 640 字节/帧 × 20 ms） | 需求点3 预编码 Opus 发送 | `References/LinuxSampleCodes/8ch_2.opus` |
 | `8_Channel_ID_signed_16_bit_pcm.wav` | WAV pcm_s16le | 48000 | 8 | 16bit | 约 14 s | 需求点2 八声道 WAV 发送主验证素材 | ffprobe 元数据（`*_metadata.txt`） |
 | `8_Channel_ID_signed_16_bit_pcm.raw.pcm` | raw PCM s16le 交错 | 48000 | 8 | 16bit | 约 14 s | 需求点1 PCM 发送默认素材（由同名 WAV 提取，`Demo/linux/public/`） | 本仓库生成 |
-| `8_Channel_ID.wav` | WAV | 48000（Web demo 直发，浏览器解码） | 8 | 16bit（本仓库 `Demo/web/public` 拷贝实测为 24bit，浏览器解码不受影响） | — | Web demo 发布素材；v4.4.30.130 sample 默认音频文件 | `quick-demo-multiopus/public/`、`example/out/public/` |
+| `8_Channel_ID.wav` | WAV | 48000（Web demo 直发，浏览器解码） | 8 | 16bit（本仓库 `Demo/web/public` 拷贝实测为 24bit，浏览器解码不受影响） | — | Web demo 发布素材；v4.4.30.130 sample 默认音频文件 | `quick-demo-multiopus/public/`（已随 demo 移除；素材见 `Demo/web/public`）、`example/out/public/` |
 | `8_Channel_ID_24bit.wav` | WAV pcm_s24le | 48000 | 8 | 24bit | — | 需求点2 场景2.2（24bit→16bit）验证素材（拷贝自 `Demo/web/public/8_Channel_ID.wav`，`Demo/linux/public/`） | 本仓库 |
 | `4_Channel_ID_48k.wav` / `6_Channel_ID_48k.wav` | WAV pcm_s16le | 48000 | 4 / 6 | 16bit | 约 5.8 s | Linux sample 4/6 声道发送验证（由 44.1 kHz 源重采样，`Demo/linux/public/`） | 本仓库生成 |
 | `6_Channel_ID.wav` | WAV pcm_s16le | 44100 | 6（5.1 布局） | 16bit | 约 5.8 s | 六声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |

@@ -200,7 +200,7 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例
 
 ### Web demo 端到端验证
 
-配合 Web quick-demo-multiopus（agora-rtc-sdk-ng 4.20.1-200 多声道版本，Chrome 96+）：
+配合 Web 验证 demo（本仓库 `Demo/web/`，agora-rtc-sdk-ng 4.20.1-200 多声道版本，Chrome 96+）：
 
 1. 创建 client 前设置 `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)`；
 2. 订阅 Linux 端发布的多声道流；

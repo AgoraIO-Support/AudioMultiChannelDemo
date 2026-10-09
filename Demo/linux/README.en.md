@@ -215,7 +215,7 @@ or channel loss.
 
 ### End-to-end verification with the Web demo
 
-Use the Web quick-demo-multiopus (agora-rtc-sdk-ng 4.20.1-200 multi-channel build, Chrome 96+):
+Use the Web verification demo (`Demo/web/` in this repo, agora-rtc-sdk-ng 4.20.1-200 multi-channel build, Chrome 96+):
 
 1. Set `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` before creating the client.
 2. Subscribe to the multi-channel stream published by the Linux side.

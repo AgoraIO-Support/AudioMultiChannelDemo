@@ -127,7 +127,7 @@
 
 | API / 能力 | 事实来源 | 职责 | 能力范围 | 与本需求的关系 |
 | --- | --- | --- | --- | --- |
-| `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` | `References/AlexGongs/quick-demo-multiopus/src/Multiopus.vue:84`；Web 设计文档 | 开启 multiopus 编解码协商能力 | 必须在 `createClient` 之前调用；未开启则按普通（单/双声道）处理 | 可复用 |
+| `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` | `References/AlexGongs/quick-demo-multiopus/src/Multiopus.vue:84`（该参考 demo 已于 2026-10 移除，继承者为 `Demo/web/`）；Web 设计文档 | 开启 multiopus 编解码协商能力 | 必须在 `createClient` 之前调用；未开启则按普通（单/双声道）处理 | 可复用 |
 | `createCustomAudioTrack({ mediaStreamTrack, channelCount })` / `createMultiAudioTrack` | Web 设计文档"参考集成代码"；demo `USAGE.md` §6 | 创建多声道本地音轨并发布 | `channelCount` 为创建时设定值，SDK 据其生成发布用的 `custom_payload_type` | 可复用 |
 | 远端音轨 `channelCount` 属性 | Web 设计文档 | 获取远端多声道音轨声道数 | 取值来自信令 `on_add_audio_stream` 的 pt 值，非从轨内解析 | 可复用 |
 | `selectChannels(channels, mode)`（本地/远端音轨均有） | Web 设计文档 | 设置输出声道列表与渲染模式 | mode ∈ `surround`（标准多声道协议）/ `stereo`（0,2,4,6… 声道入左、1,3,5,7… 入右）/ `mono`（全部混为单声道，输出为立体声容器）；基于 Insertable Streams 实现 | 可复用 |
@@ -327,7 +327,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 | 体验测试报告 | 多声道收发主观验证（逐声道、回退、浏览器矩阵） | 待补充 | 必须 | 已有（Web SDK 4.20.1-200 Test Report） | 来源：交付记录 |
 | API 文档 | multiopus 开关与 `selectChannels`/`getVolumeLevels`/`channelCount` 使用说明 | 待补充 | 必须 | 待补充 | 当前见 NPM 包内 `rtc-sdk_cn.d.ts` / `rtc-sdk_en.d.ts` 与内部设计文档 |
 | 最佳实践文档 | 订阅验证与发布集成指南（含浏览器约束） | 待补充 | 必须 | 待补充 | |
-| Demo | quick-demo-multiopus（Vue3 + Vite） | — | 必须 | 已交付 | `References/AlexGongs/quick-demo-multiopus/` |
+| Demo | quick-demo-multiopus（Vue3 + Vite） | — | 必须 | 已交付 | `References/AlexGongs/quick-demo-multiopus/`（已于 2026-10 移除，继承者为 `Demo/web/`） |
 | 安全合规审查结论 | 不涉及新增对外数据采集 | — | 【待明确】 | — | |
 
 ### 8.3 平台/语言/框架支持需求
@@ -403,7 +403,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 - Web 多声道设计文档：`References/Docs/ExT-1485178492-100726-1000-58_en.md`
 - Linux 多声道设计文档：`References/Docs/ExT-1485178709-100726-0959-56_en.md`（协商/回退与 payload 映射）
 - 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Web SDK 4.20.1-200 多声道定制版及 Test Report）
-- 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（`src/Multiopus.vue`、`USAGE.md`、`README.md`）
+- 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（`src/Multiopus.vue`、`USAGE.md`、`README.md`）——已于 2026-10 移除，功能由 `Demo/web/` 继承
 - 关联文档：`Spec/linux_sdk_audio_multichannel_spec.md`（Linux 侧发送/接收/布局映射需求）
 - 布局映射沟通记录：`References/沟通记录/`（最终确认声道映射：逐样本交错 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）
 - Chrome 缺陷依据：<https://bugs.chromium.org/p/chromium/issues/detail?id=1116042>；Opus multistream API：<https://www.opus-codec.org/docs/opus_api-1.1.2/group__opus__multistream.html>
