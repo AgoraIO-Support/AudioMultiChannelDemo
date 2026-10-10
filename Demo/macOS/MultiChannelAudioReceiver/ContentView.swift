@@ -140,6 +140,7 @@ struct ContentView: View {
                         .frame(width: 80, alignment: .trailing)
                     TextField(tr("join.appId.placeholder"), text: $appId)
                         .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 520)
                         .disabled(agoraManager.isJoined)
                 }
                 HStack {
@@ -147,6 +148,7 @@ struct ContentView: View {
                         .frame(width: 80, alignment: .trailing)
                     TextField(tr("join.token.placeholder"), text: $token)
                         .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 520)
                         .disabled(agoraManager.isJoined)
                 }
                 HStack {
@@ -154,6 +156,7 @@ struct ContentView: View {
                         .frame(width: 80, alignment: .trailing)
                     TextField(tr("join.channelId.placeholder"), text: $channelId)
                         .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 520)
                         .disabled(agoraManager.isJoined)
                 }
                 HStack {
@@ -292,10 +295,12 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 10) {
                 if let user = selectedUser {
                     if user.hasVideo {
-                        RemoteVideoView(uid: user.uid)
-                            .aspectRatio(videoAspect(user), contentMode: .fit)
-                            .frame(maxWidth: .infinity)
-                            .cornerRadius(4)
+                        HStack {
+                            RemoteVideoView(uid: user.uid)
+                                .aspectRatio(videoAspect(user), contentMode: .fit)
+                                .cornerRadius(4)
+                            Spacer(minLength: 0)
+                        }
                         bitrateBlock(title: tr("mc.videoRecvBitrate", user.videoReceivedBitrateKbps),
                                      samples: user.videoBitrateHistory, color: .blue)
                     } else {

@@ -82,6 +82,15 @@ app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端
 
 证据截图：`Test/macos_receiver_layout_v6_20261010.png`
 
+## 追加：对齐修正（2026-10-10 15:53，spec v0.9）
+
+| 验证项 | 结果 |
+| --- | --- |
+| 视频左对齐 | ✅ 视频与两张码率图共用左边缘基准，不再居中漂浮 |
+| Join 区输入框限宽 | ✅ App ID/Token/Channel ID 限宽 520pt，表单不再拉满全宽 |
+
+证据截图：`Test/macos_receiver_layout_v7_20261010.png`
+
 证据截图：`Test/macos_receiver_8ch_verified_20261010.png`
 
 ## 附带发现
