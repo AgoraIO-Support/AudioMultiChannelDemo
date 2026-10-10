@@ -295,7 +295,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 
 | # | 问题 | 维度 | 建议确认人 | 状态 |
 | --- | --- | --- | --- | --- |
-| 1 | ~~Native 发送侧多声道：设计与 Linux 同源（理论支持 3~8 声道 OPUSMC 发送），但本仓库未含 Native 发送 demo，发送路径未实测~~ **已实测（2026-10-10，新增 `Demo/macOS/MultiChannelAudioSender`）**：私参协商在公开版 macOS 4.5.2 上正常生效（对端解出对应声道数的 multiopus 流，8/6/4ch 均验证），但**自定义音轨输入最高按 2 声道读取**——只有前 2 声道携带内容，第 3 声道起静音；`pushExternalAudioFrameRawData` 与 `pushExternalAudioFrameSampleBuffer`（ASBD 自描述 8ch）结论一致。结论：多声道发送需要 SDK 侧支持（参照 Linux 定制版），sender app 可作为该能力的回归工具 | 功能边界 | 研发 / QA | 已实测（公开版受限，待 SDK 支持） |
+| 1 | ~~Native 发送侧多声道：设计与 Linux 同源（理论支持 3~8 声道 OPUSMC 发送），但本仓库未含 Native 发送 demo，发送路径未实测~~ **已实测（2026-10-10，新增 `Demo/macOS/MultiChannelAudioSender`）**：私参协商在公开版 macOS 4.5.2 上正常生效（对端解出对应声道数的 multiopus 流，8/6/4ch 均验证），但**自定义音轨输入最高按 2 声道读取**——只有前 2 声道携带内容，第 3 声道起静音；`pushExternalAudioFrameRawData` 与 `pushExternalAudioFrameSampleBuffer`（ASBD 自描述 8ch）结论一致；`setExternalAudioSource(channels: 8)` 与私参 `che.audio.input_channels: 8` 均返回 0 但不解除钳制（二进制 strings 可见 `che.audio.input_channels`/`output_channels` 存在）。结论：多声道发送需要 SDK 侧支持（参照 Linux 定制版），sender app 可作为该能力的回归工具 | 功能边界 | 研发 / QA | 已实测（公开版受限，待 SDK 支持） |
 | 2 | `che.audio.neteq.adjust_decoded_volume` 在 iOS/Android/Windows Native SDK 上是否同名可用（macOS 4.5.2 已用） | 兼容性 | 研发 / QA | 待确认 |
 | 3 | 接收端获知实际协商声道数的正式手段（回调或 getStats 字段），当前 UI 只能手动对齐 | 能力差距 | 研发 / PM | 待确认 |
 | 4 | ~~dump 文件的具体位置与命名规则~~ **已实测（2026-10-10，macOS 4.5.2）**：dump 落在 `~/Library/Logs/`；按远端用户解码输出 `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`（48 kHz / N 声道 / 16bit，约 120 MB 封顶停止，Leave 重进按新时间戳另建）；混音 `audio_dump_playback_mixer_0.wav`（恒 2 声道）；另有 `audio_dump_play_0.wav`、`far_in_48000hz_2ch.wav`。其他平台/版本的位置未逐一验证 | 可观测性 | 研发 | 已确认（macOS 4.5.2） |

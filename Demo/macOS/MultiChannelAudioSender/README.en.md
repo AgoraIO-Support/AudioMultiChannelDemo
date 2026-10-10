@@ -72,6 +72,8 @@ custom-track push input:**
   per-channel volume levels on the web demo and per-user PCM dumps on the receiver);
 - identical results with `pushExternalAudioFrameRawData` and
   `pushExternalAudioFrameSampleBuffer` (whose ASBD self-describes 8 channels);
+- neither `setExternalAudioSource(channels: 8)` nor the private parameter
+  `che.audio.input_channels: 8` lifts the clamp (both return 0 but change nothing);
 - i.e. multi-channel **sending** on the public macOS SDK needs SDK-side enablement
   (as done for the custom Linux builds). This app is the ready-made regression tool
   for that capability once it lands.

@@ -63,6 +63,8 @@ xcodebuild -workspace MultiChannelAudioSender.xcworkspace \
 - 但只有前 2 声道携带内容，第 3 声道起静音（接收端逐声道音量与 dump 双重实证）；
 - `pushExternalAudioFrameRawData` 与 `pushExternalAudioFrameSampleBuffer`
   （ASBD 自描述 8ch）两种推入方式结论相同；
+- `setExternalAudioSource(channels: 8)` 与私参 `che.audio.input_channels: 8`
+  均返回 0 但不解除钳制；
 - 即：多声道**发送**在公开版 macOS SDK 上需要 SDK 侧支持（参照 Linux 定制版的做法），
   本 app 可作为该能力回归验证的现成工具。
 

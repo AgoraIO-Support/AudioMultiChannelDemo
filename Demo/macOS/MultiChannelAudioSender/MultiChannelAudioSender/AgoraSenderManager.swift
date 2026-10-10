@@ -153,7 +153,9 @@ class AgoraSenderManager: NSObject, ObservableObject {
                 // 已知限制（2026-10-10 实测，AgoraRtcEngine_macOS 4.5.2 公开版）：
                 // push 输入管线最高按 2 声道读取——8ch 流协商正常（对端解出 8 声道），
                 // 但只有前 2 声道携带内容，3~8 声道静音；换 CMSampleBuffer 推入（ASBD 自描述
-                // 8ch）结论相同。多声道发送需 SDK 侧支持（同 Linux 定制版的做法）。
+                // 8ch）结论相同；`setExternalAudioSource(channels: 8)` 与私参
+                // `che.audio.input_channels: 8` 均返回 0 但不解除钳制。
+                // 多声道发送需 SDK 侧支持（同 Linux 定制版的做法）。
                 let ret = pcm.withUnsafeBytes { raw -> Int32 in
                     kit.pushExternalAudioFrameRawData(
                         UnsafeMutableRawPointer(mutating: raw.baseAddress!.advanced(by: offset)),

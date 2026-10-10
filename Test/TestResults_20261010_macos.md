@@ -151,3 +151,13 @@ app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端
 ### 附带修复
 
 - `WavReader` 支持 WAVE_FORMAT_EXTENSIBLE（format=0xFFFE，按 SubFormat GUID 判定 PCM）——ffmpeg 重采样产出的 4/6ch WAV 使用该格式。
+
+### 追加排查（18:20）：接收端"无声"实为 2 声道钳制的最终确认
+
+用户反馈 receiver/web 订阅 mac sender 8ch 基本无声。补充验证：
+
+- Web 订阅 6 秒连续采样：CH0/CH1 随内容脉冲（28%~62%），CH2~CH7 恒 0%——前 2 声道可听、其余静音，与钳制结论一致；
+- 追加尝试均无效：`setExternalAudioSource(channels: 8)` 返回 0 但不生效；私参 `che.audio.input_channels: 8`（SDK 二进制 strings 中确认存在）返回 0 但 CH2~CH7 仍恒 0%；
+- 用户实测听感与之一致（能听到声音 = 前 2 声道内容）。
+
+最终结论不变：公开版 macOS 4.5.2 发送侧多声道需 SDK 侧支持。诊断代码已从 app 中移除，结论记录在 README 与 spec v1.2。
