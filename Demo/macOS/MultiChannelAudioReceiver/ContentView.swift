@@ -202,15 +202,6 @@ struct ContentView: View {
                     .onChange(of: selectedUid) { _ in
                         applyAllChannels()
                     }
-                    Spacer()
-                    Text(tr("mc.channelCount"))
-                    Picker("", selection: $channelCount) {
-                        ForEach(1...8, id: \.self) { count in
-                            Text("\(count)").tag(count)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 70)
                 }
 
                 Divider()
@@ -220,9 +211,22 @@ struct ContentView: View {
                         .font(.callout)
                         .foregroundColor(.secondary)
                 } else {
-                    Text(tr("mc.playbackSection"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack {
+                        Text(tr("mc.playbackSection"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(tr("mc.channelCount"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Picker("", selection: $channelCount) {
+                            ForEach(1...8, id: \.self) { count in
+                                Text("\(count)").tag(count)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 60)
+                    }
                     ForEach(1...channelCount, id: \.self) { index in
                         channelRow(index: index)
                     }

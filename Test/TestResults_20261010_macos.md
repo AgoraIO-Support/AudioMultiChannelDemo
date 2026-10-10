@@ -74,6 +74,14 @@ app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端
 
 证据截图：`Test/macos_receiver_layout_v5_20261010.png`
 
+## 追加：「声道数」选择器归位（2026-10-10 15:48，spec v0.8）
+
+| 验证项 | 结果 |
+| --- | --- |
+| 声道数选择器与声道行同组 | ✅ "Channels 8" 移至 "Channel playback" 标题行右侧，紧贴其控制的 8 行声道控制，关联关系直观 |
+
+证据截图：`Test/macos_receiver_layout_v6_20261010.png`
+
 证据截图：`Test/macos_receiver_8ch_verified_20261010.png`
 
 ## 附带发现
