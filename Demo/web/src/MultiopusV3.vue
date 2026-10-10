@@ -322,6 +322,14 @@ const videoEl = ref<HTMLElement | null>(null);
 const volumes = ref<number[]>([]);
 let volumeTimer = -1;
 
+// 声道数稳定计数：订阅初期多声道解码管线逐步展开，getVolumeLevels() 会先返回 1/2 路，
+// 若立即按数组长度判“单声道”会闪一下红色误判。连续 STABLE_POLLS 次轮询声道数不变才
+// 允许出“单声道”结论（出现多声道证据则立即变绿，不受此限制）。
+const STABLE_POLLS = 4; // × 300ms 轮询 ≈ 1.2s
+const chCountStable = ref(false);
+let lastChCount = 0;
+let chStableCount = 0;
+
 const codec = ref(""); // 音频 inbound codec：'opus' | 'multiopus' | ''
 const codecChannels = ref(0); // getStats 里音频 codec 的声道数（opus 在 SDP 里恒为 2，仅参考）
 const videoCodec = ref(""); // 视频 inbound codec：'h264' | 'vp8' | ...
@@ -348,6 +356,8 @@ const verdictText = computed(() => {
   if (volumes.value.length === 0) return m.value.detecting;
   const n = volumes.value.length;
   const multi = codec.value === "multiopus" || [4, 6, 8].includes(n);
+  // 声道数未稳定前不出“单声道”结论，避免订阅初期闪红（见 STABLE_POLLS 注释）
+  if (!multi && !chCountStable.value) return m.value.detecting;
   return `${n} ${m.value.chUnit} → ${multi ? m.value.multiChannel : m.value.mono}`;
 });
 
@@ -359,7 +369,9 @@ const isMulti = computed(
 
 const resultClass = computed(() => {
   if (!audioSubscribed.value || volumes.value.length === 0) return "";
-  return isMulti.value ? "is-multi" : "is-mono";
+  if (isMulti.value) return "is-multi";
+  // 声道数未稳定前保持中性配色，避免闪红
+  return chCountStable.value ? "is-mono" : "";
 });
 
 const codecText = computed(() => {
@@ -484,6 +496,13 @@ async function subscribeMedia(user: IAgoraRTCRemoteUser, mediaType: "audio" | "v
         if (remoteAudioTrack) {
           volumes.value = remoteAudioTrack.getVolumeLevels();
           remoteChannelCount.value = (remoteAudioTrack as any).channelCount || 0;
+          const n = volumes.value.length;
+          if (n === lastChCount) chStableCount++;
+          else {
+            lastChCount = n;
+            chStableCount = 1;
+          }
+          chCountStable.value = chStableCount >= STABLE_POLLS;
         }
       }, 300);
     } else {
@@ -572,6 +591,9 @@ function teardownAudio() {
   remoteAudioTrack = null;
   (window as any).__mcRemoteTrack = null;
   selection.value = null;
+  chCountStable.value = false;
+  lastChCount = 0;
+  chStableCount = 0;
   // codec 轮询为音视频共用：两路都停了才停表
   if (!videoSubscribed.value) window.clearInterval(codecTimer);
 }
