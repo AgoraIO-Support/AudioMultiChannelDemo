@@ -23,9 +23,12 @@ interpolation); log and status lines are emitted in the language active at the t
 
 - **Receive-only**: joins in `.liveBroadcasting` profile with the audience role;
   microphone/camera are never published; auto-subscribes remote audio and video.
-- **Remote video display**: when the host publishes video, the "Remote Video" area renders
-  the selected remote user's picture (`setupRemoteVideo`, aspect fit); audio-only hosts
-  show a placeholder instead.
+- **Remote video display (on demand)**: when the selected host publishes video, its picture
+  renders inline at the right of the "Remote Multi-Channel Control" section
+  (`setupRemoteVideo`, fixed height with width matched to the stream's real aspect ratio);
+  audio-only hosts take no video space and just show an "Audio only" badge next to the picker.
+- **Receive bitrate chart**: besides the numeric value, the selected remote user's receive
+  bitrate has a live sparkline (last 60 `remoteAudioStats` samples, ~2-minute window).
 - **Remote user list**: driven by remote audio publish state — uids are added in the
   `remoteAudioStateChangedOfUid` callback when audio is starting/decoding and removed on
   `didOfflineOfUid`, so **only hosts actually publishing audio are listed; audience-role

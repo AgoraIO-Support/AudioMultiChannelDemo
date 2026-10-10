@@ -6,7 +6,10 @@ struct RemoteUser: Identifiable, Equatable {
     let uid: UInt
     var id: UInt { uid }
     var receivedBitrateKbps: Int = 0
+    var bitrateHistory: [Int] = []
     var hasVideo = false
+    var videoWidth = 0
+    var videoHeight = 0
 }
 
 class AgoraManager: NSObject, ObservableObject {
@@ -237,6 +240,19 @@ extension AgoraManager: AgoraRtcEngineDelegate {
         DispatchQueue.main.async {
             if let index = self.remoteUsers.firstIndex(where: { $0.uid == stats.uid }) {
                 self.remoteUsers[index].receivedBitrateKbps = Int(stats.receivedBitrate)
+                self.remoteUsers[index].bitrateHistory.append(Int(stats.receivedBitrate))
+                if self.remoteUsers[index].bitrateHistory.count > 60 {
+                    self.remoteUsers[index].bitrateHistory.removeFirst(self.remoteUsers[index].bitrateHistory.count - 60)
+                }
+            }
+        }
+    }
+
+    func rtcEngine(_ engine: AgoraRtcEngineKit, remoteVideoStats stats: AgoraRtcRemoteVideoStats) {
+        DispatchQueue.main.async {
+            if let index = self.remoteUsers.firstIndex(where: { $0.uid == stats.uid }) {
+                self.remoteUsers[index].videoWidth = Int(stats.width)
+                self.remoteUsers[index].videoHeight = Int(stats.height)
             }
         }
     }

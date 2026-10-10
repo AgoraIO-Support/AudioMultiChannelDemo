@@ -30,6 +30,19 @@ app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端
 
 证据截图：`Test/macos_receiver_video_20261010.png`
 
+## 追加：UI 布局改版验证（2026-10-10 15:13，spec v0.4）
+
+| 验证项 | 结果 |
+| --- | --- |
+| 视频区按需内嵌 | ✅ 视频出现在「Remote Multi-Channel Control」区右侧，无独立常驻黑框 |
+| 视频宽度贴合流宽高比 | ✅ 1920x1080 流按 240 高度等比显示，无大黑边 |
+| 声道滑杆宽度收敛 | ✅ 滑杆限宽 260pt，不再拉伸满行 |
+| 码率实时走势图 | ✅ 接收码率数值（272 kbps）下方 sparkline 实时增长（60 样本窗口） |
+
+证据截图：`Test/macos_receiver_layout_v2_20261010.png`
+
+注：本次加入后视频发布状态回调较晚（join 后 ~38s 才报 publishing），视频区出现随之延迟，属 SDK 回调时序；功能本身正常。
+
 证据截图：`Test/macos_receiver_8ch_verified_20261010.png`
 
 ## 附带发现

@@ -29,6 +29,33 @@ struct RemoteVideoView: NSViewRepresentable {
     }
 }
 
+/// 接收码率实时走势（最近 60 个 remoteAudioStats 样本，约 2 分钟）。
+struct BitrateSparkline: View {
+    let samples: [Int]
+
+    var body: some View {
+        GeometryReader { geo in
+            let maxV = max(samples.max() ?? 0, 1)
+            Path { path in
+                guard samples.count > 1 else { return }
+                let stepX = geo.size.width / CGFloat(samples.count - 1)
+                for (i, v) in samples.enumerated() {
+                    let x = stepX * CGFloat(i)
+                    let y = geo.size.height * (1 - CGFloat(v) / CGFloat(maxV))
+                    if i == 0 {
+                        path.move(to: CGPoint(x: x, y: y))
+                    } else {
+                        path.addLine(to: CGPoint(x: x, y: y))
+                    }
+                }
+            }
+            .stroke(Color.green, lineWidth: 1.5)
+        }
+        .background(Color.primary.opacity(0.06))
+        .cornerRadius(4)
+    }
+}
+
 struct ChannelControlState: Equatable {
     var enabled = true
     var volume: Double = 100
@@ -65,7 +92,6 @@ struct ContentView: View {
             languageBar
             joinPanel
             channelPanel
-            videoPanel
             logPanel
         }
         .padding(12)
@@ -150,6 +176,18 @@ struct ContentView: View {
         }
     }
 
+    private var selectedUser: RemoteUser? {
+        guard let uid = selectedUid else { return nil }
+        return agoraManager.remoteUsers.first(where: { $0.uid == uid })
+    }
+
+    /// 按 remoteVideoStats 的实际宽高比确定视频视图宽度（高度固定 240），拿不到时按 16:9。
+    private func videoWidth(_ user: RemoteUser) -> CGFloat {
+        let height: CGFloat = 240
+        guard user.videoWidth > 0, user.videoHeight > 0 else { return height * 16 / 9 }
+        return min(height * CGFloat(user.videoWidth) / CGFloat(user.videoHeight), 640)
+    }
+
     // MARK: - Remote multi-channel control
 
     private var channelPanel: some View {
@@ -168,10 +206,14 @@ struct ContentView: View {
                     .onChange(of: selectedUid) { _ in
                         applyAllChannels()
                     }
-                    if let uid = selectedUid,
-                       let user = agoraManager.remoteUsers.first(where: { $0.uid == uid }) {
+                    if let user = selectedUser {
                         Text(tr("mc.recvBitrate", user.receivedBitrateKbps))
                             .foregroundColor(.secondary)
+                        if !user.hasVideo {
+                            Text(tr("mc.audioOnly"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     Spacer()
                     Text(tr("mc.channelCount"))
@@ -188,13 +230,25 @@ struct ContentView: View {
                     Text(tr("mc.noRemote"))
                         .font(.callout)
                         .foregroundColor(.secondary)
-                } else {
-                    ForEach(1...channelCount, id: \.self) { index in
-                        channelRow(index: index)
+                } else if let user = selectedUser {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            BitrateSparkline(samples: user.bitrateHistory)
+                                .frame(width: 300, height: 56)
+                            ForEach(1...channelCount, id: \.self) { index in
+                                channelRow(index: index)
+                            }
+                            Text(tr("mc.countHint"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        // 视频区仅在 host 发布视频时出现，宽度贴合流实际宽高比
+                        if user.hasVideo {
+                            RemoteVideoView(uid: user.uid)
+                                .frame(width: videoWidth(user), height: 240)
+                                .cornerRadius(4)
+                        }
                     }
-                    Text(tr("mc.countHint"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
             }
             .padding(6)
@@ -209,32 +263,11 @@ struct ContentView: View {
             Toggle("", isOn: enabledBinding(index))
                 .labelsHidden()
             Slider(value: volumeBinding(index), in: 0...100, step: 1)
+                .frame(maxWidth: 260)
                 .disabled(!channelStates[index - 1].enabled)
             Text("\(Int(channelStates[index - 1].volume))%")
                 .monospacedDigit()
                 .frame(width: 44, alignment: .trailing)
-        }
-    }
-
-    // MARK: - Remote video
-
-    private var videoPanel: some View {
-        GroupBox(tr("video.section")) {
-            ZStack {
-                Color.black
-                if let uid = selectedUid,
-                   agoraManager.remoteUsers.first(where: { $0.uid == uid })?.hasVideo == true {
-                    RemoteVideoView(uid: uid)
-                } else {
-                    Text(tr(selectedUid == nil ? "video.noRemote" : "video.noVideo"))
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 300)
-            .cornerRadius(4)
-            .padding(6)
         }
     }
 

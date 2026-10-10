@@ -50,6 +50,7 @@ enum L10n {
 
         // 远端多声道控制面板
         "mc.section": [.en: "Remote Multi-Channel Control (che.audio.neteq.adjust_decoded_volume)", .zhHans: "远端多声道控制（che.audio.neteq.adjust_decoded_volume）"],
+        "mc.audioOnly": [.en: "Audio only", .zhHans: "仅音频"],
         "mc.remoteUser": [.en: "Remote user", .zhHans: "远端用户"],
         "mc.noSelection": [.en: "Not selected", .zhHans: "未选择"],
         "mc.recvBitrate": [.en: "Recv bitrate: %ld kbps", .zhHans: "接收码率: %ld kbps"],
@@ -59,11 +60,6 @@ enum L10n {
         "mc.channelRow": [.en: "Channel %ld", .zhHans: "声道 %ld"],
         "mc.countHint": [.en: "The channel count selector only controls how many rows are shown: choose 2 for a normal stereo stream, or the matching count for a 3~8-channel OPUSMC stream.",
                          .zhHans: "声道数选择器仅控制显示的行数：验证普通立体声流时选 2，验证 3~8 声道 OPUSMC 流时选对应声道数。"],
-
-        // 远端视频面板
-        "video.section": [.en: "Remote Video", .zhHans: "远端视频"],
-        "video.noRemote": [.en: "No remote user selected", .zhHans: "未选择远端用户"],
-        "video.noVideo": [.en: "The selected host is not publishing video", .zhHans: "该 host 未发布视频"],
 
         // 日志面板
         "log.section": [.en: "Log", .zhHans: "日志"],
