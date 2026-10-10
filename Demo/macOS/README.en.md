@@ -40,8 +40,12 @@ interpolation); log and status lines are emitted in the language active at the t
 - **Per-channel control**: each row has an enable toggle and a 0~100% volume slider,
   applied immediately through the `che.audio.neteq.adjust_decoded_volume` private
   parameter. All channels default to enabled at 100.
-- **Audio frame dump**: `che.audio.frame_dump` toggle; dump files go to the SDK default
-  location (the SDK's default log/dump directory; the app is unsandboxed).
+- **Audio frame dump**: `che.audio.frame_dump` toggle. Verified on macOS 4.5.2: dumps land in
+  **`~/Library/Logs/`** — per-user decoded output
+  `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`
+  (48 kHz / N ch / 16-bit, stops growing at ~120 MB; Leave+Join starts a new timestamped file);
+  mixed output `audio_dump_playback_mixer_0.wav` (always 2 ch); playout `audio_dump_play_0.wav`;
+  far-end mix `far_in_48000hz_2ch.wav` (2 ch).
 - **Log area**: scrolling log at the bottom covering join/leave, remote user events,
   connection state changes and SDK errors.
 
@@ -116,8 +120,9 @@ sandbox, so local builds need no developer certificate.
 {"che.audio.frame_dump":true}
 ```
 
-When enabled, the SDK writes decoded audio frames to its default dump location for
-offline channel-content verification.
+When enabled, the SDK writes decoded audio frames to disk for offline channel-content
+verification. On macOS 4.5.2 the dump directory is `~/Library/Logs/` (file naming in
+"Features" above).
 
 ## Notes
 

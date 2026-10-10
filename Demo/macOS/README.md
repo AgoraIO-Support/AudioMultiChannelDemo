@@ -31,9 +31,11 @@
   即选 2 并不会把 8 声道流的 3~8 声道静音——要静音请用对应行的开关。
 - **逐声道控制**：每个声道一行，包含启用开关（Toggle）与音量滑杆（0~100%），改动立即通过私参
   `che.audio.neteq.adjust_decoded_volume` 生效。默认全部声道启用、音量 100。
-- **音频帧 Dump**：`che.audio.frame_dump` 开关，dump 文件输出到 SDK 默认位置
-  （macOS 上为 `~/Library/Containers` 或 app 沙盒外的工作目录下 SDK 日志目录，随 SDK 内部约定；
-  本 app 无沙盒，dump 文件一般在 app 当前工作目录及 SDK 默认日志目录中查找）。
+- **音频帧 Dump**：`che.audio.frame_dump` 开关。macOS 4.5.2 实测 dump 落在 **`~/Library/Logs/`**：
+  按远端用户解码输出为 `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`
+  （48 kHz / N 声道 / 16bit，约 120 MB 封顶后停止写入，Leave 重进会按新时间戳另建）；
+  混音输出 `audio_dump_playback_mixer_0.wav`（恒 2 声道）；播放输出 `audio_dump_play_0.wav`；
+  远端混合输入 `far_in_48000hz_2ch.wav`（2 声道）。
 - **日志区**：界面底部滚动显示加入/离开、远端进出、连接状态、SDK 错误等日志。
 
 ## 环境要求
@@ -101,7 +103,8 @@ xcodebuild -workspace MultiChannelAudioReceiver.xcworkspace \
 {"che.audio.frame_dump":true}
 ```
 
-开启后 SDK 将解码后的音频帧落盘到 SDK 默认位置，用于离线核对声道内容。
+开启后 SDK 将解码后的音频帧落盘，用于离线核对声道内容。macOS 4.5.2 实测落盘位置为
+`~/Library/Logs/`（文件名规则见上方「功能说明」）。
 
 ## 注意事项
 

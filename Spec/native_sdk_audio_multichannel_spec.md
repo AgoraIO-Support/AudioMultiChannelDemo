@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 待补充（多声道项目背景单见 Linux 侧 spec） |
-| 需求版本 | v0.1 |
+| 需求版本 | v0.2 |
 
 ---
 
@@ -239,7 +239,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 
 | 产出物 | 产出物描述 | Jira（可选） | 是否必须 | 交付时间 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| Demo | macOS 接收验证 app（Demo/macOS，SwiftUI + AgoraRtcEngine_macOS 4.5.2） | — | 必须 | 已交付 | 构建验证通过；真频道收听验证待补 |
+| Demo | macOS 接收验证 app（Demo/macOS，SwiftUI + AgoraRtcEngine_macOS 4.5.2） | — | 必须 | 已交付 | 构建验证通过；真频道收听验证已完成（2026-10-10，见变更记录 v0.2） |
 | API 文档 | 两个私参的用法说明（Demo/macOS README） | 待补充 | 必须 | 已交付（README 形式） | 未官方文档化 |
 
 ### 8.3 平台/语言/框架支持需求
@@ -275,7 +275,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | 1 | Native 发送侧多声道：设计与 Linux 同源（理论支持 3~8 声道 OPUSMC 发送），但本仓库未含 Native 发送 demo，发送路径未实测 | 功能边界 | 研发 / QA | 待确认 |
 | 2 | `che.audio.neteq.adjust_decoded_volume` 在 iOS/Android/Windows Native SDK 上是否同名可用（macOS 4.5.2 已用） | 兼容性 | 研发 / QA | 待确认 |
 | 3 | 接收端获知实际协商声道数的正式手段（回调或 getStats 字段），当前 UI 只能手动对齐 | 能力差距 | 研发 / PM | 待确认 |
-| 4 | dump 文件的具体位置与命名规则（随 SDK 内部约定，未文档化） | 可观测性 | 研发 | 待确认 |
+| 4 | ~~dump 文件的具体位置与命名规则~~ **已实测（2026-10-10，macOS 4.5.2）**：dump 落在 `~/Library/Logs/`；按远端用户解码输出 `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`（48 kHz / N 声道 / 16bit，约 120 MB 封顶停止，Leave 重进按新时间戳另建）；混音 `audio_dump_playback_mixer_0.wav`（恒 2 声道）；另有 `audio_dump_play_0.wav`、`far_in_48000hz_2ch.wav`。其他平台/版本的位置未逐一验证 | 可观测性 | 研发 | 已确认（macOS 4.5.2） |
 | 5 | 奇数声道（3/5/7）Native 解码为设计支持，本项目实际联调仅覆盖 4/6/8；3/5/7 端到端验证待补 | 场景 | QA | 待确认 |
 
 ---
@@ -288,7 +288,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | 如何只听第 3 声道？ | 声道 3 开关打开、音量 100，其余声道关闭（或设 0）；等价于 `{"che.audio.neteq.adjust_decoded_volume":{"remoteUid":<uid>,"index":3,"volume":100}}` + 其余 index 设 0 |
 | 「声道数」选择器改了没反应？ | 它是纯显示控制，只决定 UI 渲染几行声道控制：SDK 无回调告知远端流实际声道数，需按发送端素材手动对齐。未选远端用户时切换无可见效果；隐藏声道保持原音量状态继续生效（选 2 不会静音 3~8 声道，静音请用对应行开关） |
 | 远端列表里为什么没有某个端？ | 列表只收录正在发布音频的 host（音频 starting/decoding）；观众角色的端不发布音频，永不入列 |
-| dump 文件在哪里？ | SDK 默认位置（随 SDK 内部约定）；本 app 无沙盒，一般在 app 工作目录及 SDK 默认日志目录查找 |
+| dump 文件在哪里？ | macOS 4.5.2 实测在 `~/Library/Logs/`：按远端用户解码输出 `audio_dump_playback_before_mixed_0_<时间戳>_<uid>.wav`（48 kHz/N 声道/16bit，约 120 MB 封顶），混音输出 `audio_dump_playback_mixer_0.wav`（恒 2 声道）。可直接用 ffprobe/Audacity 按声道数核对 |
 | 频道里进来不支持多声道的端会怎样？ | 回退发生在发送侧（Linux 发送回退为非多声道编码）；Native 接收端被动跟随。需强制不回退时在发送侧设 `che.audio.codec_unfallback`（设置层级要求见 Linux 侧 spec 场景4.4） |
 
 ---
@@ -318,3 +318,4 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | 版本 | 日期 | 变更内容 | 作者 |
 | --- | --- | --- | --- |
 | v0.1 | 2026-10-08 | 初稿：基于 Demo/macOS 接收验证 app 与 Native/Linux 同源设计文档，收敛 Native SDK（macOS）多声道接收与逐声道收听验证需求 | Kimi Code |
+| v0.2 | 2026-10-10 | 真频道收听验证完成：Linux `sample_send_mkv_multiopus`（AWS，8 声道 OPUSMC payload 125 + 视频，uid 777001）→ macOS app 观众加入 `mkvav1010a`。结果：① 观众加入/host 收录/码率显示正常（接收码率 ~262 kbps，符合 8 声道 OPUSMC 250~280 kbps 区间旁证）；② 逐声道开关/音量私参下发全部返回 0，且 dump 实证即时生效（ch1 置 0 后 dump 中 ch1 立即无声、恢复 100 后约 1 s 内回升，静音窗口与操作时刻秒级吻合）；③ `che.audio.frame_dump` 落盘 `~/Library/Logs/audio_dump_playback_before_mixed_0_<时间戳>_777001.wav`，ffprobe 实测 48 kHz/8 声道/16bit，astats 八声道 RMS -13.6~-15.5 dB 各不相同（无串声道、无丢声道），混音 dump 恒 2 声道；④ dump 位置/命名/封顶行为写入 README 与 FAQ，待确认问题 4 关闭（macOS 4.5.2 范围）。证据截图：`Test/macos_receiver_8ch_verified_20261010.png` | Kimi Code |
