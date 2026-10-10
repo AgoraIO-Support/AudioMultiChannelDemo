@@ -22,11 +22,21 @@ See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
 - **Channel selection playback**: `selectChannels(channels, mode)` plays any combination of
   channels from the remote track in `surround` / `stereo` / `mono` mode — used to listen to each
   channel of the Channel ID files one by one.
+- **Simultaneous video + multi-channel audio subscribe (Live Demo 3)**: open with `?demo=3`.
+  Enter the channel, your uid (+token), and the target uid, then subscribe to the remote's
+  multi-channel audio and video in one click: the video renders into the page's video area,
+  while the audio keeps Live Demo 1's per-channel volume bars, codec detection (both audio
+  and video codecs are shown), and channel selection playback. If the remote side adds
+  video/audio while you are subscribed, it is subscribed automatically. It is mainly used
+  for end-to-end verification with the Linux MKV demo (`sample_send_mkv_multiopus`, 1 video +
+  8-channel OPUSMC audio), and can also subscribe to the audio-only streams published by
+  Live Demo 1/2 (the video area then shows "not published").
 - **Two-tab role control**: URL parameters `channel` / `uid` / `subTo` separate the publisher tab
   from the subscriber tab.
-- **Two UI layouts**: the default (`?demo=1`) is this project's layout; `?demo=2` reproduces the
-  original quick-demo-multiopus layout (free-text audio URL, OK (surround/stereo/mono) buttons,
-  plain volume bars). Quick links in the header switch between the two demos.
+- **Multiple live demos**: the default (`?demo=1`) is this project's layout; `?demo=2` reproduces
+  the original quick-demo-multiopus layout (free-text audio URL, OK (surround/stereo/mono) buttons,
+  plain volume bars); `?demo=3` is the simultaneous video + multi-channel audio subscribe layout.
+  Quick links in the header switch between the demos.
 - **Chinese/English toggle**: a button in the top-right corner switches the UI language
   (defaults to the browser language; the choice is remembered in localStorage).
 
@@ -115,6 +125,13 @@ URL parameters (each one overrides the localStorage value):
    Channel ID content matches the Linux-side layout mapping (T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R)
    with no crosstalk and no noise.
 
+**MKV audio+video end-to-end (Live Demo 3)**: on the Linux side, run
+`sample_send_mkv_multiopus --channelId <channel> --token <token> --userId <uid> --videoFile public/VictoriaMulti.mkv`
+to publish 1 video + 8-channel audio (4xstereo layout). Open this demo with
+`?demo=3&channel=<same channel>&uid=<web uid>&subTo=<linux uid>`, join the channel, and click
+"Subscribe A/V". Expected: the video area renders the picture, the audio shows 8 volume bars,
+the audio codec is multiopus, and the video codec is h264.
+
 Note: every endpoint in the channel should support multi-channel. If a non-supporting endpoint
 joins while Linux is sending, the sender falls back to plain Opus (the Web side sees the codec
 change to opus and the channel count drop). When the Web side is sending, there is no fallback
@@ -197,6 +214,7 @@ Demo/web/
    ├─ App.vue              # NNotificationProvider wrapper, switches layouts via ?demo= query
    ├─ Multiopus.vue        # Live Demo 1 (default): all logic and UI (publish/subscribe/channel selection/codec detection)
    ├─ MultiopusV2.vue      # Live Demo 2 (?demo=2): reproduces the original quick-demo-multiopus layout
+   ├─ MultiopusV3.vue      # Live Demo 3 (?demo=3): simultaneous video + multi-channel audio subscribe (pairs with the Linux MKV demo)
    ├─ style.css
    └─ vite-env.d.ts
 ```

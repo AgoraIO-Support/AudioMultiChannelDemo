@@ -6,6 +6,7 @@
         <span class="title">{{ m.appTitle }} · Live Demo 2</span>
         <div class="header-right">
           <a class="nav-link" href="?demo=1">Live Demo 1</a>
+          <a class="nav-link" href="?demo=3">Live Demo 3</a>
           <a class="nav-link" href="docs/" target="_blank" rel="noopener">{{ m.docs }}</a>
           <n-button size="small" @click="toggleLocale">
             {{ locale === "zh" ? "EN" : "中文" }}
@@ -82,6 +83,9 @@
 
       <!-- 音量条：与 Live Demo 1 对齐（CH 标签 + 横条 + 百分比） -->
       <div class="content volumes">
+        <div class="selection-banner" v-if="selection" :key="selectionSeq">
+          {{ m.selectionLabel }}: {{ selectionText }}
+        </div>
         <div class="bar-row" v-for="(v, i) in volumes" :key="i">
           <span class="ch">CH{{ i }}</span>
           <div class="outer">
@@ -152,6 +156,7 @@ const messages = {
     noRemote: "频道内暂无可订阅的远端音频",
     enterChannels: "请输入声道序号，如 0,1",
     channelOutOfRange: "声道序号必须在 0~7 之间",
+    selectionLabel: "当前声道选择",
     channelCountInvalid: "声道数必须为 4/6/8（Web 端仅支持偶数声道解码）",
     publishedOk: (n: number) => `已发布 ${n} 声道音频`,
     publishFail: (msg: string) => `发布失败: ${msg}`,
@@ -190,6 +195,7 @@ const messages = {
     noRemote: "No remote audio to subscribe in channel",
     enterChannels: "Enter channel indices, e.g. 0,1",
     channelOutOfRange: "Channel indices must be between 0 and 7",
+    selectionLabel: "Current selection",
     channelCountInvalid: "Channel count must be 4, 6 or 8 (even counts only on Web)",
     publishedOk: (n: number) => `Published ${n}ch audio`,
     publishFail: (msg: string) => `Publish failed: ${msg}`,
@@ -265,6 +271,15 @@ let audioContext: AudioContext | null = null;
 
 const volumes = ref<number[]>([]);
 let volumeTimer = -1;
+
+// 当前生效的声道选择：selectChannels 调用成功后记录，显示在音量条区域
+const selection = ref<{ channels: number[]; mode: string } | null>(null);
+// 每次成功选择 +1：作为 :key 重建提示条以重播闪动动画，让用户明显感知变化
+const selectionSeq = ref(0);
+const selectionText = computed(() => {
+  if (!selection.value) return "";
+  return `[${selection.value.channels.join(",")}] · ${selection.value.mode}`;
+});
 
 async function joinChannel() {
   if (joined.value || joining.value) return;
@@ -452,6 +467,7 @@ async function cancelSubscribe() {
   remoteAudioTrack = null;
   subscribed.value = false;
   volumes.value = [];
+  selection.value = null;
   window.clearInterval(volumeTimer);
 }
 
@@ -477,7 +493,15 @@ function selectChannel(mode: "mono" | "stereo" | "surround") {
     notification.warning({ title: m.value.channelOutOfRange, duration: 2000 });
     return;
   }
-  remoteAudioTrack.selectChannels(channels, mode);
+  try {
+    remoteAudioTrack.selectChannels(channels, mode);
+  } catch (e: any) {
+    notification.error({ title: `selectChannels failed: ${e?.message || String(e)}`, duration: 3000 });
+    return;
+  }
+  // API 调用成功：记录当前生效的声道选择，显示在音量条区域
+  selection.value = { channels, mode };
+  selectionSeq.value++;
   notification.success({
     title: `selectChannels([${channels.join(",")}], "${mode}")`,
     duration: 2000,
@@ -580,6 +604,17 @@ onBeforeUnmount(() => {
           color: #666;
         }
       }
+      // 声道选择提示条：高亮常驻 + 每次选择后闪动一次（动画见底部 keyframes）
+      .selection-banner {
+        padding: 6px 10px;
+        border: 1px solid #2080f0;
+        border-radius: 4px;
+        background-color: #e8f3ff;
+        color: #2080f0;
+        font-size: 14px;
+        font-weight: 600;
+        animation: selection-flash 1.2s ease-out;
+      }
       .volumes-empty {
         font-size: 13px;
         color: #999;
@@ -590,6 +625,20 @@ onBeforeUnmount(() => {
         color: #999;
       }
     }
+  }
+}
+
+// 声道选择生效时的闪动动画：蓝底白字亮起，渐变为常驻浅蓝提示条
+@keyframes selection-flash {
+  0% {
+    background-color: #2080f0;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(32, 128, 240, 0.35);
+  }
+  100% {
+    background-color: #e8f3ff;
+    color: #2080f0;
+    box-shadow: none;
   }
 }
 </style>

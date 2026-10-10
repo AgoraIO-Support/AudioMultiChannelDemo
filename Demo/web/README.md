@@ -11,8 +11,9 @@
 - **逐声道音量条**：订阅后每 300ms 调用 `getVolumeLevels()` 渲染各声道实时音量。
 - **codec 判定**：hook `RTCPeerConnection.getStats()` 读取底层 inbound codec（`opus` / `multiopus`），800ms 轮询、最多 6 次。
 - **声道选择播放**：`selectChannels(channels, mode)` 对远端音轨选择任意声道组合，支持 `surround` / `stereo` / `mono` 三种渲染模式，用于逐声道试听核对 Channel ID 素材。
+- **视频 + 多声道音频同时订阅（Live Demo 3）**：`?demo=3` 打开。输入频道 / 本端 uid(+token) / 目标 uid，一键同时订阅目标远端的多声道音频与视频：视频渲染到页面视频区，音频沿用 Live Demo 1 的逐声道音量条、codec 判定（音频 / 视频 codec 均显示）与声道选择播放；订阅期间对端补发视频或音频会自动补订。主要用于配合 Linux MKV demo（`sample_send_mkv_multiopus`，1 路视频 + 8 声道 OPUSMC 音频）做端到端验证，也可订阅 Live Demo 1/2 发布的纯音频流（此时视频区显示未发布）。
 - **双标签页角色控制**：通过 URL 参数 `channel` / `uid` / `subTo` 区分发布端与订阅端标签页。
-- **双 UI 布局**：默认（`?demo=1`）为本工程布局；`?demo=2` 为参考 quick-demo-multiopus 原版的布局（自由文本音频地址、确定(环绕声/双声道/单声道)按钮、简洁音量条），两个 demo 头部有快捷链接互相切换。
+- **多 Live Demo 布局**：默认（`?demo=1`）为本工程布局；`?demo=2` 为参考 quick-demo-multiopus 原版的布局（自由文本音频地址、确定(环绕声/双声道/单声道)按钮、简洁音量条）；`?demo=3` 为视频 + 多声道音频同时订阅布局。各 demo 头部有快捷链接互相切换。
 - **中英文切换**：右上角按钮切换界面语言（默认跟随浏览器语言，选择记忆在 localStorage）。
 
 关键前提：`AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` 已在 `src/Multiopus.vue` 顶部、`createClient` 之前设置（代码内有注释说明，创建 client 后再设置不生效）。
@@ -78,6 +79,12 @@ URL 参数一览（均优先于 localStorage 回填值）：
 3. 预期：音量条出现 **8 路**，codec 判定为 **multiopus**，远端音轨 channelCount（信令）显示 8。
 4. 用「声道选择」逐路试听（如 `0`、`1` … `7`），核对 Channel ID 内容与 Linux 端声道布局映射（T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）一致、无串声道、无杂音。
 
+**MKV 音视频端到端（Live Demo 3）**：Linux 端运行
+`sample_send_mkv_multiopus --channelId <频道> --token <token> --userId <uid> --videoFile public/VictoriaMulti.mkv`
+发布 1 路视频 + 8 声道音频（4xstereo 布局）；本 demo 以
+`?demo=3&channel=<同一频道>&uid=<web端uid>&subTo=<Linux端uid>` 打开，加入频道后点「订阅音视频」。
+预期：视频区正常出图，音频 8 路音量条、音频 codec 为 multiopus、视频 codec 为 h264。
+
 注意：频道内应保证所有端都支持多声道。Linux 发送时若有不支持端加入，发送端会回退普通 Opus（Web 端观测到 codec 变为 opus、声道数下降）；Web 发送时不回退，不支持端无声。
 
 ## 判定方法
@@ -123,9 +130,10 @@ Demo/web/
 ├─ public/                 # 4/6/8_Channel_ID.wav 素材
 └─ src/
    ├─ main.ts              # createApp + mount
-   ├─ App.vue              # NNotificationProvider 包裹，按 ?demo= 查询参数切换两个布局
+   ├─ App.vue              # NNotificationProvider 包裹，按 ?demo= 查询参数切换三个布局
    ├─ Multiopus.vue        # Live Demo 1（默认）：全部逻辑与 UI（发布/订阅/声道选择/codec 判定）
    ├─ MultiopusV2.vue      # Live Demo 2（?demo=2）：参考 quick-demo-multiopus 原版布局
+   ├─ MultiopusV3.vue      # Live Demo 3（?demo=3）：视频 + 多声道音频同时订阅（配合 Linux MKV demo）
    ├─ style.css
    └─ vite-env.d.ts
 ```
