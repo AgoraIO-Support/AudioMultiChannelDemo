@@ -141,6 +141,17 @@
           <code>Test/web_volume_meter_floor_linux2web.md</code>。
         </p>
       </div>
+      <div class="note">
+        <p>
+          <strong>注意：订阅成功后的前 ~0.5s，返回数组长度存在“爬坡”，会从 1~2 路逐步展开到实际声道数。</strong>
+          多声道解码管线（Insertable Streams）是渐进建立的，期间 <code>getVolumeLevels()</code> 可能只返回
+          1~2 路，约 0.5s 后才展开为实际声道数（如 8）。这是管线的固有行为，并非流内容发生了变化。
+          集成方<strong>不要在订阅初期凭首次读到的数组长度直接判定“单声道 / 已回退”</strong>——该窗口内
+          会得到短暂的假单声道结论。建议：等声道数稳定后再下结论（如连续 ~1s 多次轮询长度一致），或与
+          getStats codec、信令 channelCount 交叉验证；出现多声道证据（长度 4/6/8 或 codec=multiopus）
+          则可立即采信。本仓库 web demo 的判定逻辑即采用“声道数稳定后才允许出单声道结论”的策略。
+        </p>
+      </div>
 
       <h3>1.6 浏览器兼容性</h3>
       <table>
@@ -240,6 +251,11 @@ await client.publish(track);</code></pre>
       <p>
         getStats 读取底层 codec 需 hook <code>RTCPeerConnection.getStats()</code>（demo 层手段，
         非 SDK 公开 API），本仓库 demo 按 800 ms 间隔持续轮询，既容忍协商延迟，也可观测订阅期间的回退。
+      </p>
+      <p>
+        另需注意订阅初期的声道数爬坡：<code>getVolumeLevels()</code> 在订阅成功后约 0.5s 内会先从
+        1~2 路逐步展开到实际声道数，此窗口内按数组长度判定会得到短暂的“单声道”假结论——判定逻辑应
+        等声道数稳定后再下结论（详见 1.5 节说明）。
       </p>
 
       <h3>2.4 Demo 与在线验证</h3>
@@ -429,6 +445,21 @@ await client.publish(track);</code></pre>
           <code>Test/web_volume_meter_floor_linux2web_en.md</code>.
         </p>
       </div>
+      <div class="note">
+        <p>
+          <strong>Note: during the first ~0.5 s after subscribing, the returned array ramps up from 1–2
+          channels to the actual channel count.</strong> The multi-channel decode pipeline (Insertable
+          Streams) is established progressively, so <code>getVolumeLevels()</code> may report only 1–2
+          channels at first and expands to the real count (for example 8) within about 0.5 s. This is
+          inherent pipeline behavior, not a change in the stream. <strong>Do not conclude "mono /
+          fallback" from the first readings right after subscribing</strong> — the transient values
+          produce a false mono verdict. Instead, wait until the channel count is stable (for example,
+          the same length across ~1 s of consecutive polls), or cross-check with the getStats codec and
+          the signaling channelCount. Multi-channel evidence (length 4/6/8, or codec=multiopus) can be
+          trusted immediately. This repo's web demo gates its mono verdict on exactly such a stability
+          window.
+        </p>
+      </div>
 
       <h3>1.6 Browser compatibility</h3>
       <table>
@@ -528,6 +559,12 @@ await client.publish(track);</code></pre>
       <p>
         Reading the underlying codec requires hooking <code>RTCPeerConnection.getStats()</code>
         (a demo-level technique, not a public SDK API). This repo's demo polls every 800 ms continuously — tolerating negotiation delay and catching any fallback during subscription.
+      </p>
+      <p>
+        Also beware of the subscription ramp-up: for about 0.5 s after subscribing,
+        <code>getVolumeLevels()</code> expands from 1–2 channels to the actual count, so judging by the
+        array length during this window yields a transient false "mono" verdict — gate the verdict on a
+        stable channel count (see section 1.5).
       </p>
 
       <h3>2.4 Demos and online verification</h3>
