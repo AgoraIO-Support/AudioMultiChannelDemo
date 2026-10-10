@@ -9,6 +9,8 @@
 - macOS 多声道接收验证 app（Native SDK，观众角色纯接收，逐声道选择收听与音量调节，中/英文 UI，默认英文）
 - 配套文档站与部署资料
 
+![Agora multi-channel audio (multiopus) overview](References/assets/multiopus-repo-overview.svg)
+
 ## 声道数支持说明
 
 - Linux SDK（Native 同）：支持 3/4/5/6/7/8 声道收发；3/5/7 需额外设置私参 `che.audio.custom_channel_num`（本仓库 demo 已按声道数自动处理）。

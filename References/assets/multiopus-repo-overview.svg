@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 500" role="img" aria-labelledby="t">
+  <title id="t">Agora multi-channel audio (multiopus) — repository overview: publishers send 3–8 channels over SD-RTN, Web and Linux/Native/macOS receivers verify them</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6069"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+    <!-- Header -->
+    <text x="440" y="38" font-size="19" font-weight="700" fill="#1f2329" text-anchor="middle">Agora Multi-Channel Audio (multiopus)</text>
+    <text x="440" y="62" font-size="11.5" fill="#5a6069" text-anchor="middle">One RTC audio stream carries 3–8 channels — OPUSMC (multistream Opus) · payload types 123/124/125 · 48 kHz only</text>
+
+    <!-- Publisher: Linux demo -->
+    <rect x="20" y="84" width="250" height="164" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="36" y="108" font-size="11" font-weight="700" fill="#165dff" letter-spacing="1">PUBLISH</text>
+    <text x="36" y="130" font-size="14" font-weight="600" fill="#1f2329">Linux demo (C++)</text>
+    <text x="36" y="148" font-size="10.5" fill="#5a6069">x86_64 / aarch64 · Demo/linux/</text>
+    <text x="36" y="172" font-size="11" fill="#1f2329">• Raw PCM · WAV · Opus · MKV A/V</text>
+    <text x="36" y="192" font-size="11" fill="#1f2329">• Send 3–8 ch · OPUSMC encode on SDK</text>
+    <rect x="36" y="206" width="48" height="22" rx="11" fill="#f3f4f6" stroke="#e2e5ea"/>
+    <text x="60" y="221" font-size="10.5" fill="#1f2329" text-anchor="middle">3–8 ch</text>
+    <rect x="90" y="206" width="92" height="22" rx="11" fill="#f3f4f6" stroke="#e2e5ea"/>
+    <text x="136" y="221" font-size="10.5" fill="#1f2329" text-anchor="middle">PT 123/124/125</text>
+    <rect x="188" y="206" width="50" height="22" rx="11" fill="#f3f4f6" stroke="#e2e5ea"/>
+    <text x="213" y="221" font-size="10.5" fill="#1f2329" text-anchor="middle">48 kHz</text>
+
+    <!-- Publisher: Web demo -->
+    <rect x="20" y="268" width="250" height="128" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="36" y="292" font-size="11" font-weight="700" fill="#165dff" letter-spacing="1">PUBLISH</text>
+    <text x="36" y="314" font-size="14" font-weight="600" fill="#1f2329">Web demo</text>
+    <text x="36" y="332" font-size="10.5" fill="#5a6069">Chrome 96+ · Demo/web/</text>
+    <text x="36" y="356" font-size="11" fill="#1f2329">• Multi-channel WAV · 4/6/8 ch</text>
+    <text x="36" y="376" font-size="11" fill="#1f2329">• Live Demos 1–3, incl. MKV A/V subscribe</text>
+
+    <!-- SD-RTN cloud -->
+    <line x1="270" y1="166" x2="362" y2="222" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="270" y1="332" x2="362" y2="258" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <ellipse cx="445" cy="240" rx="78" ry="52" fill="#eaf1ff" stroke="#165dff" stroke-width="1.2"/>
+    <text x="445" y="232" font-size="13" font-weight="700" fill="#165dff" text-anchor="middle">Agora SD-RTN</text>
+    <text x="445" y="248" font-size="10" fill="#5a6069" text-anchor="middle">one RTC audio stream</text>
+    <text x="445" y="264" font-size="10" fill="#5a6069" text-anchor="middle">OPUSMC · 48 kHz</text>
+    <line x1="528" y1="222" x2="620" y2="166" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="528" y1="258" x2="620" y2="332" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- Receiver: Web demo -->
+    <rect x="620" y="84" width="240" height="164" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="636" y="108" font-size="11" font-weight="700" fill="#165dff" letter-spacing="1">RECEIVE</text>
+    <text x="636" y="130" font-size="14" font-weight="600" fill="#1f2329">Web demo — verification</text>
+    <text x="636" y="148" font-size="10.5" fill="#5a6069">Chrome 96+ · Demo/web/</text>
+    <text x="636" y="172" font-size="11" fill="#1f2329">• Decode 4 / 6 / 8 ch (even only)</text>
+    <text x="636" y="192" font-size="11" fill="#1f2329">• selectChannels — per-channel playback</text>
+    <text x="636" y="212" font-size="11" fill="#1f2329">• getVolumeLevels — per-channel bars</text>
+    <text x="636" y="232" font-size="11" fill="#1f2329">• Codec verdict — multiopus vs opus</text>
+
+    <!-- Receiver: Linux / Native / macOS -->
+    <rect x="620" y="268" width="240" height="128" rx="10" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="636" y="292" font-size="11" font-weight="700" fill="#165dff" letter-spacing="1">RECEIVE</text>
+    <text x="636" y="314" font-size="14" font-weight="600" fill="#1f2329">Linux / Native / macOS</text>
+    <text x="636" y="332" font-size="10.5" fill="#5a6069">Demo/linux/ · Demo/macOS/</text>
+    <text x="636" y="356" font-size="11" fill="#1f2329">• 3–8 ch (3/5/7 via private params)</text>
+    <text x="636" y="376" font-size="11" fill="#1f2329">• PCM · encoded frames · mixed 2 ch</text>
+
+    <!-- Channel-count support strip -->
+    <rect x="20" y="424" width="840" height="48" rx="8" fill="#fff7e6" stroke="#ffd591"/>
+    <text x="440" y="443" font-size="11" fill="#ad6800" text-anchor="middle">Channel counts — Linux / Native: 3–8 ch · Web: 4 / 6 / 8 ch (even) only; 3/5/7 streams cannot be decoded on Web.</text>
+    <text x="440" y="461" font-size="11" fill="#ad6800" text-anchor="middle">To reach Web with 3/5/7 content, pad one silent channel at the sender (3→4, 5→6, 7→8) and ignore it on Web.</text>
+  </g>
+</svg>

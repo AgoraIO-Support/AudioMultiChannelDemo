@@ -9,6 +9,8 @@ Delivery repository for the multi-channel audio (multiopus) project, including:
 - A macOS multi-channel receiver verification app (Native SDK, audience-role receive-only, per-channel playback selection and volume, bilingual English/Chinese UI with English as default)
 - The accompanying documentation site and deployment materials
 
+![Agora multi-channel audio (multiopus) overview](References/assets/multiopus-repo-overview.svg)
+
 ## Channel Count Support
 
 - Linux SDK (same as Native): supports 3/4/5/6/7/8-channel send/receive; 3/5/7 require the extra private parameter `che.audio.custom_channel_num` (handled automatically by the demos in this repository).
