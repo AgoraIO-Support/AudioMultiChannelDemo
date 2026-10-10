@@ -60,6 +60,11 @@ enum L10n {
         "mc.countHint": [.en: "The channel count selector only controls how many rows are shown: choose 2 for a normal stereo stream, or the matching count for a 3~8-channel OPUSMC stream.",
                          .zhHans: "声道数选择器仅控制显示的行数：验证普通立体声流时选 2，验证 3~8 声道 OPUSMC 流时选对应声道数。"],
 
+        // 远端视频面板
+        "video.section": [.en: "Remote Video", .zhHans: "远端视频"],
+        "video.noRemote": [.en: "No remote user selected", .zhHans: "未选择远端用户"],
+        "video.noVideo": [.en: "The selected host is not publishing video", .zhHans: "该 host 未发布视频"],
+
         // 日志面板
         "log.section": [.en: "Log", .zhHans: "日志"],
 
@@ -81,6 +86,10 @@ enum L10n {
         "log.left": [.en: "Left channel", .zhHans: "已离开频道"],
         "log.remoteJoined": [.en: "Remote user joined (audience or host): uid=%ld", .zhHans: "远端用户加入（观众或主播）: uid=%ld"],
         "log.remoteHostPublishing": [.en: "Remote host is publishing audio: uid=%ld", .zhHans: "远端 host 开始发布音频: uid=%ld"],
+        "log.remoteVideoPublishing": [.en: "Remote host is publishing video: uid=%ld", .zhHans: "远端 host 开始发布视频: uid=%ld"],
+        "log.remoteVideoStopped": [.en: "Remote host stopped video: uid=%ld", .zhHans: "远端 host 停止发布视频: uid=%ld"],
+        "log.setupRemoteVideo": [.en: "Bind remote video view: uid=%ld", .zhHans: "绑定远端视频视图: uid=%ld"],
+        "log.setupRet": [.en: " (setupRemoteVideo returned %ld)", .zhHans: " (setupRemoteVideo 返回 %ld)"],
         "log.remoteLeft": [.en: "Remote user left: uid=%ld, reason=%ld", .zhHans: "远端用户离开: uid=%ld, reason=%ld"],
         "log.connState": [.en: "Connection state: %@, reason=%ld", .zhHans: "连接状态: %@, reason=%ld"],
         "conn.disconnected": [.en: "Disconnected", .zhHans: "已断开"],

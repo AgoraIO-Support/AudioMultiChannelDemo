@@ -17,6 +17,19 @@
 | 混音输出恒 2 声道 | ffprobe `audio_dump_playback_mixer_0.wav` | ✅ 48 kHz / 2 声道 |
 | dump 位置/命名/封顶 | 观察 `~/Library/Logs/` | ✅ 位置 `~/Library/Logs/`；命名 `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`；约 120 MB 封顶停止，Leave 重进按新时间戳另建 |
 
+## 追加：远端视频显示验证（2026-10-10 15:00，spec v0.3 需求点6）
+
+app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端 uid 3892160999）：
+
+| 验证项 | 方法 | 结果 |
+| --- | --- | --- |
+| host 视频状态检测 | `remoteVideoStateChangedOfUid` | ✅ 日志 `Remote host is publishing video: uid=777001`（加入后约 1s） |
+| 视频渲染绑定 | `setupRemoteVideo` | ✅ 返回 0（日志无 ret 后缀报错） |
+| 视频实时出图 | 间隔 5s 两次窗口截图对比 | ✅ 画面内容不同（秀场特写 → 宴会厅全景），为实时播放而非首帧定格；等比缩放居中显示 |
+| 音频能力不受影响 | 8 行声道控制/码率显示 | ✅ 全部 100% 启用，Recv bitrate ~259 kbps 正常 |
+
+证据截图：`Test/macos_receiver_video_20261010.png`
+
 证据截图：`Test/macos_receiver_8ch_verified_20261010.png`
 
 ## 附带发现

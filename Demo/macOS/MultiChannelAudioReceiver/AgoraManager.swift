@@ -1,10 +1,12 @@
 import Foundation
+import AppKit
 import AgoraRtcKit
 
 struct RemoteUser: Identifiable, Equatable {
     let uid: UInt
     var id: UInt { uid }
     var receivedBitrateKbps: Int = 0
+    var hasVideo = false
 }
 
 class AgoraManager: NSObject, ObservableObject {
@@ -69,7 +71,7 @@ class AgoraManager: NSObject, ObservableObject {
             return
         }
 
-        kit.disableVideo()
+        kit.enableVideo()
         kit.enableAudio()
         kit.setClientRole(.audience)
 
@@ -78,6 +80,7 @@ class AgoraManager: NSObject, ObservableObject {
         option.publishMicrophoneTrack = false
         option.publishCameraTrack = false
         option.autoSubscribeAudio = true
+        option.autoSubscribeVideo = true
 
         let joinToken = token.isEmpty ? nil : token
         let result = kit.joinChannel(byToken: joinToken, channelId: channelId, uid: uid, mediaOptions: option, joinSuccess: nil)
@@ -90,6 +93,23 @@ class AgoraManager: NSObject, ObservableObject {
 
     func leaveChannel() {
         agoraKit?.leaveChannel(nil)
+    }
+
+    // MARK: - 远端视频渲染
+
+    /// 把远端 uid 的视频渲染绑定到指定 NSView（切换 uid 时用同一 view 重新绑定即可）。
+    func setupRemoteVideo(remoteUid: UInt, view: NSView) {
+        guard let kit = agoraKit else { return }
+        let canvas = AgoraRtcVideoCanvas()
+        canvas.uid = remoteUid
+        canvas.view = view
+        canvas.renderMode = .fit
+        let ret = kit.setupRemoteVideo(canvas)
+        var line = L10n.t("log.setupRemoteVideo", in: L10n.current(), Int(remoteUid))
+        if ret != 0 {
+            line += L10n.t("log.setupRet", in: L10n.current(), Int(ret))
+        }
+        log(line)
     }
 
     // MARK: - 多声道私参
@@ -167,6 +187,28 @@ extension AgoraManager: AgoraRtcEngineDelegate {
                 self.remoteUsers.append(RemoteUser(uid: uid))
                 self.log(L10n.t("log.remoteHostPublishing", in: L10n.current(), Int(uid)))
             }
+        }
+    }
+
+    func rtcEngine(_ engine: AgoraRtcEngineKit, remoteVideoStateChangedOfUid uid: UInt, state: AgoraVideoRemoteState, reason: AgoraVideoRemoteReason, elapsed: Int) {
+        // starting/decoding/frozen 表示对端视频正在发布；stopped/failed 表示不再发布。
+        switch state {
+        case .starting, .decoding:
+            DispatchQueue.main.async {
+                if let i = self.remoteUsers.firstIndex(where: { $0.uid == uid }), !self.remoteUsers[i].hasVideo {
+                    self.remoteUsers[i].hasVideo = true
+                    self.log(L10n.t("log.remoteVideoPublishing", in: L10n.current(), Int(uid)))
+                }
+            }
+        case .stopped, .failed:
+            DispatchQueue.main.async {
+                if let i = self.remoteUsers.firstIndex(where: { $0.uid == uid }), self.remoteUsers[i].hasVideo {
+                    self.remoteUsers[i].hasVideo = false
+                    self.log(L10n.t("log.remoteVideoStopped", in: L10n.current(), Int(uid)))
+                }
+            }
+        default:
+            break
         }
     }
 

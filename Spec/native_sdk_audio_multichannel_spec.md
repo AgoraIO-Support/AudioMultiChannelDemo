@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 待补充（多声道项目背景单见 Linux 侧 spec） |
-| 需求版本 | v0.2 |
+| 需求版本 | v0.3 |
 
 ---
 
@@ -78,7 +78,7 @@
 | 内容项 | 描述 | 备注 |
 | --- | --- | --- |
 | API 接口（描述性语言） | 引擎创建与频道加入（`AgoraRtcEngineKit`、`joinChannel`，观众角色、liveBroadcasting）；远端音频状态回调（`remoteAudioStateChangedOfUid`）；逐声道解码音量私参（`che.audio.neteq.adjust_decoded_volume`）；音频帧 dump 私参（`che.audio.frame_dump`）；远端音频统计回调（`remoteAudioStats`） | 私参均无公开文档 |
-| 功能点概述 | ① 观众角色纯接收加入频道（不发布麦克风、disableVideo、自动订阅音频）；② 多声道/立体声/单声道流接收播放（自适应解码，接收端免私参）；③ 远端 host 列表（按音频发布状态收录，观众不入列）；④ 逐声道选择收听与音量调节（1-based 声道序号、0~100%）；⑤ 音频帧 dump 开关；⑥ 声道数显示选择（纯 UI 行数控制，对齐发送端声道数）；⑦ 中/英文 UI（默认英文） | |
+| 功能点概述 | ① 观众角色纯接收加入频道（不发布麦克风/摄像头、自动订阅音频与视频）；② 多声道/立体声/单声道流接收播放（自适应解码，接收端免私参）；③ 远端 host 列表（按音频发布状态收录，观众不入列）；④ 逐声道选择收听与音量调节（1-based 声道序号、0~100%）；⑤ 音频帧 dump 开关；⑥ 声道数显示选择（纯 UI 行数控制，对齐发送端声道数）；⑦ 远端视频显示（host 发布视频时渲染所选 uid 画面）；⑧ 中/英文 UI（默认英文） | |
 | 客户使用逻辑概述 | 启动 Linux 发送端（如 8 声道 WAV 发送）→ macOS app 填 App ID/频道名以观众加入 → 选择远端 host uid → 逐声道开关/音量试听核对 → 需要时开启 dump 落盘核对 | |
 
 ### 6.2 体验性需求
@@ -120,7 +120,7 @@
 
 | API / 能力 | 事实来源 | 职责 | 能力范围 | 与本需求的关系 |
 | --- | --- | --- | --- | --- |
-| `AgoraRtcEngineKit.sharedEngine(with:delegate:)` + `joinChannel` | `Demo/macOS/MultiChannelAudioReceiver/AgoraManager.swift` | 引擎创建与加入频道 | 观众角色 + `.liveBroadcasting`，`disableVideo()`，`publishMicrophoneTrack = false`，`autoSubscribeAudio = true` | 可复用 |
+| `AgoraRtcEngineKit.sharedEngine(with:delegate:)` + `joinChannel` | `Demo/macOS/MultiChannelAudioReceiver/AgoraManager.swift` | 引擎创建与加入频道 | 观众角色 + `.liveBroadcasting`，`enableVideo()`（仅接收）、`publishMicrophoneTrack = false`、`publishCameraTrack = false`、`autoSubscribeAudio = true`、`autoSubscribeVideo = true` | 可复用 |
 | `remoteAudioStateChangedOfUid` / `didOfflineOfUid` | `Demo/macOS/.../AgoraManager.swift`；SDK 头文件 `AgoraRtcEngineDelegate.h` | 远端 host 列表维护 | 音频 starting/decoding 收录、offline 移除；`didJoinedOfUid` 仅记日志不入列 | 可复用 |
 | 私参 `che.audio.neteq.adjust_decoded_volume` | Agora API-Examples macOS `JoinChannelAudio` 示例；`Demo/macOS/.../AgoraManager.swift` | 逐声道解码音量 | `{"remoteUid":…, "index":1~8, "volume":0~100}`，逐声道下发 | 可复用 |
 | 私参 `che.audio.frame_dump` | 同上 | 音频帧 dump | `true/false`；dump 到 SDK 默认位置 | 可复用 |
@@ -148,14 +148,14 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 
 ### 需求点1：观众角色纯接收加入频道
 
-系统应支持 macOS app 以观众角色加入频道并自动订阅远端音频，不发布任何本地音频/视频。
+系统应支持 macOS app 以观众角色加入频道并自动订阅远端音频/视频，不发布任何本地音频/视频。
 
 #### 场景1.1：加入与离开
 
 - 前置条件：已填写 App ID（默认预填，可修改并持久化）、频道名；Token 可选（无证书项目留空）；UID 填 0 自动分配
 - 当：点击加入频道
-- 则：以 `.liveBroadcasting` + 观众角色加入，`disableVideo()`、`publishMicrophoneTrack=false`、自动订阅音频；界面显示连接状态与本端 UID
-- 且：远端多声道流到达后自动解码播放（默认全部声道启用 100%）
+- 则：以 `.liveBroadcasting` + 观众角色加入，`enableVideo()`（接收视频需要，不发布摄像头：`publishCameraTrack=false`）、`publishMicrophoneTrack=false`、自动订阅音频与视频；界面显示连接状态与本端 UID
+- 且：远端多声道流到达后自动解码播放（默认全部声道启用 100%）；远端视频流到达后在「远端视频」区渲染（需求点6）
 
 #### 场景1.2：兼容普通立体声/单声道流
 
@@ -210,11 +210,27 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 - 则：声道 i 的内容与发送端约定声道一致，无串声道、无声道丢失
 - 且：接收码率可作声道数旁证（8 声道 OPUSMC 约 250~280 kbps；普通单声道约 40~80 kbps）
 
-### 需求点6：双语界面
+### 需求点6：远端视频显示
+
+系统应支持在远端 host 发布视频时，于 app 内渲染所选远端用户的视频画面；不发布视频的 host 显示占位提示。
+
+#### 场景6.1：视频接收与渲染
+
+- 前置条件：以观众角色加入频道（`enableVideo()` + `autoSubscribeVideo=true`，仍不发布本地任何轨道）
+- 当：所选远端 host 发布视频（`remoteVideoStateChangedOfUid` 进入 starting/decoding）
+- 则：「远端视频」区通过 `setupRemoteVideo`（AgoraRtcVideoCanvas，renderMode=fit）渲染该 uid 的画面；日志记录"开始发布视频"
+- 且：切换选中的远端 uid 时，同一视图重新绑定新 uid；host 停止发布视频（stopped/failed）时回到占位提示
+
+#### 场景6.2：无视频 host
+
+- 当：所选远端 host 只发布音频
+- 则：视频区显示占位文案，不黑屏卡死；音频逐声道控制不受影响
+
+### 需求点7：双语界面
 
 系统应支持中/英文界面切换，默认英文，选择持久化。
 
-#### 场景6.1：语言切换
+#### 场景7.1：语言切换
 
 - 当：通过顶部 Language 选择器切换
 - 则：所有可见文案立即以目标语言重新渲染；选择持久化到下次启动
@@ -233,6 +249,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | 音频帧 dump | `frame_dump` 开关落盘 | — | 落盘文件可离线核对 | P1 | 同上 | — | 不涉及 | dump 位置随 SDK 约定 |
 | host 列表 | 仅收录发布音频的 host | — | 观众永不入列 | P0 | 同上 | — | 不涉及 | |
 | 立体声/单声道兼容 | 普通流免配置接收与逐声道控制 | — | 声道数选择器对齐行数 | P0 | 同上 | — | 不涉及 | |
+| 远端视频显示 | host 发布视频时渲染所选 uid 画面，无视频显示占位 | — | 切换 uid 即时重绑；停发回占位 | P1 | 同上 | — | 不涉及 | enableVideo + autoSubscribeVideo，仍不发布本地轨道 |
 | 双语 UI | 中/英文切换，默认英文，持久化 | — | 切换即时渲染 | P1 | 同上 | — | 不涉及 | |
 
 ### 8.2 产出物
@@ -319,3 +336,4 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | --- | --- | --- | --- |
 | v0.1 | 2026-10-08 | 初稿：基于 Demo/macOS 接收验证 app 与 Native/Linux 同源设计文档，收敛 Native SDK（macOS）多声道接收与逐声道收听验证需求 | Kimi Code |
 | v0.2 | 2026-10-10 | 真频道收听验证完成：Linux `sample_send_mkv_multiopus`（AWS，8 声道 OPUSMC payload 125 + 视频，uid 777001）→ macOS app 观众加入 `mkvav1010a`。结果：① 观众加入/host 收录/码率显示正常（接收码率 ~262 kbps，符合 8 声道 OPUSMC 250~280 kbps 区间旁证）；② 逐声道开关/音量私参下发全部返回 0，且 dump 实证即时生效（ch1 置 0 后 dump 中 ch1 立即无声、恢复 100 后约 1 s 内回升，静音窗口与操作时刻秒级吻合）；③ `che.audio.frame_dump` 落盘 `~/Library/Logs/audio_dump_playback_before_mixed_0_<时间戳>_777001.wav`，ffprobe 实测 48 kHz/8 声道/16bit，astats 八声道 RMS -13.6~-15.5 dB 各不相同（无串声道、无丢声道），混音 dump 恒 2 声道；④ dump 位置/命名/封顶行为写入 README 与 FAQ，待确认问题 4 关闭（macOS 4.5.2 范围）。证据截图：`Test/macos_receiver_8ch_verified_20261010.png` | Kimi Code |
+| v0.3 | 2026-10-10 | 新增需求点6（远端视频显示）：加入流程由 `disableVideo()` 改为 `enableVideo()` + `autoSubscribeVideo=true`（仍不发布本地轨道），`remoteVideoStateChangedOfUid` 跟踪 host 视频发布状态，所选 uid 的画面经 `setupRemoteVideo`（renderMode=fit）渲染到「远端视频」区；无视频 host 显示占位提示。场景1.1、6.1 功能点概述、8.1 验收表同步更新 | Kimi Code |

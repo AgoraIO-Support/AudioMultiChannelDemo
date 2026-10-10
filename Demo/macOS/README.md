@@ -17,8 +17,10 @@
 
 ## 功能说明
 
-- **纯接收**：`.liveBroadcasting` 频道模式 + 观众角色加入，`disableVideo()`，不发布麦克风，
-  默认自动订阅远端音频。
+- **纯接收**：`.liveBroadcasting` 频道模式 + 观众角色加入，不发布麦克风/摄像头，
+  自动订阅远端音频与视频。
+- **远端视频显示**：host 发布视频时，「远端视频」区实时渲染所选远端用户的画面
+  （`setupRemoteVideo`，等比适配）；只发音频的 host 显示占位提示。
 - **远端用户列表**：由远端音频发布状态驱动（`remoteAudioStateChangedOfUid` 回调中音频处于
   starting/decoding 时收录，`didOfflineOfUid` 时移除），**只有真正在发布音频的主播（host）
   才会出现，观众（audience）角色的端永远不会列出**。界面中选择要控制的远端 uid，

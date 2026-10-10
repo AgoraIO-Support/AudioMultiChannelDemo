@@ -21,8 +21,11 @@ interpolation); log and status lines are emitted in the language active at the t
 
 ## Features
 
-- **Receive-only**: joins in `.liveBroadcasting` profile with the audience role,
-  `disableVideo()`, microphone never published, auto-subscribes remote audio (default).
+- **Receive-only**: joins in `.liveBroadcasting` profile with the audience role;
+  microphone/camera are never published; auto-subscribes remote audio and video.
+- **Remote video display**: when the host publishes video, the "Remote Video" area renders
+  the selected remote user's picture (`setupRemoteVideo`, aspect fit); audio-only hosts
+  show a placeholder instead.
 - **Remote user list**: driven by remote audio publish state — uids are added in the
   `remoteAudioStateChangedOfUid` callback when audio is starting/decoding and removed on
   `didOfflineOfUid`, so **only hosts actually publishing audio are listed; audience-role

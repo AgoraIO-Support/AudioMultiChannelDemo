@@ -1,4 +1,33 @@
 import SwiftUI
+import AppKit
+
+/// 远端视频渲染视图：把选定 uid 的视频绑定到一个 NSView（AgoraRtcVideoCanvas）。
+struct RemoteVideoView: NSViewRepresentable {
+    let uid: UInt
+    @EnvironmentObject var agoraManager: AgoraManager
+
+    final class Coordinator {
+        var boundUid: UInt?
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.black.cgColor
+        agoraManager.setupRemoteVideo(remoteUid: uid, view: view)
+        context.coordinator.boundUid = uid
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        if context.coordinator.boundUid != uid {
+            agoraManager.setupRemoteVideo(remoteUid: uid, view: nsView)
+            context.coordinator.boundUid = uid
+        }
+    }
+}
 
 struct ChannelControlState: Equatable {
     var enabled = true
@@ -36,6 +65,7 @@ struct ContentView: View {
             languageBar
             joinPanel
             channelPanel
+            videoPanel
             logPanel
         }
         .padding(12)
@@ -183,6 +213,28 @@ struct ContentView: View {
             Text("\(Int(channelStates[index - 1].volume))%")
                 .monospacedDigit()
                 .frame(width: 44, alignment: .trailing)
+        }
+    }
+
+    // MARK: - Remote video
+
+    private var videoPanel: some View {
+        GroupBox(tr("video.section")) {
+            ZStack {
+                Color.black
+                if let uid = selectedUid,
+                   agoraManager.remoteUsers.first(where: { $0.uid == uid })?.hasVideo == true {
+                    RemoteVideoView(uid: uid)
+                } else {
+                    Text(tr(selectedUid == nil ? "video.noRemote" : "video.noVideo"))
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 300)
+            .cornerRadius(4)
+            .padding(6)
         }
     }
 
