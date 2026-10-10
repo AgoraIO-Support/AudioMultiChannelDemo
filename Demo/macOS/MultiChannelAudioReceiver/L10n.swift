@@ -54,6 +54,8 @@ enum L10n {
         "mc.remoteUser": [.en: "Remote user", .zhHans: "远端用户"],
         "mc.noSelection": [.en: "Not selected", .zhHans: "未选择"],
         "mc.recvBitrate": [.en: "Recv bitrate: %ld kbps", .zhHans: "接收码率: %ld kbps"],
+        "mc.monitorWindow": [.en: "last ~2 min, kbps", .zhHans: "最近约 2 分钟，kbps"],
+        "mc.playbackSection": [.en: "Channel playback (per-channel volume)", .zhHans: "声道播放（逐声道音量）"],
         "mc.channelCount": [.en: "Channels", .zhHans: "声道数"],
         "mc.noRemote": [.en: "No remote user yet. Start a sender in the same channel first (e.g. sample_send_wav_multiopus in Demo/linux sending 8 channels).",
                         .zhHans: "暂无远端用户。请先在同一频道启动一个发送端（例如 Demo/linux 的 sample_send_wav_multiopus 8 声道发送）。"],

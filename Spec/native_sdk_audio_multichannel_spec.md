@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 待补充（多声道项目背景单见 Linux 侧 spec） |
-| 需求版本 | v0.4 |
+| 需求版本 | v0.5 |
 
 ---
 
@@ -338,3 +338,4 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | v0.2 | 2026-10-10 | 真频道收听验证完成：Linux `sample_send_mkv_multiopus`（AWS，8 声道 OPUSMC payload 125 + 视频，uid 777001）→ macOS app 观众加入 `mkvav1010a`。结果：① 观众加入/host 收录/码率显示正常（接收码率 ~262 kbps，符合 8 声道 OPUSMC 250~280 kbps 区间旁证）；② 逐声道开关/音量私参下发全部返回 0，且 dump 实证即时生效（ch1 置 0 后 dump 中 ch1 立即无声、恢复 100 后约 1 s 内回升，静音窗口与操作时刻秒级吻合）；③ `che.audio.frame_dump` 落盘 `~/Library/Logs/audio_dump_playback_before_mixed_0_<时间戳>_777001.wav`，ffprobe 实测 48 kHz/8 声道/16bit，astats 八声道 RMS -13.6~-15.5 dB 各不相同（无串声道、无丢声道），混音 dump 恒 2 声道；④ dump 位置/命名/封顶行为写入 README 与 FAQ，待确认问题 4 关闭（macOS 4.5.2 范围）。证据截图：`Test/macos_receiver_8ch_verified_20261010.png` | Kimi Code |
 | v0.3 | 2026-10-10 | 新增需求点6（远端视频显示）：加入流程由 `disableVideo()` 改为 `enableVideo()` + `autoSubscribeVideo=true`（仍不发布本地轨道），`remoteVideoStateChangedOfUid` 跟踪 host 视频发布状态，所选 uid 的画面经 `setupRemoteVideo`（renderMode=fit）渲染到「远端视频」区；无视频 host 显示占位提示。场景1.1、6.1 功能点概述、8.1 验收表同步更新 | Kimi Code |
 | v0.4 | 2026-10-10 | UI 布局改版：① 视频区不再常驻，仅在所选 host 发布视频时内嵌于「远端多声道控制」区右侧，宽度按 `remoteVideoStats` 流宽高比适配（消除大黑边），纯音频 host 只显示"仅音频"标记；② 声道滑杆限制最大宽度；③ 接收码率增加实时走势图（最近 60 个 `remoteAudioStats` 样本 sparkline）。需求点5/6 与 8.1 同步更新 | Kimi Code |
+| v0.5 | 2026-10-10 | UI 细化：① 远端用户下拉 UID 改为 `UID 777001` 直显（修复 SwiftUI `Text` 插值自动加千分位导致的 "777,001" 误读）；② 控制区按"选择远端 → 监控（码率图+视频）→ 逐声道播放控制"三层分组，组间加 Divider 与小组标题；③ 码率走势图增加 Y 轴刻度（最大值/0）与"当前值 · 最近约 2 分钟"标题 | Kimi Code |

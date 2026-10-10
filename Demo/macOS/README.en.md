@@ -28,7 +28,8 @@ interpolation); log and status lines are emitted in the language active at the t
   (`setupRemoteVideo`, fixed height with width matched to the stream's real aspect ratio);
   audio-only hosts take no video space and just show an "Audio only" badge next to the picker.
 - **Receive bitrate chart**: besides the numeric value, the selected remote user's receive
-  bitrate has a live sparkline (last 60 `remoteAudioStats` samples, ~2-minute window).
+  bitrate has a live sparkline with Y-axis labels (max/0), covering the last 60
+  `remoteAudioStats` samples (~2-minute window).
 - **Remote user list**: driven by remote audio publish state — uids are added in the
   `remoteAudioStateChangedOfUid` callback when audio is starting/decoding and removed on
   `didOfflineOfUid`, so **only hosts actually publishing audio are listed; audience-role

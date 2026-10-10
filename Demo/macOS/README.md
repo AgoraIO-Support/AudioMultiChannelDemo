@@ -22,8 +22,8 @@
 - **远端视频显示（按需出现）**：host 发布视频时，所选远端用户的画面内嵌在「远端多声道控制」
   区右侧实时渲染（`setupRemoteVideo`，高度固定、宽度按流实际宽高比适配）；只发音频的 host
   不占用视频空间，仅在选择器旁显示"仅音频"标记。
-- **接收码率走势图**：所选远端用户的接收码率除数值外还有实时 sparkline
-  （最近 60 个 `remoteAudioStats` 样本，约 2 分钟窗口）。
+- **接收码率走势图**：所选远端用户的接收码率除数值外还有带 Y 轴刻度（最大值/0）的实时
+  sparkline（最近 60 个 `remoteAudioStats` 样本，约 2 分钟窗口）。
 - **远端用户列表**：由远端音频发布状态驱动（`remoteAudioStateChangedOfUid` 回调中音频处于
   starting/decoding 时收录，`didOfflineOfUid` 时移除），**只有真正在发布音频的主播（host）
   才会出现，观众（audience）角色的端永远不会列出**。界面中选择要控制的远端 uid，
