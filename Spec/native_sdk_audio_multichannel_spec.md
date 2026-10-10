@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 待补充（多声道项目背景单见 Linux 侧 spec） |
-| 需求版本 | v1.2 |
+| 需求版本 | v1.3 |
 
 ---
 
@@ -120,7 +120,7 @@
 
 | API / 能力 | 事实来源 | 职责 | 能力范围 | 与本需求的关系 |
 | --- | --- | --- | --- | --- |
-| `AgoraRtcEngineKit.sharedEngine(with:delegate:)` + `joinChannel` | `Demo/macOS/MultiChannelAudioReceiver/AgoraManager.swift` | 引擎创建与加入频道 | 观众角色 + `.liveBroadcasting`，`enableVideo()`（仅接收）、`publishMicrophoneTrack = false`、`publishCameraTrack = false`、`autoSubscribeAudio = true`、`autoSubscribeVideo = true` | 可复用 |
+| `AgoraRtcEngineKit.sharedEngine(with:delegate:)` + `joinChannel` | `Demo/macOS/MultiChannelAudioReceiver/MultiChannelAudioReceiver/AgoraManager.swift` | 引擎创建与加入频道 | 观众角色 + `.liveBroadcasting`，`enableVideo()`（仅接收）、`publishMicrophoneTrack = false`、`publishCameraTrack = false`、`autoSubscribeAudio = true`、`autoSubscribeVideo = true` | 可复用 |
 | `remoteAudioStateChangedOfUid` / `didOfflineOfUid` | `Demo/macOS/.../AgoraManager.swift`；SDK 头文件 `AgoraRtcEngineDelegate.h` | 远端 host 列表维护 | 音频 starting/decoding 收录、offline 移除；`didJoinedOfUid` 仅记日志不入列 | 可复用 |
 | 私参 `che.audio.neteq.adjust_decoded_volume` | Agora API-Examples macOS `JoinChannelAudio` 示例；`Demo/macOS/.../AgoraManager.swift` | 逐声道解码音量 | `{"remoteUid":…, "index":1~8, "volume":0~100}`，逐声道下发 | 可复用 |
 | 私参 `che.audio.frame_dump` | 同上 | 音频帧 dump | `true/false`；dump 到 SDK 默认位置 | 可复用 |
@@ -331,7 +331,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 
 ### 参考资料
 
-- `Demo/macOS/`（MultiChannelAudioReceiver app：`AgoraManager.swift`、`ContentView.swift`、`L10n.swift`、`README.md` / `README.en.md`）
+- `Demo/macOS/`（两个自包含 app 工程：`MultiChannelAudioReceiver/` 接收验证 app、`MultiChannelAudioSender/` 发送验证 app；各自含 Podfile、xcodeproj、源码与 README）
 - Agora API-Examples macOS `JoinChannelAudio` 示例（两个私参用法来源）
 - 设计文档：`References/Docs/ExT-1485178709-100726-0959-56_en.md`（Native/Linux 多声道同源实现）、`References/Docs/ExT-1485178492-100726-1000-58_en.md`（Web SDK 多声道）
 - Linux 侧规格：`Spec/linux_sdk_audio_multichannel_spec.md`（发送、协商、布局映射）；Web 侧规格：`Spec/web_sdk_audio_multichannel_spec.md`
@@ -352,3 +352,4 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | v1.0 | 2026-10-10 | host 媒体类型全覆盖：`RemoteUser` 拆分为 hasAudio/hasVideo 独立跟踪，视频状态回调也可收录 host——修复此前"仅视频 host 永远进不了列表"的盲区。三种 host 形态：音频+视频（逐声道控制 + 视频 + 双码率图）、仅音频（逐声道控制 + "仅音频"提示 + 音频码率图）、仅视频（"仅视频"提示不下发音量参数 + 视频 + 视频码率图）。需求点4 改写并新增场景4.2。实测：AV 双全（mkvav1010a）与仅音频（audonly1010a，AWS `sample_send_wav_multiopus`，257 kbps 8 声道）两路径通过；仅视频路径本仓库无对应发送端，按代码走查确认 | Kimi Code |
 | v1.1 | 2026-10-10 | 启动空状态布局修复：中区去掉为视频预留的 minHeight（空态不再出现三段式大空洞），Log 面板固定 160pt（ScrollView 不再贪婪扩张吃掉全部余量），底部 Spacer 吸收空白，内容顶部聚拢；空态提示去重——控制栏只显示 "No remote host yet" 短提示，详细引导文案（先启动发送端）仅保留在监控栏 | Kimi Code |
 | v1.2 | 2026-10-10 | 新增 Native 发送侧 demo `Demo/macOS/MultiChannelAudioSender`（broadcaster 角色发布内置 4/6/8 声道 Channel ID WAV，`createCustomAudioTrack(.mixable)` + `pushExternalAudioFrameRawData`，10ms pacer 循环）。实测关闭待确认问题 1：公开版 macOS 4.5.2 私参协商正常（对端解出对应声道数 multiopus），但自定义音轨输入被钳制为 2 声道（ch1/2 有内容、ch3+ 静音，raw push 与 CMSampleBuffer 两种路径一致），多声道发送需 SDK 侧支持。另记录 API 差异：push 的 `samples` 为全部声道总样本数（Linux 为每声道） | Kimi Code |
+| v1.3 | 2026-10-10 | Demo/macOS 目录重组：receiver 的 Podfile/xcodeproj/README 从目录顶层收进 `MultiChannelAudioReceiver/` 工程根，与 `MultiChannelAudioSender/` 平级对称；顶层新增目录级 README（双 app 总览）。6.4 表格与参考资料路径同步更新；receiver 在新位置 pod install + 构建验证通过 | Kimi Code |
