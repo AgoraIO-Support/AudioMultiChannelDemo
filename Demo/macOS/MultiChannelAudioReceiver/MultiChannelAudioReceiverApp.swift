@@ -8,7 +8,7 @@ struct MultiChannelAudioReceiverApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(agoraManager)
-                .frame(minWidth: 720, minHeight: 760)
+                .frame(minWidth: 960, minHeight: 880)
         }
     }
 }

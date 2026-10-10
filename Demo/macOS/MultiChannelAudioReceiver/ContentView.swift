@@ -91,7 +91,14 @@ struct ContentView: View {
         VStack(spacing: 12) {
             languageBar
             joinPanel
-            channelPanel
+            // 双栏：左 = 控制（选谁、怎么听），右 = 监控（所选 uid 的视频与码率）
+            HStack(alignment: .top, spacing: 12) {
+                controlPanel
+                    .frame(width: 430)
+                monitorPanel
+                    .frame(maxWidth: .infinity)
+            }
+            .frame(minHeight: 480)
             logPanel
         }
         .padding(12)
@@ -176,23 +183,11 @@ struct ContentView: View {
         }
     }
 
-    private var selectedUser: RemoteUser? {
-        guard let uid = selectedUid else { return nil }
-        return agoraManager.remoteUsers.first(where: { $0.uid == uid })
-    }
+    // MARK: - 左栏：控制面板
 
-    /// 按 remoteVideoStats 的实际宽高比确定视频视图宽度（高度固定 200），拿不到时按 16:9。
-    private func videoWidth(_ user: RemoteUser) -> CGFloat {
-        let height: CGFloat = 200
-        guard user.videoWidth > 0, user.videoHeight > 0 else { return height * 16 / 9 }
-        return min(height * CGFloat(user.videoWidth) / CGFloat(user.videoHeight), 640)
-    }
-
-    // MARK: - Remote multi-channel control
-
-    private var channelPanel: some View {
+    private var controlPanel: some View {
         GroupBox(tr("mc.section")) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 12) {
                     Text(tr("mc.remoteUser"))
                     Picker("", selection: $selectedUid) {
@@ -206,11 +201,6 @@ struct ContentView: View {
                     .onChange(of: selectedUid) { _ in
                         applyAllChannels()
                     }
-                    if let user = selectedUser, !user.hasVideo {
-                        Text(tr("mc.audioOnly"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
                     Spacer()
                     Text(tr("mc.channelCount"))
                     Picker("", selection: $channelCount) {
@@ -222,54 +212,25 @@ struct ContentView: View {
                     .frame(width: 70)
                 }
 
+                Divider()
+
                 if selectedUid == nil {
                     Text(tr("mc.noRemote"))
                         .font(.callout)
                         .foregroundColor(.secondary)
-                } else if let user = selectedUser {
-                    // 监控组：接收码率走势 + 视频（仅 host 发布视频时出现）
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(tr("mc.recvBitrate", user.receivedBitrateKbps) + " · " + tr("mc.monitorWindow"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        HStack(alignment: .top, spacing: 16) {
-                            HStack(alignment: .top, spacing: 4) {
-                                BitrateSparkline(samples: user.bitrateHistory)
-                                    .frame(width: 280, height: 56)
-                                VStack(alignment: .trailing) {
-                                    Text("\(max(user.bitrateHistory.max() ?? 0, 1))")
-                                    Spacer()
-                                    Text("0")
-                                }
-                                .font(.system(size: 9))
-                                .foregroundColor(.secondary)
-                                .frame(height: 56)
-                            }
-                            if user.hasVideo {
-                                RemoteVideoView(uid: user.uid)
-                                    .frame(width: videoWidth(user), height: 200)
-                                    .cornerRadius(4)
-                            }
-                        }
+                } else {
+                    Text(tr("mc.playbackSection"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    ForEach(1...channelCount, id: \.self) { index in
+                        channelRow(index: index)
                     }
-
-                    Divider()
-
-                    // 播放控制组：逐声道开关与音量
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(tr("mc.playbackSection"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        ForEach(1...channelCount, id: \.self) { index in
-                            channelRow(index: index)
-                        }
-                        Text(tr("mc.countHint"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    Text(tr("mc.countHint"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
-            .padding(6)
+            .padding(8)
         }
     }
 
@@ -281,11 +242,62 @@ struct ContentView: View {
             Toggle("", isOn: enabledBinding(index))
                 .labelsHidden()
             Slider(value: volumeBinding(index), in: 0...100, step: 1)
-                .frame(maxWidth: 260)
                 .disabled(!channelStates[index - 1].enabled)
             Text("\(Int(channelStates[index - 1].volume))%")
                 .monospacedDigit()
                 .frame(width: 44, alignment: .trailing)
+        }
+    }
+
+    // MARK: - 右栏：监控面板（视频 + 接收码率走势）
+
+    private var selectedUser: RemoteUser? {
+        guard let uid = selectedUid else { return nil }
+        return agoraManager.remoteUsers.first(where: { $0.uid == uid })
+    }
+
+    /// 流实际宽高比（remoteVideoStats），拿不到时按 16:9。
+    private func videoAspect(_ user: RemoteUser) -> CGFloat {
+        guard user.videoWidth > 0, user.videoHeight > 0 else { return 16.0 / 9.0 }
+        return CGFloat(user.videoWidth) / CGFloat(user.videoHeight)
+    }
+
+    private var monitorPanel: some View {
+        GroupBox(selectedUser.map { tr("monitor.section", Int($0.uid)) } ?? tr("monitor.section.none")) {
+            VStack(alignment: .leading, spacing: 10) {
+                if let user = selectedUser {
+                    if user.hasVideo {
+                        RemoteVideoView(uid: user.uid)
+                            .aspectRatio(videoAspect(user), contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                            .cornerRadius(4)
+                    } else {
+                        Text(tr("mc.audioOnly"))
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                    }
+                    Text(tr("mc.recvBitrate", user.receivedBitrateKbps) + " · " + tr("mc.monitorWindow"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    HStack(alignment: .top, spacing: 4) {
+                        BitrateSparkline(samples: user.bitrateHistory)
+                            .frame(height: 64)
+                        VStack(alignment: .trailing) {
+                            Text("\(max(user.bitrateHistory.max() ?? 0, 1))")
+                            Spacer()
+                            Text("0")
+                        }
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .frame(height: 64)
+                    }
+                } else {
+                    Text(tr("mc.noRemote"))
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(8)
         }
     }
 
@@ -306,7 +318,7 @@ struct ContentView: View {
                     proxy.scrollTo("logBottom", anchor: .bottom)
                 }
             }
-            .frame(minHeight: 130)
+            .frame(minHeight: 110)
         }
     }
 
