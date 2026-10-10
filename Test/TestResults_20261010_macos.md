@@ -101,6 +101,14 @@ app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端
 
 关键修复：此前远端列表仅由音频发布状态驱动，仅视频 host 永远进不了列表；现 `remoteVideoStateChangedOfUid` 也可收录 host。
 
+## 追加：启动空状态布局（2026-10-10 16:17，spec v1.1）
+
+| 验证项 | 结果 |
+| --- | --- |
+| 空状态紧凑顶部聚拢 | ✅ 中区去掉 minHeight，join/控制/监控/log 依次贴顶，空白沉底为纯色背景；截图 `Test/macos_initial_state_20261010.png` |
+| 空态提示去重 | ✅ 控制栏仅 "No remote host yet"，引导文案只在监控栏 |
+| 加入后布局不受影响 | ✅ 视频 + 双码率图 + 声道控制正常，Log 固定 160pt；截图 `Test/macos_joined_layout_20261010.png` |
+
 证据截图：`Test/macos_receiver_8ch_verified_20261010.png`
 
 ## 附带发现

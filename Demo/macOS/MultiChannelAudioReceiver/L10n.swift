@@ -61,6 +61,7 @@ enum L10n {
         "mc.channelCount": [.en: "Channels", .zhHans: "声道数"],
         "mc.noRemote": [.en: "No remote user yet. Start a sender in the same channel first (e.g. sample_send_wav_multiopus in Demo/linux sending 8 channels).",
                         .zhHans: "暂无远端用户。请先在同一频道启动一个发送端（例如 Demo/linux 的 sample_send_wav_multiopus 8 声道发送）。"],
+        "mc.noRemoteShort": [.en: "No remote host yet", .zhHans: "暂无远端 host"],
         "mc.channelRow": [.en: "Channel %ld", .zhHans: "声道 %ld"],
         "mc.countHint": [.en: "The channel count selector only controls how many rows are shown: choose 2 for a normal stereo stream, or the matching count for a 3~8-channel OPUSMC stream.",
                          .zhHans: "声道数选择器仅控制显示的行数：验证普通立体声流时选 2，验证 3~8 声道 OPUSMC 流时选对应声道数。"],

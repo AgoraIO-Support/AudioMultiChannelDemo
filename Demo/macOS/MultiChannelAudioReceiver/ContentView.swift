@@ -99,8 +99,8 @@ struct ContentView: View {
                 monitorPanel
                     .frame(maxWidth: .infinity)
             }
-            .frame(minHeight: 480)
             logPanel
+            Spacer(minLength: 0)
         }
         .padding(12)
         .onChange(of: agoraManager.remoteUsers.map { $0.uid }) { uids in
@@ -210,7 +210,7 @@ struct ContentView: View {
                 Divider()
 
                 if selectedUid == nil {
-                    Text(tr("mc.noRemote"))
+                    Text(tr("mc.noRemoteShort"))
                         .font(.callout)
                         .foregroundColor(.secondary)
                 } else if let user = selectedUser, !user.hasAudio {
@@ -347,7 +347,7 @@ struct ContentView: View {
                     proxy.scrollTo("logBottom", anchor: .bottom)
                 }
             }
-            .frame(minHeight: 110)
+            .frame(height: 160)
         }
     }
 
