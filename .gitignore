@@ -8,6 +8,6 @@ Resource/aws_test_server.txt
 !Demo/linux/public/VictoriaMulti.mkv
 Demo/linux/build/
 Demo/linux/out/
-Demo/macOS/Pods/
-Demo/macOS/*.xcworkspace
-Demo/macOS/build/
+Demo/macOS/**/Pods/
+Demo/macOS/**/*.xcworkspace
+Demo/macOS/**/build/

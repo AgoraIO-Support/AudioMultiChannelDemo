@@ -6,7 +6,7 @@
 
 - Agora Linux SDK 3~8 声道音频收发 C++ demo
 - Web 端多声道验证 demo（OPUSMC，payload type 123/124/125，仅 48 kHz）
-- macOS 多声道接收验证 app（Native SDK，观众角色纯接收，逐声道选择收听与音量调节，中/英文 UI，默认英文）
+- macOS 多声道验证 app（Native SDK）：MultiChannelAudioReceiver（观众角色纯接收，逐声道选择收听与音量调节）与 MultiChannelAudioSender（主播角色发布多声道 WAV，中/英文 UI，默认英文）
 - 配套文档站与部署资料
 
 ![Agora multi-channel audio (multiopus) overview](References/assets/multiopus-repo-overview.svg)
@@ -26,7 +26,7 @@
 | `Spec/` | 需求规格（PRD）：Linux SDK、Web SDK 与 Native SDK（macOS）音频多声道 |
 | `Demo/linux/` | Linux C++ demo：发送 3 路径（raw PCM / WAV 16bit/24bit / 预编码 Opus）+ 接收 3 路径（解码 PCM / 编码帧 / 混音），x86_64 + aarch64 |
 | `Demo/web/` | Web 验证 demo（Vue3 + Vite，agora-rtc-sdk-ng 4.20.1-200）：多声道发布/订阅、声道选择播放、逐声道音量 |
-| `Demo/macOS/` | macOS 接收验证 app（SwiftUI + AgoraRtcEngine_macOS 4.5.2，CocoaPods）：观众角色纯接收多声道/立体声流，逐声道选择收听与音量调节，音频帧 dump |
+| `Demo/macOS/` | macOS 验证 app（SwiftUI + AgoraRtcEngine_macOS 4.5.2，CocoaPods）：`MultiChannelAudioReceiver` 观众角色纯接收多声道/立体声流（逐声道控制、远端视频显示、码率走势图、音频帧 dump）；`MultiChannelAudioSender` 主播角色发布内置 4/6/8 声道 Channel ID WAV（10ms pacer + 多声道私参协商） |
 | `Demo/docs/` | 多声道接入文档站（随 Web 构建发布到 `dist/docs/`） |
 | `Docs/` | 部署与运维文档（AWS 测试服务器部署、前端缓存管理） |
 | `LinuxSDKFolder/` | Agora Linux SDK v4.4.30.149（X86_64 / Aarch64，含符号包） |
@@ -36,5 +36,5 @@
 
 - Linux demo 构建与运行：见 `Demo/linux/README.md`（[English](Demo/linux/README.en.md)）
 - Web demo 启动与双标签页验证：见 `Demo/web/README.md`（[English](Demo/web/README.en.md)）
-- macOS 接收验证 app 构建与逐声道试听：见 `Demo/macOS/README.md`（[English](Demo/macOS/README.en.md)）
+- macOS 验证 app 构建与逐声道试听/发送：见 `Demo/macOS/README.md`（[English](Demo/macOS/README.en.md)）与 `Demo/macOS/MultiChannelAudioSender/README.md`（[English](Demo/macOS/MultiChannelAudioSender/README.en.md)）
 - 端到端验证（Linux 发送 → Web 订阅逐声道核对）：见上述两份 README 与 `Demo/docs/` 文档站

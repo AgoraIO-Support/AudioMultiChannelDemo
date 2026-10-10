@@ -6,6 +6,8 @@
 并通过 Native SDK 私参 **逐声道选择收听、逐声道调节音量**。需求背景与验收基线见
 `Spec/native_sdk_audio_multichannel_spec.md`。
 
+> 配套发送端验证 app 见 `MultiChannelAudioSender/`（主播角色发布内置多声道 WAV 素材）。
+
 [English Documentation](README.en.md)
 
 ## 界面语言

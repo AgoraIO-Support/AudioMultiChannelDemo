@@ -102,7 +102,6 @@ app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端
 关键修复：此前远端列表仅由音频发布状态驱动，仅视频 host 永远进不了列表；现 `remoteVideoStateChangedOfUid` 也可收录 host。
 
 ## 追加：启动空状态布局（2026-10-10 16:17，spec v1.1）
-
 | 验证项 | 结果 |
 | --- | --- |
 | 空状态紧凑顶部聚拢 | ✅ 中区去掉 minHeight，join/控制/监控/log 依次贴顶，空白沉底为纯色背景；截图 `Test/macos_initial_state_20261010.png` |
@@ -123,3 +122,32 @@ app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端
 - `set AXValue` 只能改显示值、不进 `@State` 绑定（Join 按钮 disabled 状态可佐证）；必须用真实鼠标事件（cliclick）聚焦后粘贴/按键。
 - 系统输入法若为中文，按键会触发候选窗；用 pbcopy + Cmd+V 粘贴可完全绕开 IME。
 - 每个 Bash 调用都是独立进程，activate + 点击 + 输入必须放在同一个 osascript 进程内完成，避免焦点被 VS Code 抢回。
+
+## 追加：macOS 发送端（MultiChannelAudioSender）实测（2026-10-10 17:57，spec v1.2）
+
+发送端 app：`Demo/macOS/MultiChannelAudioSender`（broadcaster + `createCustomAudioTrack(.mixable)` + `pushExternalAudioFrameRawData`，10ms pacer 循环）。频道 `macsend1010a`，订阅侧为 Web Live Demo 1（localhost:5199）。
+
+| 验证项 | 方法 | 结果 |
+| --- | --- | --- |
+| 8ch WAV 协商 | Web 订阅 uid 2967694089 | ✅ codec=multiopus **8ch**，channelCount=8 |
+| 4ch WAV 协商 | Web 订阅 uid 3179912594 | ✅ codec=multiopus **4ch**（payload 123） |
+| 6ch WAV 协商 | Web 订阅 uid 3918290146 | ✅ codec=multiopus **6ch**（payload 124） |
+| 发送节奏 | app 发送统计 | ✅ 10ms/帧实时（11600 帧 = 116.0s 音频） |
+| **多声道内容** | Web 逐声道音量 + 接收端 dump | ⚠️ **仅前 2 声道有内容，ch3+ 静音**（8ch: CH0/CH1 有量；4ch/6ch 同样只前 2 声道） |
+
+### 结论：公开版 macOS 4.5.2 发送侧多声道输入受限
+
+私参协商正常（对端解出对应声道数），但自定义音轨输入被钳制为 2 声道。排查过程：
+
+1. 首先修复了 demo 自身 bug：pacer 循环漏了 `offset += bytesPerFrame`（一直重发首 10ms 静音段）；
+2. 修复后 ch1/2 有内容、ch3~8 静音；`pushExternalAudioFrameRawData` 与 `pushExternalAudioFrameSampleBuffer`（ASBD 自描述 8ch）两种路径结论一致；
+3. `setExternalAudioSource`（声明 channels=8）不改变结果；
+4. 接收端 per-user dump 证实 ch1/2 为源 WAV 内容（与源相关度 0.45，opus 有损+循环偏移），ch3+ 为数字静音。
+
+→ 多声道**发送**需要 SDK 侧支持（参照 Linux 定制版做法）；本 app 留作该能力的回归工具。API 差异记录：push 的 `samples` = 全部声道总样本数（Linux 为每声道）。
+
+证据截图：`Test/macos_sender_ui_20261010.png`（发送端 UI）、`Test/web_sub_macsender_8ch_20261010.png`（Web 订阅 8ch multiopus 判定）。
+
+### 附带修复
+
+- `WavReader` 支持 WAVE_FORMAT_EXTENSIBLE（format=0xFFFE，按 SubFormat GUID 判定 PCM）——ffmpeg 重采样产出的 4/6ch WAV 使用该格式。

@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 待补充（多声道项目背景单见 Linux 侧 spec） |
-| 需求版本 | v1.1 |
+| 需求版本 | v1.2 |
 
 ---
 
@@ -295,7 +295,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 
 | # | 问题 | 维度 | 建议确认人 | 状态 |
 | --- | --- | --- | --- | --- |
-| 1 | Native 发送侧多声道：设计与 Linux 同源（理论支持 3~8 声道 OPUSMC 发送），但本仓库未含 Native 发送 demo，发送路径未实测 | 功能边界 | 研发 / QA | 待确认 |
+| 1 | ~~Native 发送侧多声道：设计与 Linux 同源（理论支持 3~8 声道 OPUSMC 发送），但本仓库未含 Native 发送 demo，发送路径未实测~~ **已实测（2026-10-10，新增 `Demo/macOS/MultiChannelAudioSender`）**：私参协商在公开版 macOS 4.5.2 上正常生效（对端解出对应声道数的 multiopus 流，8/6/4ch 均验证），但**自定义音轨输入最高按 2 声道读取**——只有前 2 声道携带内容，第 3 声道起静音；`pushExternalAudioFrameRawData` 与 `pushExternalAudioFrameSampleBuffer`（ASBD 自描述 8ch）结论一致。结论：多声道发送需要 SDK 侧支持（参照 Linux 定制版），sender app 可作为该能力的回归工具 | 功能边界 | 研发 / QA | 已实测（公开版受限，待 SDK 支持） |
 | 2 | `che.audio.neteq.adjust_decoded_volume` 在 iOS/Android/Windows Native SDK 上是否同名可用（macOS 4.5.2 已用） | 兼容性 | 研发 / QA | 待确认 |
 | 3 | 接收端获知实际协商声道数的正式手段（回调或 getStats 字段），当前 UI 只能手动对齐 | 能力差距 | 研发 / PM | 待确认 |
 | 4 | ~~dump 文件的具体位置与命名规则~~ **已实测（2026-10-10，macOS 4.5.2）**：dump 落在 `~/Library/Logs/`；按远端用户解码输出 `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`（48 kHz / N 声道 / 16bit，约 120 MB 封顶停止，Leave 重进按新时间戳另建）；混音 `audio_dump_playback_mixer_0.wav`（恒 2 声道）；另有 `audio_dump_play_0.wav`、`far_in_48000hz_2ch.wav`。其他平台/版本的位置未逐一验证 | 可观测性 | 研发 | 已确认（macOS 4.5.2） |
@@ -351,3 +351,4 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | v0.9 | 2026-10-10 | UI 对齐修正：① 视频由水平居中改为左对齐，与下方码率图共用左边缘基准（消除"漂浮感"）；② Join 区 App ID/Token/Channel ID 输入框限宽 520pt，不再拉满全宽 | Kimi Code |
 | v1.0 | 2026-10-10 | host 媒体类型全覆盖：`RemoteUser` 拆分为 hasAudio/hasVideo 独立跟踪，视频状态回调也可收录 host——修复此前"仅视频 host 永远进不了列表"的盲区。三种 host 形态：音频+视频（逐声道控制 + 视频 + 双码率图）、仅音频（逐声道控制 + "仅音频"提示 + 音频码率图）、仅视频（"仅视频"提示不下发音量参数 + 视频 + 视频码率图）。需求点4 改写并新增场景4.2。实测：AV 双全（mkvav1010a）与仅音频（audonly1010a，AWS `sample_send_wav_multiopus`，257 kbps 8 声道）两路径通过；仅视频路径本仓库无对应发送端，按代码走查确认 | Kimi Code |
 | v1.1 | 2026-10-10 | 启动空状态布局修复：中区去掉为视频预留的 minHeight（空态不再出现三段式大空洞），Log 面板固定 160pt（ScrollView 不再贪婪扩张吃掉全部余量），底部 Spacer 吸收空白，内容顶部聚拢；空态提示去重——控制栏只显示 "No remote host yet" 短提示，详细引导文案（先启动发送端）仅保留在监控栏 | Kimi Code |
+| v1.2 | 2026-10-10 | 新增 Native 发送侧 demo `Demo/macOS/MultiChannelAudioSender`（broadcaster 角色发布内置 4/6/8 声道 Channel ID WAV，`createCustomAudioTrack(.mixable)` + `pushExternalAudioFrameRawData`，10ms pacer 循环）。实测关闭待确认问题 1：公开版 macOS 4.5.2 私参协商正常（对端解出对应声道数 multiopus），但自定义音轨输入被钳制为 2 声道（ch1/2 有内容、ch3+ 静音，raw push 与 CMSampleBuffer 两种路径一致），多声道发送需 SDK 侧支持。另记录 API 差异：push 的 `samples` 为全部声道总样本数（Linux 为每声道） | Kimi Code |

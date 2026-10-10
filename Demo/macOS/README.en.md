@@ -8,6 +8,9 @@ tester **select which channels to hear and set per-channel volume** through Nati
 private parameters. See `Spec/native_sdk_audio_multichannel_spec.md` for the requirements
 baseline.
 
+> Companion sender-side app: see `MultiChannelAudioSender/` (broadcaster role publishing
+> bundled multi-channel WAV assets).
+
 [中文文档](README.md)
 
 ## UI Language

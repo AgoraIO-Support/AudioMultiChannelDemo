@@ -1,0 +1,58 @@
+PODS:
+  - AgoraInfra_macOS (1.2.13.1)
+  - AgoraRtcEngine_macOS (4.5.2):
+    - AgoraRtcEngine_macOS/AIAEC (= 4.5.2)
+    - AgoraRtcEngine_macOS/AIAECLL (= 4.5.2)
+    - AgoraRtcEngine_macOS/AINS (= 4.5.2)
+    - AgoraRtcEngine_macOS/AINSLL (= 4.5.2)
+    - AgoraRtcEngine_macOS/AudioBeauty (= 4.5.2)
+    - AgoraRtcEngine_macOS/ClearVision (= 4.5.2)
+    - AgoraRtcEngine_macOS/ContentInspect (= 4.5.2)
+    - AgoraRtcEngine_macOS/FaceCapture (= 4.5.2)
+    - AgoraRtcEngine_macOS/FaceDetection (= 4.5.2)
+    - AgoraRtcEngine_macOS/LipSync (= 4.5.2)
+    - AgoraRtcEngine_macOS/RtcBasic (= 4.5.2)
+    - AgoraRtcEngine_macOS/ScreenCapture (= 4.5.2)
+    - AgoraRtcEngine_macOS/SpatialAudio (= 4.5.2)
+    - AgoraRtcEngine_macOS/VideoAv1CodecDec (= 4.5.2)
+    - AgoraRtcEngine_macOS/VideoAv1CodecEnc (= 4.5.2)
+    - AgoraRtcEngine_macOS/VideoCodecDec (= 4.5.2)
+    - AgoraRtcEngine_macOS/VideoCodecEnc (= 4.5.2)
+    - AgoraRtcEngine_macOS/VirtualBackground (= 4.5.2)
+    - AgoraRtcEngine_macOS/VQA (= 4.5.2)
+  - AgoraRtcEngine_macOS/AIAEC (4.5.2)
+  - AgoraRtcEngine_macOS/AIAECLL (4.5.2)
+  - AgoraRtcEngine_macOS/AINS (4.5.2)
+  - AgoraRtcEngine_macOS/AINSLL (4.5.2)
+  - AgoraRtcEngine_macOS/AudioBeauty (4.5.2)
+  - AgoraRtcEngine_macOS/ClearVision (4.5.2)
+  - AgoraRtcEngine_macOS/ContentInspect (4.5.2)
+  - AgoraRtcEngine_macOS/FaceCapture (4.5.2)
+  - AgoraRtcEngine_macOS/FaceDetection (4.5.2)
+  - AgoraRtcEngine_macOS/LipSync (4.5.2)
+  - AgoraRtcEngine_macOS/RtcBasic (4.5.2):
+    - AgoraInfra_macOS (= 1.2.13.1)
+  - AgoraRtcEngine_macOS/ScreenCapture (4.5.2)
+  - AgoraRtcEngine_macOS/SpatialAudio (4.5.2)
+  - AgoraRtcEngine_macOS/VideoAv1CodecDec (4.5.2)
+  - AgoraRtcEngine_macOS/VideoAv1CodecEnc (4.5.2)
+  - AgoraRtcEngine_macOS/VideoCodecDec (4.5.2)
+  - AgoraRtcEngine_macOS/VideoCodecEnc (4.5.2)
+  - AgoraRtcEngine_macOS/VirtualBackground (4.5.2)
+  - AgoraRtcEngine_macOS/VQA (4.5.2)
+
+DEPENDENCIES:
+  - AgoraRtcEngine_macOS (= 4.5.2)
+
+SPEC REPOS:
+  trunk:
+    - AgoraInfra_macOS
+    - AgoraRtcEngine_macOS
+
+SPEC CHECKSUMS:
+  AgoraInfra_macOS: 9bc9cea2486446c87d3ee3e69325cdb45ecf99c2
+  AgoraRtcEngine_macOS: ca423379ffb023c12a267e9ce6234f90a431f4d2
+
+PODFILE CHECKSUM: 5c08a59b808c99059a94023de3423f50adb406d4
+
+COCOAPODS: 1.16.2

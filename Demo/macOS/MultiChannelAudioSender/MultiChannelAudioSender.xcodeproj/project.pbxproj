@@ -1,0 +1,417 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		03E2FAECF3BE03906454398B /* Pods_MultiChannelAudioSender.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EDCA4D2E0FA12D2B62156BC /* Pods_MultiChannelAudioSender.framework */; };
+		2C67688DF3FBB30AA08B138A /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84D20B19FFE1BFAD24353A7F /* L10n.swift */; };
+		38E0A0822CEB9C973017B7DD /* 4_Channel_ID_48k.wav in Resources */ = {isa = PBXBuildFile; fileRef = BB91C152F0250B1B53D5348C /* 4_Channel_ID_48k.wav */; };
+		71BABBC56CA97B74A71655F9 /* MultiChannelAudioSenderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECF92965F83263EDBFD518E /* MultiChannelAudioSenderApp.swift */; };
+		7F15D94DE4BC6F9ED0316C73 /* AgoraSenderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9A98E22CE9952ADFBBB487 /* AgoraSenderManager.swift */; };
+		8BEB4E2A12A6A790B6982AB6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86C16E7DDF69C3DAC8FB79DF /* ContentView.swift */; };
+		8EE4D1AE72E5372329CA1DA7 /* WavReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2764CA15FCF8E8EB930C1D3 /* WavReader.swift */; };
+		A430194996E6EC1F37873E43 /* 6_Channel_ID_48k.wav in Resources */ = {isa = PBXBuildFile; fileRef = 26652E99FB4E32ABBA4D506D /* 6_Channel_ID_48k.wav */; };
+		F7241D7D4FB10930D72F42D2 /* 8_Channel_ID_signed_16_bit_pcm.wav in Resources */ = {isa = PBXBuildFile; fileRef = BC34E0AFE2C451B1F38D407E /* 8_Channel_ID_signed_16_bit_pcm.wav */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		26652E99FB4E32ABBA4D506D /* 6_Channel_ID_48k.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 6_Channel_ID_48k.wav; sourceTree = "<group>"; };
+		7C6D9DEE71D26EC2FB5A5D59 /* Pods-MultiChannelAudioSender.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MultiChannelAudioSender.debug.xcconfig"; path = "Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender.debug.xcconfig"; sourceTree = "<group>"; };
+		7EDCA4D2E0FA12D2B62156BC /* Pods_MultiChannelAudioSender.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_MultiChannelAudioSender.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		84D20B19FFE1BFAD24353A7F /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
+		86C16E7DDF69C3DAC8FB79DF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B40FBF307D649D0F56A83436 /* Pods-MultiChannelAudioSender.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MultiChannelAudioSender.release.xcconfig"; path = "Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender.release.xcconfig"; sourceTree = "<group>"; };
+		BB91C152F0250B1B53D5348C /* 4_Channel_ID_48k.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 4_Channel_ID_48k.wav; sourceTree = "<group>"; };
+		BC34E0AFE2C451B1F38D407E /* 8_Channel_ID_signed_16_bit_pcm.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 8_Channel_ID_signed_16_bit_pcm.wav; sourceTree = "<group>"; };
+		CECF92965F83263EDBFD518E /* MultiChannelAudioSenderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiChannelAudioSenderApp.swift; sourceTree = "<group>"; };
+		D1535BC4C50E06BF8F3930EF /* MultiChannelAudioSender.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MultiChannelAudioSender.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DF9A98E22CE9952ADFBBB487 /* AgoraSenderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgoraSenderManager.swift; sourceTree = "<group>"; };
+		E2764CA15FCF8E8EB930C1D3 /* WavReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WavReader.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		98340EFEE3B3D1D2D86E8CF4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				03E2FAECF3BE03906454398B /* Pods_MultiChannelAudioSender.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		34166D0EFB2778837AD5787D /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				7C6D9DEE71D26EC2FB5A5D59 /* Pods-MultiChannelAudioSender.debug.xcconfig */,
+				B40FBF307D649D0F56A83436 /* Pods-MultiChannelAudioSender.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		8C2CB3559162AA0100A6463D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BB91C152F0250B1B53D5348C /* 4_Channel_ID_48k.wav */,
+				26652E99FB4E32ABBA4D506D /* 6_Channel_ID_48k.wav */,
+				BC34E0AFE2C451B1F38D407E /* 8_Channel_ID_signed_16_bit_pcm.wav */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		91C1DC9D726A07C525378C7B /* MultiChannelAudioSender */ = {
+			isa = PBXGroup;
+			children = (
+				DF9A98E22CE9952ADFBBB487 /* AgoraSenderManager.swift */,
+				86C16E7DDF69C3DAC8FB79DF /* ContentView.swift */,
+				84D20B19FFE1BFAD24353A7F /* L10n.swift */,
+				CECF92965F83263EDBFD518E /* MultiChannelAudioSenderApp.swift */,
+				E2764CA15FCF8E8EB930C1D3 /* WavReader.swift */,
+			);
+			path = MultiChannelAudioSender;
+			sourceTree = "<group>";
+		};
+		999B2A3F1D4D48839C8D8AE4 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7EDCA4D2E0FA12D2B62156BC /* Pods_MultiChannelAudioSender.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		AF542B12BB829E205158A385 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D1535BC4C50E06BF8F3930EF /* MultiChannelAudioSender.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E39C1FA2F6F9E2490B8249F2 = {
+			isa = PBXGroup;
+			children = (
+				91C1DC9D726A07C525378C7B /* MultiChannelAudioSender */,
+				8C2CB3559162AA0100A6463D /* Resources */,
+				AF542B12BB829E205158A385 /* Products */,
+				34166D0EFB2778837AD5787D /* Pods */,
+				999B2A3F1D4D48839C8D8AE4 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0A502F659A23676C9986C89E /* MultiChannelAudioSender */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AD0AE99461CE4A61576D6A76 /* Build configuration list for PBXNativeTarget "MultiChannelAudioSender" */;
+			buildPhases = (
+				EC53547239A7DBDA3341B749 /* [CP] Check Pods Manifest.lock */,
+				CE2DC4E30E3F92BE47664819 /* Sources */,
+				D714230C4D715C36B749E80C /* Resources */,
+				98340EFEE3B3D1D2D86E8CF4 /* Frameworks */,
+				78DA24935030DD30A2B240B5 /* [CP] Embed Pods Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MultiChannelAudioSender;
+			productName = MultiChannelAudioSender;
+			productReference = D1535BC4C50E06BF8F3930EF /* MultiChannelAudioSender.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C958C338DC18B1883D43FDD4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 8F376FFB85F4660ED207B2BC /* Build configuration list for PBXProject "MultiChannelAudioSender" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = E39C1FA2F6F9E2490B8249F2;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = AF542B12BB829E205158A385 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0A502F659A23676C9986C89E /* MultiChannelAudioSender */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D714230C4D715C36B749E80C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				38E0A0822CEB9C973017B7DD /* 4_Channel_ID_48k.wav in Resources */,
+				A430194996E6EC1F37873E43 /* 6_Channel_ID_48k.wav in Resources */,
+				F7241D7D4FB10930D72F42D2 /* 8_Channel_ID_signed_16_bit_pcm.wav in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		78DA24935030DD30A2B240B5 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		EC53547239A7DBDA3341B749 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-MultiChannelAudioSender-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CE2DC4E30E3F92BE47664819 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7F15D94DE4BC6F9ED0316C73 /* AgoraSenderManager.swift in Sources */,
+				8BEB4E2A12A6A790B6982AB6 /* ContentView.swift in Sources */,
+				2C67688DF3FBB30AA08B138A /* L10n.swift in Sources */,
+				71BABBC56CA97B74A71655F9 /* MultiChannelAudioSenderApp.swift in Sources */,
+				8EE4D1AE72E5372329CA1DA7 /* WavReader.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		07985491F97138706BA3E2E5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		1993286F4A2562E58012926B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7C6D9DEE71D26EC2FB5A5D59 /* Pods-MultiChannelAudioSender.debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.agora.MultiChannelAudioSender;
+				PRODUCT_NAME = MultiChannelAudioSender;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AEE512E21723176C5F1716EF /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = B40FBF307D649D0F56A83436 /* Pods-MultiChannelAudioSender.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.agora.MultiChannelAudioSender;
+				PRODUCT_NAME = MultiChannelAudioSender;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		E3EA391BBABCD8C66EB9292C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8F376FFB85F4660ED207B2BC /* Build configuration list for PBXProject "MultiChannelAudioSender" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				07985491F97138706BA3E2E5 /* Debug */,
+				E3EA391BBABCD8C66EB9292C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AD0AE99461CE4A61576D6A76 /* Build configuration list for PBXNativeTarget "MultiChannelAudioSender" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1993286F4A2562E58012926B /* Debug */,
+				AEE512E21723176C5F1716EF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C958C338DC18B1883D43FDD4 /* Project object */;
+}
