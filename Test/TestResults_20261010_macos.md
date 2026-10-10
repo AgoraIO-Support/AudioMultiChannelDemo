@@ -64,6 +64,16 @@ app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端
 
 证据截图：`Test/macos_receiver_layout_v4_20261010.png`
 
+## 追加：视频接收码率走势图（2026-10-10 15:42，spec v0.7）
+
+| 验证项 | 结果 |
+| --- | --- |
+| 视频码率图 | ✅ "Video recv: 3983 kbps" 蓝色 sparkline，Y 轴 max/0，紧随视频画面下方，仅在 host 发布视频时出现 |
+| 音频码率图 | ✅ 更名 "Audio recv: 287 kbps"（绿色）消歧，与视频图并列 |
+| 双图实时性 | ✅ 两图均可见真实波动（视频 3983~5303 kbps，音频 ~260~357 kbps） |
+
+证据截图：`Test/macos_receiver_layout_v5_20261010.png`
+
 证据截图：`Test/macos_receiver_8ch_verified_20261010.png`
 
 ## 附带发现

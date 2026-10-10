@@ -29,9 +29,10 @@ struct RemoteVideoView: NSViewRepresentable {
     }
 }
 
-/// 接收码率实时走势（最近 60 个 remoteAudioStats 样本，约 2 分钟）。
+/// 接收码率实时走势（最近 60 个样本，约 2 分钟）。
 struct BitrateSparkline: View {
     let samples: [Int]
+    var color: Color = .green
 
     var body: some View {
         GeometryReader { geo in
@@ -49,7 +50,7 @@ struct BitrateSparkline: View {
                     }
                 }
             }
-            .stroke(Color.green, lineWidth: 1.5)
+            .stroke(color, lineWidth: 1.5)
         }
         .background(Color.primary.opacity(0.06))
         .cornerRadius(4)
@@ -262,6 +263,26 @@ struct ContentView: View {
         return CGFloat(user.videoWidth) / CGFloat(user.videoHeight)
     }
 
+    /// 一路码率的标题 + 走势图 + Y 轴（最大值/0）。
+    @ViewBuilder
+    private func bitrateBlock(title: String, samples: [Int], color: Color) -> some View {
+        Text(title + " · " + tr("mc.monitorWindow"))
+            .font(.caption)
+            .foregroundColor(.secondary)
+        HStack(alignment: .top, spacing: 4) {
+            BitrateSparkline(samples: samples, color: color)
+                .frame(height: 64)
+            VStack(alignment: .trailing) {
+                Text("\(max(samples.max() ?? 0, 1))")
+                Spacer()
+                Text("0")
+            }
+            .font(.system(size: 9))
+            .foregroundColor(.secondary)
+            .frame(height: 64)
+        }
+    }
+
     private var monitorPanel: some View {
         GroupBox(selectedUser.map { tr("monitor.section", Int($0.uid)) } ?? tr("monitor.section.none")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -271,26 +292,15 @@ struct ContentView: View {
                             .aspectRatio(videoAspect(user), contentMode: .fit)
                             .frame(maxWidth: .infinity)
                             .cornerRadius(4)
+                        bitrateBlock(title: tr("mc.videoRecvBitrate", user.videoReceivedBitrateKbps),
+                                     samples: user.videoBitrateHistory, color: .blue)
                     } else {
                         Text(tr("mc.audioOnly"))
                             .font(.callout)
                             .foregroundColor(.secondary)
                     }
-                    Text(tr("mc.recvBitrate", user.receivedBitrateKbps) + " · " + tr("mc.monitorWindow"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    HStack(alignment: .top, spacing: 4) {
-                        BitrateSparkline(samples: user.bitrateHistory)
-                            .frame(height: 64)
-                        VStack(alignment: .trailing) {
-                            Text("\(max(user.bitrateHistory.max() ?? 0, 1))")
-                            Spacer()
-                            Text("0")
-                        }
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
-                        .frame(height: 64)
-                    }
+                    bitrateBlock(title: tr("mc.recvBitrate", user.receivedBitrateKbps),
+                                 samples: user.bitrateHistory, color: .green)
                 } else {
                     Text(tr("mc.noRemote"))
                         .font(.callout)

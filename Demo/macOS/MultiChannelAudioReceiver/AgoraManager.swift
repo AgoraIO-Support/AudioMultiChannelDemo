@@ -10,6 +10,8 @@ struct RemoteUser: Identifiable, Equatable {
     var hasVideo = false
     var videoWidth = 0
     var videoHeight = 0
+    var videoReceivedBitrateKbps = 0
+    var videoBitrateHistory: [Int] = []
 }
 
 class AgoraManager: NSObject, ObservableObject {
@@ -253,6 +255,11 @@ extension AgoraManager: AgoraRtcEngineDelegate {
             if let index = self.remoteUsers.firstIndex(where: { $0.uid == stats.uid }) {
                 self.remoteUsers[index].videoWidth = Int(stats.width)
                 self.remoteUsers[index].videoHeight = Int(stats.height)
+                self.remoteUsers[index].videoReceivedBitrateKbps = Int(stats.receivedBitrate)
+                self.remoteUsers[index].videoBitrateHistory.append(Int(stats.receivedBitrate))
+                if self.remoteUsers[index].videoBitrateHistory.count > 60 {
+                    self.remoteUsers[index].videoBitrateHistory.removeFirst(self.remoteUsers[index].videoBitrateHistory.count - 60)
+                }
             }
         }
     }
