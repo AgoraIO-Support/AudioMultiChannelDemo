@@ -25,10 +25,10 @@
 - **接收码率走势图**：所选远端用户的音频与视频接收码率各有一条带 Y 轴刻度（最大值/0）的
   实时 sparkline（音频绿色、视频蓝色，各取最近 60 个 `remoteAudioStats`/`remoteVideoStats`
   样本，约 2 分钟窗口）；视频图仅在 host 发布视频时出现。
-- **远端用户列表**：由远端音频发布状态驱动（`remoteAudioStateChangedOfUid` 回调中音频处于
-  starting/decoding 时收录，`didOfflineOfUid` 时移除），**只有真正在发布音频的主播（host）
-  才会出现，观众（audience）角色的端永远不会列出**。界面中选择要控制的远端 uid，
-  并显示该用户的实时接收码率（`remoteAudioStats`）。
+- **远端用户列表**：由远端音频**或视频**发布状态驱动（音频/视频 `remote*StateChangedOfUid` 回调中
+  处于 starting/decoding 时收录，`didOfflineOfUid` 时移除），**只有真正在发布音视频的主播（host）
+  才会出现，观众（audience）角色的端永远不会列出**。覆盖三种 host：音频+视频、仅音频、仅视频——
+  仅视频 host 选中后控制栏显示"仅视频"提示且不下发音量参数；仅音频 host 监控栏显示"仅音频"提示。
 - **声道数选择器（1~8，默认 8）**：**纯显示控制**，只决定下方渲染几行声道控制，
   不改变任何音频行为。存在原因：Native SDK 接收端没有回调告知远端流的实际声道数，
   需按发送端素材手动对齐界面——验证普通立体声流选 2（只显示声道 1/2），验证 8 声道流

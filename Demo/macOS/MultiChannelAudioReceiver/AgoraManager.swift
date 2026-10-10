@@ -5,6 +5,7 @@ import AgoraRtcKit
 struct RemoteUser: Identifiable, Equatable {
     let uid: UInt
     var id: UInt { uid }
+    var hasAudio = false
     var receivedBitrateKbps: Int = 0
     var bitrateHistory: [Int] = []
     var hasVideo = false
@@ -188,8 +189,12 @@ extension AgoraManager: AgoraRtcEngineDelegate {
         // stopped（如对端静音）不移除——静音的 host 仍是 host，可能恢复。
         guard state == .starting || state == .decoding else { return }
         DispatchQueue.main.async {
-            if !self.remoteUsers.contains(where: { $0.uid == uid }) {
-                self.remoteUsers.append(RemoteUser(uid: uid))
+            if let i = self.remoteUsers.firstIndex(where: { $0.uid == uid }) {
+                self.remoteUsers[i].hasAudio = true
+            } else {
+                var user = RemoteUser(uid: uid)
+                user.hasAudio = true
+                self.remoteUsers.append(user)
                 self.log(L10n.t("log.remoteHostPublishing", in: L10n.current(), Int(uid)))
             }
         }
@@ -197,11 +202,19 @@ extension AgoraManager: AgoraRtcEngineDelegate {
 
     func rtcEngine(_ engine: AgoraRtcEngineKit, remoteVideoStateChangedOfUid uid: UInt, state: AgoraVideoRemoteState, reason: AgoraVideoRemoteReason, elapsed: Int) {
         // starting/decoding/frozen 表示对端视频正在发布；stopped/failed 表示不再发布。
+        // 仅发布视频（无音频）的 host 也通过这里收录进远端列表。
         switch state {
         case .starting, .decoding:
             DispatchQueue.main.async {
-                if let i = self.remoteUsers.firstIndex(where: { $0.uid == uid }), !self.remoteUsers[i].hasVideo {
-                    self.remoteUsers[i].hasVideo = true
+                if let i = self.remoteUsers.firstIndex(where: { $0.uid == uid }) {
+                    if !self.remoteUsers[i].hasVideo {
+                        self.remoteUsers[i].hasVideo = true
+                        self.log(L10n.t("log.remoteVideoPublishing", in: L10n.current(), Int(uid)))
+                    }
+                } else {
+                    var user = RemoteUser(uid: uid)
+                    user.hasVideo = true
+                    self.remoteUsers.append(user)
                     self.log(L10n.t("log.remoteVideoPublishing", in: L10n.current(), Int(uid)))
                 }
             }

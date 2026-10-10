@@ -51,6 +51,7 @@ enum L10n {
         // 远端多声道控制面板
         "mc.section": [.en: "Remote Multi-Channel Control (che.audio.neteq.adjust_decoded_volume)", .zhHans: "远端多声道控制（che.audio.neteq.adjust_decoded_volume）"],
         "mc.audioOnly": [.en: "Audio only (no video from this host)", .zhHans: "仅音频（该 host 未发布视频）"],
+        "mc.videoOnly": [.en: "Video only (no audio from this host)", .zhHans: "仅视频（该 host 未发布音频，无声道可控）"],
         "mc.remoteUser": [.en: "Remote user", .zhHans: "远端用户"],
         "mc.noSelection": [.en: "Not selected", .zhHans: "未选择"],
         "mc.recvBitrate": [.en: "Audio recv: %ld kbps", .zhHans: "音频接收码率: %ld kbps"],

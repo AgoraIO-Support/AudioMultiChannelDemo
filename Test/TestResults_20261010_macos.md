@@ -91,6 +91,16 @@ app 增加远端视频显示后重新构建，重新加入 `mkvav1010a`（本端
 
 证据截图：`Test/macos_receiver_layout_v7_20261010.png`
 
+## 追加：host 三种媒体形态适配（2026-10-10 16:04，spec v1.0）
+
+| 验证项 | 方法 | 结果 |
+| --- | --- | --- |
+| 音频+视频 host | 加入 `mkvav1010a`（mkv-sender，uid 777001） | ✅ 逐声道控制 + 视频 + 视频码率图（3722 kbps）+ 音频码率图（262 kbps）全量显示；截图 `Test/macos_host_av_20261010.png` |
+| 仅音频 host | AWS 另起 `sample_send_wav_multiopus`（频道 `audonly1010a`，uid 3371208814） | ✅ 无视频区，监控栏显示 "Audio only" + 音频码率图（257 kbps，8 声道区间），逐声道控制正常；截图 `Test/macos_host_audio_only_20261010.png` |
+| 仅视频 host | 本仓库无仅视频发送端 | 代码走查：视频状态回调收录入列表、控制栏显示"仅视频"提示、不下发音量参数、监控栏仅视频+视频码率图 |
+
+关键修复：此前远端列表仅由音频发布状态驱动，仅视频 host 永远进不了列表；现 `remoteVideoStateChangedOfUid` 也可收录 host。
+
 证据截图：`Test/macos_receiver_8ch_verified_20261010.png`
 
 ## 附带发现

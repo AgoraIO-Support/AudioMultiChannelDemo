@@ -213,6 +213,10 @@ struct ContentView: View {
                     Text(tr("mc.noRemote"))
                         .font(.callout)
                         .foregroundColor(.secondary)
+                } else if let user = selectedUser, !user.hasAudio {
+                    Text(tr("mc.videoOnly"))
+                        .font(.callout)
+                        .foregroundColor(.secondary)
                 } else {
                     HStack {
                         Text(tr("mc.playbackSection"))
@@ -308,8 +312,14 @@ struct ContentView: View {
                             .font(.callout)
                             .foregroundColor(.secondary)
                     }
-                    bitrateBlock(title: tr("mc.recvBitrate", user.receivedBitrateKbps),
-                                 samples: user.bitrateHistory, color: .green)
+                    if user.hasAudio {
+                        bitrateBlock(title: tr("mc.recvBitrate", user.receivedBitrateKbps),
+                                     samples: user.bitrateHistory, color: .green)
+                    } else {
+                        Text(tr("mc.videoOnly"))
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                    }
                 } else {
                     Text(tr("mc.noRemote"))
                         .font(.callout)
@@ -387,8 +397,10 @@ struct ContentView: View {
     }
 
     /// 把全部 8 个声道的当前 UI 状态应用到选中的远端 uid（隐藏行的状态也一并下发，保证行为确定）。
+    /// 仅音频 host 才下发；仅视频 host 无音频声道可控。
     private func applyAllChannels() {
-        guard agoraManager.isJoined, let uid = selectedUid else { return }
+        guard agoraManager.isJoined, let uid = selectedUid,
+              let user = selectedUser, user.hasAudio else { return }
         for index in 1...8 {
             let state = channelStates[index - 1]
             agoraManager.setChannelVolume(remoteUid: uid, index: index, volume: state.enabled ? Int(state.volume) : 0)

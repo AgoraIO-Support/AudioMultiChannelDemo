@@ -32,11 +32,12 @@ interpolation); log and status lines are emitted in the language active at the t
   bitrate sparklines with Y-axis labels (max/0) — audio in green, video in blue, each covering
   the last 60 `remoteAudioStats`/`remoteVideoStats` samples (~2-minute window); the video
   chart only appears while the host publishes video.
-- **Remote user list**: driven by remote audio publish state — uids are added in the
-  `remoteAudioStateChangedOfUid` callback when audio is starting/decoding and removed on
-  `didOfflineOfUid`, so **only hosts actually publishing audio are listed; audience-role
-  clients never appear**. Pick the remote uid to control and watch its live received
-  bitrate (`remoteAudioStats`).
+- **Remote user list**: driven by remote audio **or video** publish state — uids are added in the
+  `remoteAudioStateChangedOfUid` / `remoteVideoStateChangedOfUid` callbacks when media is
+  starting/decoding and removed on `didOfflineOfUid`, so **only hosts actually publishing
+  media are listed; audience-role clients never appear**. All three host shapes are covered:
+  audio+video, audio-only, and video-only (selecting a video-only host shows a "Video only"
+  note in the control column and sends no volume parameters).
 - **Channel-count selector (1~8, default 8)**: a **pure display filter** — it only decides
   how many channel rows are rendered and changes nothing you hear. It exists because the
   Native SDK receiver has no callback reporting the remote stream's actual channel count,
