@@ -148,6 +148,8 @@ dump 文件 `~/Library/Logs/audio_dump_playback_before_mixed_0_2026_10_12_112900
 
 即 §4 的原生互通验证：接收、解码、逐声道私参下发与 dump 全链路通过，dump 八声道齐全且
 声道顺序 1:1。4.5.3 / 4.6.0 / 4.6.2 未单独回归 Native 接收（发送回归中 Web 端解码均正常）。
+另：3/5/7 奇数声道互通（含 macOS 收发两侧）已于同日下午实测通过，见
+`Test/odd_channels_interop_test_20261012.md`。
 
 ## 6. 4.5.2 发送侧问题回顾（已闭环）
 
@@ -188,3 +190,4 @@ dump 文件 `~/Library/Logs/audio_dump_playback_before_mixed_0_2026_10_12_112900
 | `Test/web_recv_8ch_from_macos_470_native_session_20261012.png` | 4.7.0↔4.7.0 原生会话同场的 Web 端复测（multiopus 8ch） |
 | `~/Library/Logs/audio_dump_playback_before_mixed_0_2026_10_12_112900_12345.wav` | 4.7.0 原生互通 dump（134 s / 8ch，本机日结材料，不入库） |
 | `Demo/macOS/MultiChannelAudioSender/README.md` | 版本实测矩阵 + 命令行自动化用法 |
+| `Test/odd_channels_interop_test_20261012.md` | 3/5/7 奇数声道四链路互通测试（12/12 通过） |

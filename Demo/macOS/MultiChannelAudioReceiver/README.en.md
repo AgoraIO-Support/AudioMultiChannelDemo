@@ -160,7 +160,8 @@ mirrored to stdout unbuffered:
   odd channel counts 3/5/7), and receives normal stereo/mono streams without any special
   handling. Payload type / `custom_channel_num` parameters are only required on the
   **sender** side (see `Demo/linux/README.en.md`).
-- **Odd channel counts (3/5/7)**: decoded adaptively on the Native side; the Web side
+- **Odd channel counts (3/5/7)**: decoded adaptively on the Native side (interop verified
+  2026-10-12, see `Test/odd_channels_interop_test_20261012.md`); the Web side
   (`Demo/web`) only supports even channel counts, so 3/5/7-channel streams do not apply.
 - **The channel-count selector only controls the UI rows**: switching it pushes no SDK
   parameter; setting an `index` beyond the stream's actual channel count has no effect in

@@ -15,7 +15,7 @@ Delivery repository for the multi-channel audio (multiopus) project, including:
 
 - Linux SDK (same as Native): supports 3/4/5/6/7/8-channel send/receive; 3/5/7 require the extra private parameter `che.audio.custom_channel_num` (handled automatically by the demos in this repository).
 - Web verification demo: decodes even channel counts (4/6/8) only. A 3/5/7-channel stream sent from Linux cannot be decoded on the Web side (the decoder does not implement the odd-channel Opus multistream configurations), so channel-selection features such as `selectChannels` are unavailable for those streams as well.
-- Actual interop verification (Web↔Native, Web↔Linux) covers 4/6/8 channels only; 3/5/7 are untested.
+- Interop verification: Web↔Native and Web↔Linux cover 4/6/8 channels; 3/5/7 odd-channel interop was verified on 2026-10-12 across all Native↔Linux paths (Linux↔Linux, Linux→macOS, macOS↔macOS, macOS→Linux — per-channel content correct and in the same order; see `Test/odd_channels_interop_test_20261012.md`).
 - If 3/5/7-channel content must reach Web clients, pad the stream with one silent channel at the sender to reach an even count (3→4, 5→6, 7→8) and have the Web side ignore the padded channel.
 - Per-channel listening verification: use `Demo/web/` on Web (even channel counts only); on Native/macOS use the `Demo/macOS/` receiver app (per-channel mute/volume via the private parameter `che.audio.neteq.adjust_decoded_volume`; Native decodes adaptively, including 3/5/7).
 

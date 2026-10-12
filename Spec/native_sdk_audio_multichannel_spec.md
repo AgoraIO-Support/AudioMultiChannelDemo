@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 待补充（多声道项目背景单见 Linux 侧 spec） |
-| 需求版本 | v1.6 |
+| 需求版本 | v1.7 |
 
 ---
 
@@ -322,7 +322,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | 2 | `che.audio.neteq.adjust_decoded_volume` 在 iOS/Android/Windows Native SDK 上是否同名可用（macOS 4.5.2 已用） | 兼容性 | 研发 / QA | 待确认 |
 | 3 | 接收端获知实际协商声道数的正式手段（回调或 getStats 字段），当前 UI 只能手动对齐 | 能力差距 | 研发 / PM | 待确认 |
 | 4 | ~~dump 文件的具体位置与命名规则~~ **已实测（2026-10-10，macOS 4.5.2）**：dump 落在 `~/Library/Logs/`；按远端用户解码输出 `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`（48 kHz / N 声道 / 16bit，约 120 MB 封顶停止，Leave 重进按新时间戳另建）；混音 `audio_dump_playback_mixer_0.wav`（恒 2 声道）；另有 `audio_dump_play_0.wav`、`far_in_48000hz_2ch.wav`。其他平台/版本的位置未逐一验证 | 可观测性 | 研发 | 已确认（macOS 4.5.2） |
-| 5 | 奇数声道（3/5/7）Native 解码为设计支持，本项目实际联调仅覆盖 4/6/8；3/5/7 端到端验证待补 | 场景 | QA | 待确认 |
+| 5 | ~~奇数声道（3/5/7）Native 解码为设计支持，本项目实际联调仅覆盖 4/6/8；3/5/7 端到端验证待补~~ **已实测（2026-10-12）**：3/5/7 声道在 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四条链路全部互通，逐声道内容正确且同序号对应（12/12 通过，NCC 0.46~1.00、跨声道 ≈0），见 `Test/odd_channels_interop_test_20261012.md`；Web 端仍仅限偶数声道 | 场景 | QA | 已关闭（2026-10-12） |
 
 ---
 
@@ -379,3 +379,4 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | v1.4 | 2026-10-10 | 系统性收编：标题与摘要由"纯接收"扩为收发双侧；新增需求点7（多声道 WAV 发送 + 场景7.2 公开版 2 声道钳制实测限制），双语界面顺延为需求点8；6.1 功能点概述加第⑨项、6.3 场景覆盖加发送验证、6.4 加自定义音轨发送 API 行与"能力差距"钳制条目；8.1/8.2 验收表与产出物加 sender app | Kimi Code |
 | v1.5 | 2026-10-12 | 发送侧多版本回归（4.5.2 对照 / 4.6.0 / 4.6.2 / 4.7.0）：sender app 新增命令行自动化（`-autoChannel/-autoUid/-autoWav/-autoJoin/-autoPublish/-autoQuitAfter`，日志实时镜像 stdout），逐版本切换 Podfile 后发布 8ch Channel ID 素材，Web 端 `getVolumeLevels()` 20 s 逐声道峰值采样判定（内容级 ≈56~85% / dither 底噪 ~10% / 数字零 =0%）。结果：4.5.2 复现 2 声道钳制（CH2-7 恒 0），4.6.0/4.6.2/4.7.0 八声道全通（峰值 71~85%）——发送侧多声道自 4.6.0 起可用（v1.6 修正为 4.5.3）；macOS SDK 无 4.6.7 版本。摘要、2.1、6.1/6.3/6.4、需求点7 场景7.2、8.1/8.2、待确认问题1（关闭）、自检#4 同步更新；汇总文档 `Test/macos_sender_multi-channel_audio_test_result.md` | Kimi Code |
 | v1.6 | 2026-10-12 | 遗留项补测：① **4.5.3 实测 8 声道全通**（峰值 [79,79,74,83,77,78,78,75]），发送侧修复点由 4.6.0 修正为 **4.5.3**（修复点为 4.5.2→4.5.3，已用 Podfile.lock 与 framework 版本号双重核实）；② 4.7.0 补测 4ch（payload 123，峰值 [78,78,79,84]）与 6ch（payload 124，峰值 [76,77,76,84,78,80]）素材，全声道内容送达；③ 同日上午已完成 sender+receiver 双端 4.7.0 升级与原生互通回归（receiver 命令行自动化 + dump NCC 声道 1:1 核对）。全部"4.6.0 起"表述修正为"4.5.3 起"；待确认问题1 残留项清零 | Kimi Code |
+| v1.7 | 2026-10-12 | 奇数声道端到端闭环：3/5/7 声道（payload 123/124/125 + custom_channel_num）在 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部互通，接收端落盘与源素材逐声道 NCC 0.46~1.00、跨声道 ≈0、同序号对应（12/12 通过），素材为 ffmpeg channelmap 截取的 `Demo/linux/public/odd_{3,5,7}ch.wav`；待确认问题5 关闭。sender 自动化新增 `-autoWavPath` 支持外部素材。详见 `Test/odd_channels_interop_test_20261012.md` | Kimi Code |

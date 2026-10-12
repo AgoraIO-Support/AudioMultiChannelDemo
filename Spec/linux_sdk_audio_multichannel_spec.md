@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 背景单：CSD-74687（音画不同步）、CSD-76350（Multipath 音频延迟）、CSD-76354（Linux SDK 4.2.32 Crash）、ASS-2272（Linux SDK 特殊版申请，含 MultiPath）；需求 Jira 待补充 |
-| 需求版本 | v0.8 |
+| 需求版本 | v0.9 |
 
 ---
 
@@ -438,7 +438,7 @@
 | 1 | 能力协商回退的目标格式：Linux 设计文档记"回退到单声道（mono）"，Web 设计文档记"回退到双声道（dual-channel）"，两处表述不一致，需以实际版本行为为准。2026-10-12 补充：回退行为本身与 `che.audio.codec_unfallback` 强制开关已实测生效（Linux 发送遇不支持端回退普通 Opus；Web 发送不回退且不支持端无声），剩余未定点仅为回退后声道数（mono/stereo） | 兼容性 | 研发 / QA | 部分确认（行为与开关已实测）；回退目标声道数待研发确认 |
 | 2 | 多声道流在云录制、水晶球等云端链路上的表现与计费影响 | 协同 | PM / 服务端 | 待确认 |
 | 3 | 客户 VID、需求 Reporter 与期望交付版本号需在需求 Jira 中补齐 | 流程 | PM | 待确认 |
-| 4 | 3/5/7 奇数声道在 Native 端可自适应解码，但客户实际业务是否使用奇数声道（当前素材与 sample 均按 4/6/8 验证） | 场景 | 客户 / PM | 待确认 |
+| 4 | 3/5/7 奇数声道在 Native 端可自适应解码（2026-10-12 已实测：Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部互通，见 `Test/odd_channels_interop_test_20261012.md`），但客户实际业务是否使用奇数声道 | 场景 | 客户 / PM | 待确认（解码能力已实证；客户用量待确认） |
 | 5 | 预编码 Opus 发送是否需支持 8 声道以外的预编码素材及 ogg 封装解析 | 功能边界 | 客户 / PM | 待确认 |
 | 6 | ~~布局粒度解释待确认~~ **已确认**：最终布局为 8 声道逐样本交错，声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R（见场景9.2）；2025-04 排查的接收端杂音问题根因即发送端 audio layout 错误（源数据逐样本交错 LRLR…，客户侧按平面块序 LLL…RRR… 读取），2025-04-14 客户确认问题解决。另：客户布局约定表中"每轨每写 120 样本"标注与 15360 字节总量（= 960 样本/声道/写）的换算出入不影响结论，以实际集成为准 | 集成约定 | Agora 侧与客户侧双方研发 | 已确认（2025-04-14） |
 
@@ -514,3 +514,4 @@
 | v0.6 | 2026-10-10 | 场景1.2 更新：本仓库已包含音视频同发 sample（`sample_send_mkv_multiopus`，音频 10ms/帧 + 视频按 PTS 节奏双线程独立发送），替换"未包含该音视频同发 sample"的过时表述 | Kimi Code |
 | v0.7 | 2026-10-12 | 一致性修订：场景8.1 `before_encoded.pcm` 括注更正为「编码前/编码器输入数据」（与命名及 macOS `before_mixed` dump 口径一致）；场景8.2 与 8.1 验收补 `getVolumeLevels` dB 刻度底噪 caveat（~10% 为 dither 底噪）；8.1 验证 demo 备注更新为 Demo/web（quick-demo-multiopus 已移除）；待确认问题1 收窄——回退行为与 unfallback 开关已实测，仅剩回退目标声道数（mono/stereo）待研发确认；附录素材表 `8_Channel_ID.wav` 位深更正为 24bit（afinfo 实测） | Kimi Code |
 | v0.8 | 2026-10-12 | 历史参考包 `References/LinuxSampleCodes/` 删除（其多声道测试功能已由 `Demo/linux/` 全覆盖并增强，素材已迁入 `Demo/linux/public/`）：6.4 表 API 事实来源改指 Demo/linux 对应 sample（含行号），参考资料与素材表来源同步修订 | Kimi Code |
+| v0.9 | 2026-10-12 | 奇数声道互通实测：3/5/7 声道经 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部通过（逐声道 NCC 0.46~1.00、同序号对应）；素材 `Demo/linux/public/odd_{3,5,7}ch.wav`（ffmpeg channelmap 截取）；待确认问题4 更新为「解码能力已实证、客户用量待确认」。详见 `Test/odd_channels_interop_test_20261012.md` | Kimi Code |
