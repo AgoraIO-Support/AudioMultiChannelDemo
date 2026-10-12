@@ -21,19 +21,20 @@ class AgoraSenderManager: NSObject, ObservableObject {
     private var trackId: NSInteger = -1
 
     private var sendThread: Thread?
-    private let sendStopLock = NSLock()
-    private var sendStopFlag = false   // 跨线程读写，由 sendStopLock 保护
+    private let sendLock = NSLock()
+    private var sendGeneration = 0   // pacer 代际：每次 start/stop 递增；pacer 仅在自己代际内运行
 
-    private func isSendStopped() -> Bool {
-        sendStopLock.lock()
-        defer { sendStopLock.unlock() }
-        return sendStopFlag
+    private func bumpSendGeneration() -> Int {
+        sendLock.lock()
+        defer { sendLock.unlock() }
+        sendGeneration += 1
+        return sendGeneration
     }
 
-    private func setSendStopped(_ value: Bool) {
-        sendStopLock.lock()
-        sendStopFlag = value
-        sendStopLock.unlock()
+    private func isCurrentGeneration(_ gen: Int) -> Bool {
+        sendLock.lock()
+        defer { sendLock.unlock() }
+        return sendGeneration == gen
     }
 
     override init() {
@@ -146,19 +147,25 @@ class AgoraSenderManager: NSObject, ObservableObject {
         let samplesPerFrame = wav.sampleRate / 100          // 10ms
         let bytesPerFrame = samplesPerFrame * wav.channels * 2
         let pcm = wav.pcmData
+        // 不足一帧的畸形/过短文件：直接拒绝，避免 pacer 越出 Data 末尾读取
+        guard pcm.count >= bytesPerFrame else {
+            log(L10n.t("log.wavTooShort", in: L10n.current(), pcm.count, bytesPerFrame))
+            return
+        }
         let tid = trackId
         let channels = wav.channels
         let sampleRate = wav.sampleRate
 
-        setSendStopped(false)
-        DispatchQueue.main.async { self.sentFrames = 0 }
+        // 代际递增：任何旧 pacer 立即失效退出（快速 Stop→Publish 也不会出现双 pacer）
+        let gen = bumpSendGeneration()
+        if Thread.isMainThread { sentFrames = 0 } else { DispatchQueue.main.async { self.sentFrames = 0 } }
         log(L10n.t("log.publishStart", in: L10n.current(), channels, sampleRate))
 
         let thread = Thread { [weak self] in
             var offset = 0
             var frames = 0
             var nextPush = Date()
-            while let self = self, !self.isSendStopped() {
+            while let self = self, self.isCurrentGeneration(gen) {
                 if offset + bytesPerFrame > pcm.count {
                     offset = 0   // 循环发送
                 }
@@ -167,7 +174,7 @@ class AgoraSenderManager: NSObject, ObservableObject {
                 //
                 // 发送侧声道数钳制的版本实测（2026-10-12，本 app + Web 端逐声道音量峰值）：
                 // 4.5.2 输入管线最高按 2 声道读取（协商正常，但仅前 2 声道有内容，CH2+ 静音）；
-                // 4.6.0 / 4.6.2 / 4.7.0 已修复，8 声道内容全部送达。详见 README 版本实测矩阵。
+                // 4.5.3 起已修复（4.5.3/4.6.0/4.6.2/4.7.0 实测 8 声道全通）。详见 README 版本实测矩阵。
                 let ret = pcm.withUnsafeBytes { raw -> Int32 in
                     kit.pushExternalAudioFrameRawData(
                         UnsafeMutableRawPointer(mutating: raw.baseAddress!.advanced(by: offset)),
@@ -196,16 +203,17 @@ class AgoraSenderManager: NSObject, ObservableObject {
         thread.qualityOfService = QualityOfService.userInteractive
         sendThread = thread
         thread.start()
-        DispatchQueue.main.async { self.isPublishing = true }
+        // 主线程同步翻转（连点 Stop→Publish 时不会因异步延迟吃掉点击）
+        if Thread.isMainThread { isPublishing = true } else { DispatchQueue.main.async { self.isPublishing = true } }
     }
 
     func stopPublishing() {
-        setSendStopped(true)
+        bumpSendGeneration()   // 当前 pacer 退出
         sendThread = nil
         if isPublishing {
             log(L10n.t("log.publishStop", in: L10n.current()))
         }
-        DispatchQueue.main.async { self.isPublishing = false }
+        if Thread.isMainThread { isPublishing = false } else { DispatchQueue.main.async { self.isPublishing = false } }
     }
 
     // MARK: - dump 私参

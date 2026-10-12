@@ -65,8 +65,10 @@ xcodebuild -workspace MultiChannelAudioSender.xcworkspace \
     -autoJoin YES -autoPublish YES -autoQuitAfter 300
 ```
 
-- `autoWav`：素材下标（0=8ch, 1=6ch, 2=4ch）；`autoJoin`/`autoPublish`：启动后自动加入并在
-  join 成功后自动发布；`autoQuitAfter`：秒数，>0 时到点自动退出。
+- `autoWav`：素材下标（0=8ch, 1=6ch, 2=4ch）；`autoWavPath`：自定义 WAV 文件路径（优先于 autoWav，
+  须 48 kHz / 16bit / 1~8 声道）；`autoJoin`/`autoPublish`：启动后自动加入并在 join 成功后自动发布；
+  `autoQuitAfter`：秒数，>0 时到点自动退出。
+- `autoUid` 仅接受数字；非法值（非数字）静默回退为 0（自动分配 uid）。
 - 配合 Web 端 `?channel=<频道>&uid=<webuid>&subTo=<autoUid>` 打开订阅页即可做版本回归
   （采样 `window.__mcRemoteTrack.getVolumeLevels()` 逐声道峰值判定，见下文矩阵）。
 

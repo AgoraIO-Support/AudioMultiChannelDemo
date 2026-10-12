@@ -5,12 +5,14 @@ import AppKit
 /// 通过启动参数传入（映射进 UserDefaults），例如：
 ///   MultiChannelAudioSender -autoChannel test8ch -autoUid 12345 -autoWav 0 \
 ///       -autoJoin YES -autoPublish YES -autoQuitAfter 90
-/// - autoWav: 素材下标（0=8ch, 1=6ch, 2=4ch）
+/// - autoWav: 内置素材下标（0=8ch, 1=6ch, 2=4ch）
+/// - autoWavPath: 自定义 WAV 文件路径（优先于 autoWav；须 48 kHz / 16bit / 1~8 声道）
 /// - autoQuitAfter: 秒数，>0 时到点自动退出 App
 struct AutoRunConfig {
     var channel: String? = nil
     var uid: String? = nil
     var wavIndex: Int? = nil
+    var wavPath: String? = nil
     var join = false
     var publish = false
     var quitAfter = 0
@@ -20,6 +22,7 @@ struct AutoRunConfig {
         c.channel = d.string(forKey: "autoChannel")
         c.uid = d.string(forKey: "autoUid")
         if let s = d.string(forKey: "autoWav"), let i = Int(s) { c.wavIndex = i }
+        c.wavPath = d.string(forKey: "autoWavPath")
         c.join = d.bool(forKey: "autoJoin")
         c.publish = d.bool(forKey: "autoPublish")
         c.quitAfter = d.integer(forKey: "autoQuitAfter")
@@ -46,6 +49,8 @@ struct ContentView: View {
     ]
     @State private var selectedWav = 0
     @State private var wav: WavFile?
+    /// 已加载素材名（幂等加载用）
+    @State private var loadedWavName: String?
     /// 自动化配置与“已自动发布”守卫（防止 isJoined 反复触发重复发布）
     private let autoCfg = AutoRunConfig.fromDefaults()
     @State private var autoPublished = false
@@ -94,7 +99,10 @@ struct ContentView: View {
     private func autoRunOnce() {
         guard !Self.didAutoRun else { return }
         Self.didAutoRun = true
-        if let idx = autoCfg.wavIndex, wavChoices.indices.contains(idx), idx != selectedWav {
+        // 素材优先级：-autoWavPath（自定义路径）> -autoWav（内置下标）> 默认（下标 0）
+        if let path = autoCfg.wavPath {
+            loadCustomWav(path: path)
+        } else if let idx = autoCfg.wavIndex, wavChoices.indices.contains(idx), idx != selectedWav {
             selectedWav = idx   // onChange 会触发加载
             loadSelectedWav()   // 显式再加载一次，保证紧随的 join 用到新素材（不依赖 onChange 时机）
         }
@@ -258,16 +266,36 @@ struct ContentView: View {
 
     private func loadSelectedWav() {
         let name = wavChoices[selectedWav].file
+        // 幂等：同名素材已加载则跳过（避免自动化路径 onAppear/onChange 双行日志）
+        if loadedWavName == name, wav != nil { return }
         guard let url = Bundle.main.url(forResource: name, withExtension: "wav") else {
             senderManager.log(L10n.t("log.wavError", in: L10n.current(), "\(name).wav not in bundle"))
             wav = nil
+            loadedWavName = nil
             return
         }
         do {
             let w = try WavFile.load(url: url)
             wav = w
+            loadedWavName = name
             senderManager.log(L10n.t("log.wavLoaded", in: L10n.current(),
                                      "\(name).wav", w.sampleRate, w.channels, w.bitsPerSample, w.durationSeconds))
+        } catch {
+            wav = nil
+            loadedWavName = nil
+            senderManager.log(L10n.t("log.wavError", in: L10n.current(), error.localizedDescription))
+        }
+    }
+
+    /// 自动化专用：从任意文件路径加载 WAV（-autoWavPath），不走内置素材幂等缓存
+    private func loadCustomWav(path: String) {
+        do {
+            let w = try WavFile.load(url: URL(fileURLWithPath: path))
+            wav = w
+            loadedWavName = nil
+            senderManager.log(L10n.t("log.wavLoaded", in: L10n.current(),
+                                     URL(fileURLWithPath: path).lastPathComponent,
+                                     w.sampleRate, w.channels, w.bitsPerSample, w.durationSeconds))
         } catch {
             wav = nil
             senderManager.log(L10n.t("log.wavError", in: L10n.current(), error.localizedDescription))

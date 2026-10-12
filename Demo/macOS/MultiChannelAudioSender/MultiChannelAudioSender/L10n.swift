@@ -75,6 +75,7 @@ enum L10n {
         "log.customTrack": [.en: "Custom audio track created (mixable, no 3A), trackId=%ld", .zhHans: "自定义音轨已创建（mixable，不经过 3A），trackId=%ld"],
         "log.wavLoaded": [.en: "WAV loaded: %@ (%ld Hz, %ld ch, %ld-bit, %.1f s)", .zhHans: "WAV 已加载: %@（%ld Hz，%ld 声道，%ld 位，%.1f 秒）"],
         "log.wavError": [.en: "WAV load failed: %@", .zhHans: "WAV 加载失败: %@"],
+        "log.wavTooShort": [.en: "WAV too short: %ld bytes < one 10 ms frame (%ld bytes); not publishing", .zhHans: "WAV 过短：%ld 字节不足一帧 10 ms（%ld 字节），未发布"],
         "log.publishStart": [.en: "Publishing: %ld ch @ %ld Hz, 10 ms/frame, loop", .zhHans: "开始发布: %ld 声道 @ %ld Hz，10 ms/帧，循环"],
         "log.publishStop": [.en: "Publishing stopped", .zhHans: "已停止发布"],
         "log.pushError": [.en: "pushExternalAudioFrameRawData returned %ld", .zhHans: "pushExternalAudioFrameRawData 返回 %ld"],

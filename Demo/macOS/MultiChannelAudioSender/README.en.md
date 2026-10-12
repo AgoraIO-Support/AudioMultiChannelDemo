@@ -73,8 +73,11 @@ mirrored to stdout unbuffered:
     -autoJoin YES -autoPublish YES -autoQuitAfter 300
 ```
 
-- `autoWav`: asset index (0=8ch, 1=6ch, 2=4ch); `autoJoin`/`autoPublish`: join on launch
+- `autoWav`: asset index (0=8ch, 1=6ch, 2=4ch); `autoWavPath`: custom WAV file path (takes
+  precedence over autoWav; must be 48 kHz / 16-bit / 1~8 channels); `autoJoin`/`autoPublish`: join on launch
   and start publishing once joined; `autoQuitAfter`: seconds until self-termination (> 0).
+- `autoUid` accepts digits only; an invalid (non-numeric) value silently falls back to 0
+  (server-assigned uid).
 - Pair with the Web client opened as `?channel=<channel>&uid=<webuid>&subTo=<autoUid>` for
   per-version regression (sample `window.__mcRemoteTrack.getVolumeLevels()` per-channel
   peaks; see the matrix below).
