@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 280" role="img" aria-labelledby="t">
+  <title id="t">macOS receiver pipeline: subscribe, adaptive decode, per-channel control, dump</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6069"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+
+    <!-- SD-RTN -->
+    <rect x="24" y="100" width="150" height="72" rx="8" fill="#165dff"/>
+    <text x="99" y="128" font-size="12" font-weight="600" fill="#ffffff" text-anchor="middle">SD-RTN</text>
+    <text x="99" y="146" font-size="10" fill="#cfe0ff" text-anchor="middle">OPUSMC · PT 123/124/125</text>
+    <line x1="174" y1="136" x2="194" y2="136" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- join -->
+    <rect x="196" y="92" width="180" height="88" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="286" y="116" font-size="10.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">joinChannel (audience)</text>
+    <text x="286" y="136" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">autoSubscribeAudio = true</text>
+    <text x="286" y="158" font-size="10" fill="#5a6069" text-anchor="middle">no multi-channel params needed</text>
+    <line x1="376" y1="136" x2="396" y2="136" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- decode -->
+    <rect x="398" y="92" width="160" height="88" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="478" y="116" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">adaptive decode</text>
+    <text x="478" y="136" font-size="10" fill="#5a6069" text-anchor="middle">OPUSMC · 3~8 ch</text>
+    <text x="478" y="152" font-size="10" fill="#5a6069" text-anchor="middle">incl. odd 3/5/7 · 48 kHz</text>
+
+    <!-- split to playout -->
+    <line x1="558" y1="136" x2="576" y2="136" stroke="#5a6069" stroke-width="1.5"/>
+    <line x1="576" y1="136" x2="588" y2="62" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <!-- split to dump -->
+    <line x1="576" y1="136" x2="588" y2="218" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- playout path -->
+    <rect x="592" y="20" width="264" height="84" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="724" y="42" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">playout — per-channel control</text>
+    <text x="724" y="60" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">che.audio.neteq.adjust_decoded_volume</text>
+    <text x="724" y="78" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">{remoteUid, index 1~8, volume 0~100}</text>
+    <text x="724" y="96" font-size="10" fill="#5a6069" text-anchor="middle">after decode, before playout · local only</text>
+
+    <!-- dump path -->
+    <rect x="592" y="176" width="264" height="84" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="724" y="198" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">frame dump — offline check</text>
+    <text x="724" y="216" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">che.audio.frame_dump = true</text>
+    <text x="724" y="234" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#5a6069" text-anchor="middle">~/Library/Logs/…before_mixed…_&lt;uid&gt;.wav</text>
+    <text x="724" y="252" font-size="10" fill="#5a6069" text-anchor="middle">48 kHz · N ch · 16-bit · ~120 MB cap</text>
+  </g>
+</svg>

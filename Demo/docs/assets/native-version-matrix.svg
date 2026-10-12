@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 250" role="img" aria-labelledby="t">
+  <title id="t">Verified version matrix: send-side 2-channel clamp fixed since 4.5.3</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6069"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+
+    <text x="440" y="24" font-size="12" font-weight="600" fill="#5a6069" text-anchor="middle">AgoraRtcEngine_macOS public releases (CocoaPods) — send-side multi-channel verdicts, 2026-10-12</text>
+
+    <!-- sequence arrows -->
+    <line x1="180" y1="88" x2="198" y2="88" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="350" y1="88" x2="368" y2="88" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="520" y1="88" x2="538" y2="88" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="690" y1="88" x2="708" y2="88" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- 4.5.2 -->
+    <rect x="30" y="52" width="150" height="72" rx="8" fill="#fdf2f4" stroke="#d03050"/>
+    <text x="105" y="80" font-size="14" font-weight="700" fill="#d03050" text-anchor="middle">4.5.2</text>
+    <text x="105" y="100" font-size="10.5" fill="#d03050" text-anchor="middle">✗ 2-channel clamp</text>
+
+    <!-- 4.5.3 -->
+    <rect x="200" y="52" width="150" height="72" rx="8" fill="#f0faf4" stroke="#18a058" stroke-width="2"/>
+    <text x="275" y="80" font-size="14" font-weight="700" fill="#18a058" text-anchor="middle">4.5.3</text>
+    <text x="275" y="100" font-size="10.5" fill="#18a058" text-anchor="middle">✓ all 8 ch — fix point</text>
+
+    <!-- 4.6.0 -->
+    <rect x="370" y="52" width="150" height="72" rx="8" fill="#f0faf4" stroke="#18a058"/>
+    <text x="445" y="80" font-size="14" font-weight="700" fill="#18a058" text-anchor="middle">4.6.0</text>
+    <text x="445" y="100" font-size="10.5" fill="#18a058" text-anchor="middle">✓ all 8 ch</text>
+
+    <!-- 4.6.2 -->
+    <rect x="540" y="52" width="150" height="72" rx="8" fill="#f0faf4" stroke="#18a058"/>
+    <text x="615" y="80" font-size="14" font-weight="700" fill="#18a058" text-anchor="middle">4.6.2</text>
+    <text x="615" y="100" font-size="10.5" fill="#18a058" text-anchor="middle">✓ all 8 ch</text>
+
+    <!-- 4.7.0 -->
+    <rect x="710" y="52" width="150" height="72" rx="8" fill="#f0faf4" stroke="#18a058"/>
+    <text x="785" y="80" font-size="14" font-weight="700" fill="#18a058" text-anchor="middle">4.7.0</text>
+    <text x="785" y="100" font-size="10.5" fill="#18a058" text-anchor="middle">✓ 8/6/4 ch</text>
+
+    <!-- fix boundary marker -->
+    <line x1="190" y1="46" x2="190" y2="130" stroke="#18a058" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="190" y="144" font-size="10" font-weight="600" fill="#18a058" text-anchor="middle">fix boundary</text>
+
+    <!-- per-version notes -->
+    <text x="105" y="152" font-size="9.5" fill="#5a6069" text-anchor="middle">negotiation OK, but</text>
+    <text x="105" y="165" font-size="9.5" fill="#5a6069" text-anchor="middle">only CH0/CH1 carry content</text>
+    <text x="105" y="178" font-size="9.5" fill="#5a6069" text-anchor="middle">CH2-7 digital zero</text>
+
+    <text x="275" y="152" font-size="9.5" fill="#5a6069" text-anchor="middle">8ch peaks 74~83%</text>
+    <text x="275" y="165" font-size="9.5" fill="#5a6069" text-anchor="middle">binary version double-checked</text>
+
+    <text x="445" y="152" font-size="9.5" fill="#5a6069" text-anchor="middle">8ch peaks 75~84%</text>
+
+    <text x="615" y="152" font-size="9.5" fill="#5a6069" text-anchor="middle">8ch peaks 75~85%</text>
+
+    <text x="785" y="152" font-size="9.5" fill="#5a6069" text-anchor="middle">+ 4/6 ch assets verified</text>
+    <text x="785" y="165" font-size="9.5" fill="#5a6069" text-anchor="middle">native↔native dump: 1:1</text>
+    <text x="785" y="178" font-size="9.5" fill="#5a6069" text-anchor="middle">channel order</text>
+
+    <!-- receive note + footnote -->
+    <rect x="30" y="196" width="830" height="40" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="440" y="212" font-size="10.5" fill="#1f2329" text-anchor="middle">Receiving multi-channel works since 4.5.2 (2026-10-10) — the clamp was send-side only.</text>
+    <text x="440" y="228" font-size="10" fill="#5a6069" text-anchor="middle">Note: no macOS SDK 4.6.7 exists — the release train after 4.5.2 is 4.5.3 → 4.6.0 → 4.6.2 → 4.7.0 (iOS has a separate 4.6.4).</text>
+  </g>
+</svg>

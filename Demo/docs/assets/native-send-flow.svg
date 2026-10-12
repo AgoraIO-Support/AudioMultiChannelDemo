@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 330" role="img" aria-labelledby="t">
+  <title id="t">macOS sender pipeline: WAV to OPUSMC stream</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6069"/>
+    </marker>
+  </defs>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+
+    <!-- Row 1: source -> push -->
+    <rect x="24" y="20" width="150" height="64" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="99" y="46" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">Channel ID WAV</text>
+    <text x="99" y="64" font-size="10" fill="#5a6069" text-anchor="middle">4/6/8 ch · 48k · 16-bit</text>
+    <line x1="174" y1="52" x2="194" y2="52" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <rect x="196" y="20" width="140" height="64" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="266" y="46" font-size="10.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">WavReader.swift</text>
+    <text x="266" y="64" font-size="10" fill="#5a6069" text-anchor="middle">RIFF · PCM / EXTENSIBLE</text>
+    <line x1="336" y1="52" x2="356" y2="52" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <rect x="358" y="20" width="140" height="64" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="428" y="46" font-size="11.5" font-weight="600" fill="#1f2329" text-anchor="middle">10 ms pacer</text>
+    <text x="428" y="64" font-size="10" fill="#5a6069" text-anchor="middle">10 ms/frame · loop at EOF</text>
+    <line x1="498" y1="52" x2="518" y2="52" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <rect x="520" y="20" width="196" height="64" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="618" y="38" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">pushExternalAudioFrame</text>
+    <text x="618" y="52" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">RawData(...)</text>
+    <text x="618" y="72" font-size="10" fill="#5a6069" text-anchor="middle">samples = 480 × N (all channels)</text>
+    <line x1="716" y1="52" x2="736" y2="52" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <rect x="738" y="20" width="118" height="64" rx="8" fill="#ffffff" stroke="#e2e5ea"/>
+    <text x="797" y="40" font-size="11" font-weight="600" fill="#1f2329" text-anchor="middle">custom track</text>
+    <text x="797" y="56" font-size="10" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329" text-anchor="middle">.mixable</text>
+    <text x="797" y="72" font-size="10" fill="#5a6069" text-anchor="middle">bypass 3A</text>
+
+    <!-- down to publish band -->
+    <line x1="797" y1="84" x2="797" y2="100" stroke="#5a6069" stroke-width="1.5" marker-end="url(#arr)"/>
+
+    <!-- publish band -->
+    <rect x="24" y="102" width="832" height="46" rx="8" fill="#165dff"/>
+    <text x="440" y="122" font-size="12" font-weight="600" fill="#ffffff" text-anchor="middle">joinChannel (broadcaster) → publishCustomAudioTrack → OPUSMC encode → SD-RTN</text>
+    <text x="440" y="139" font-size="10.5" fill="#cfe0ff" text-anchor="middle">negotiated multi-channel stream: payload type 123 / 124 / 125 · 48 kHz</text>
+
+    <!-- timing callout -->
+    <rect x="24" y="164" width="832" height="82" rx="8" fill="#eaf1ff" stroke="#165dff"/>
+    <text x="40" y="188" font-size="11.5" font-weight="600" fill="#1f2329">Timing matters — set private parameters BEFORE joinChannel:</text>
+    <text x="40" y="210" font-size="10.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329">che.audio.custom_payload_type   ≤4ch → 123 · ≤6ch → 124 · otherwise → 125</text>
+    <text x="40" y="230" font-size="10.5" font-family="'SF Mono', Menlo, Consolas, monospace" fill="#1f2329">che.audio.custom_channel_num = N · che.audio.custom_sample_rate = 48000</text>
+
+    <!-- version note -->
+    <rect x="24" y="262" width="832" height="46" rx="8" fill="#fdf2f4" stroke="#d03050"/>
+    <text x="40" y="282" font-size="11" font-weight="600" fill="#d03050">Requires AgoraRtcEngine_macOS ≥ 4.5.3</text>
+    <text x="40" y="299" font-size="10.5" fill="#5a6069">on 4.5.2 the custom-track input is clamped to 2 channels (negotiation OK, but ch3+ carry no content) — verified 2026-10-12</text>
+  </g>
+</svg>
