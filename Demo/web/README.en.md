@@ -137,6 +137,18 @@ joins while Linux is sending, the sender falls back to plain Opus (the Web side 
 change to opus and the channel count drop). When the Web side is sending, there is no fallback
 and the non-supporting endpoint hears nothing.
 
+## End-to-End Verification with a macOS Sender
+
+1. On macOS (`Demo/macOS/MultiChannelAudioSender`, requires AgoraRtcEngine_macOS ≥ 4.5.3), publish the
+   bundled 4/6/8-channel Channel ID WAV as a broadcaster; command-line automation is available:
+   `./MultiChannelAudioSender -autoChannel <channel> -autoUid <uid> -autoWav 0 -autoJoin YES -autoPublish YES`.
+2. Open this demo as the subscriber: `?channel=<same channel>&uid=<web uid>&subTo=<macOS uid>`, join,
+   then click "Subscribe & Check".
+3. Expected: the volume bars show the matching channel count (4/6/8) with content-level peaks on every
+   channel, and the codec reads multiopus. Note: a macOS **4.5.2** sender carries content on only the
+   first 2 channels (known input clamp); **≥ 4.5.3** delivers all channels. The verified version matrix
+   lives in `Test/macos_sender_multi-channel_audio_test_result.md`.
+
 ## How to Judge the Result
 
 | Check | Multi-channel active | Not active |

@@ -136,7 +136,7 @@
           <strong>注意：音量柱是 dB 宽量程刻度，静音声道可能不归零，且底数随发送端素材类型不同而不同。</strong>
           音量公式为 <code>(dBFS_RMS + 100) / 100</code>，仅当解码样本精确为数字零时才显示 0%。
           实测（Linux→Web）：静音段含 dither（-84 dB）的 16bit 素材经编码传输后残余约 -90 dB，
-          静音声道音量柱显示 ~6~12%；静音段为精确数字零的 24bit 素材则精确显示 0%。
+          静音声道音量柱显示 ~6~10%；静音段为精确数字零的 24bit 素材则精确显示 0%。
           该残余不可闻、非 SDK 缺陷——逐声道内容核对请以 <code>selectChannels</code> + 试听为准，
           读音量柱时把 ~10% 视为无声。完整排查记录见
           <code>Test/web_volume_meter_floor_linux2web.md</code>。

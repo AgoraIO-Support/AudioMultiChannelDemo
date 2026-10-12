@@ -73,8 +73,9 @@ xcodebuild -workspace MultiChannelAudioSender.xcworkspace \
 ## 发送侧多声道能力：版本实测矩阵（2026-10-12 更新）
 
 方法：本 app 以 8 声道 Channel ID 素材（内容逐声道轮播，循环 14 s）自动发布，Web 验证端
-（`Demo/web/`）订阅后对 `getVolumeLevels()` 连续采样 20 s 取各声道峰值判定——内容级 ≈ 56~85%，
-素材 dither 底噪 ≈ 10%，数字零 = 0%。
+（`Demo/web/`）订阅后以 200 ms 间隔对 `getVolumeLevels()` 连续采样 20 s 取各声道峰值判定——
+内容级 ≈ 56~85%（有内容）；~10% 为 16bit 素材静音段的 dither 底噪（无声的正常读数）；
+数字零 = 0%（内容在发送端被钳制丢失）。
 
 | AgoraRtcEngine_macOS | 协商 | Web 端逐声道内容 | 结论 |
 | --- | --- | --- | --- |
@@ -89,7 +90,7 @@ xcodebuild -workspace MultiChannelAudioSender.xcworkspace \
 注：macOS 版 SDK 不存在 4.6.7（CocoaPods 与发版说明中 4.6.2 之后为 4.7.0；iOS 侧另有 4.6.4）。
 4.5.3 起的峰值按序出现在不同声道，与素材逐声道轮播一致；声道序号与素材声道的逐一对应
 关系已于 2026-10-12 闭环（4.7.0↔4.7.0 原生链路 dump 与源 WAV 包络互相关，同序号 NCC 0.67~0.78、
-跨声道 ≈0，无重排）。
+跨声道 ≈0，无重排）。完整测试汇总见 `Test/macos_sender_multi-channel_audio_test_result.md`。
 
 **4.5.2 的历史结论（2026-10-10 实测）**：公开发送侧自定义音轨输入最高按 2 声道读取——
 私参协商正常生效（对端解出对应声道数的 multiopus 流，8ch/6ch/4ch 均验证通过），但只有

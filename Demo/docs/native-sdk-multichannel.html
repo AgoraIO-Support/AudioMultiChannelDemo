@@ -165,7 +165,7 @@ kit.setParameters("{\"che.audio.frame_dump\":true}")
         <li><strong>payload type ↔ 声道数</strong>：123 → 3/4、124 → 5/6、125 → 7/8；默认 4/6/8，3/5/7 须显式设置 <code>che.audio.custom_channel_num</code>。</li>
         <li><strong>声道数上限 8</strong>；Web 端仅支持 4/6/8 偶数声道解码，3/5/7 只能用 Native/Linux 端验证。</li>
         <li><strong>不支持端回退</strong>：Linux 发送时不支持端加入会触发发送端回退普通 Opus（可用 <code>che.audio.codec_unfallback</code> 强制不回退）；频道内应保证所有端支持多声道。</li>
-        <li><strong>版本残留事项</strong>：修复点定位为 4.5.2 → 4.5.3（4.5.3 补测 8 声道全通，二进制版本号已核实）；声道序号映射已闭环（2026-10-12：4.7.0 原生链路 dump 与源 WAV 包络互相关，逐声道同序号对应、无重排）；4/6 声道素材已于 4.7.0 补测通过（全声道内容送达）。</li>
+        <li><strong>版本残留事项</strong>：修复点定位为 4.5.2 → 4.5.3（4.5.3 补测 8 声道全通，二进制版本号已核实）；声道序号映射已闭环（2026-10-12：4.7.0 原生链路 dump 与源 WAV 包络互相关，dumpCHi ↔ srcCHi 同序号对应，NCC 0.67~0.78、跨声道 ≈ 0，无重排）；4/6 声道素材已于 4.7.0 补测通过（全声道内容送达）。</li>
         <li>接收端无法从回调获知实际协商声道数（SDK 无此回调）；逐声道私参为未文档化的私有参数。</li>
       </ul>
     </div>
@@ -247,7 +247,7 @@ kit.setParameters("{\"che.audio.frame_dump\":true}")
         <code>Test/macos_sender_2ch_clamp_issue_20261010.md</code> (4.5.2 investigation).
       </p>
 
-      <h2 id="integration">3. Integration Guide</h2>
+      <h2>3. Integration Guide</h2>
 
       <h3>3.1 Sending multi-channel audio (Swift, ≥ 4.5.3)</h3>
       <pre><code>// Podfile: pod 'AgoraRtcEngine_macOS', '4.7.0' (multi-channel sending requires ≥ 4.5.3)

@@ -28,7 +28,7 @@
     <!-- ==================== 中文 ==================== -->
     <div data-lang="zh">
       <h1>Agora 音频多声道（multiopus）</h1>
-      <p class="subtitle">功能总述 · 集成指南 · 端到端验证（Linux SDK + Web SDK）</p>
+      <p class="subtitle">功能总述 · 集成指南 · 端到端验证（Linux SDK + Web SDK + Native SDK）</p>
 
       <h2>什么是音频多声道</h2>
       <p>
@@ -86,7 +86,7 @@
         <a class="card" href="linux-sdk-multichannel.html#integration">
           <p class="card-title">本仓库 Demo 目录</p>
           <p class="card-desc">
-            <code>Demo/linux/</code>：C++ 收发 sample（构建与运行见其 README）；<code>Demo/web/</code>：Vue3 验证 demo（<code>npm run dev</code>）。
+            <code>Demo/linux/</code>：C++ 收发 sample（构建与运行见其 README）；<code>Demo/web/</code>：Vue3 验证 demo（<code>npm run dev</code>）；<code>Demo/macOS/</code>：macOS 发送/接收验证 app（SwiftUI + CocoaPods）。
           </p>
         </a>
       </div>
@@ -105,6 +105,12 @@
           <strong>Linux SDK</strong>：多声道验证版本为 <code>v4.4.30.149</code>（x86_64 / aarch64），下载：
           <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz" target="_blank" rel="noopener">x86_64</a>、
           <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz" target="_blank" rel="noopener">aarch64</a>。
+        </li>
+        <li>
+          <strong>Native SDK（macOS）</strong>：CocoaPods 公开版 <code>AgoraRtcEngine_macOS</code>。
+          版本边界（2026-10-12 实测）：<strong>发送多声道须 ≥ 4.5.3</strong>（4.5.2 自定义音轨输入钳制为 2 声道），
+          <strong>接收自 4.5.2 起可用</strong>；macOS 无 4.6.7（4.6.2 之后为 4.7.0）。详见
+          <a href="native-sdk-multichannel.html">Native SDK 多声道文档</a>。
         </li>
         <li>
           <strong>计费</strong>：当前多声道费用与普通双声道音频相同；未来可能随成本调整，请以 Agora 官方计费说明为准。
@@ -153,7 +159,7 @@
     <!-- ==================== English ==================== -->
     <div data-lang="en">
       <h1>Agora Audio Multi-Channel (multiopus)</h1>
-      <p class="subtitle">Overview · Integration guides · End-to-end verification (Linux SDK + Web SDK)</p>
+      <p class="subtitle">Overview · Integration guides · End-to-end verification (Linux SDK + Web SDK + Native SDK)</p>
 
       <h2>What is multi-channel audio</h2>
       <p>
@@ -216,7 +222,7 @@
         <a class="card" href="linux-sdk-multichannel.html#integration">
           <p class="card-title">Demo directories in this repo</p>
           <p class="card-desc">
-            <code>Demo/linux/</code>: C++ send/receive samples (see its README for build &amp; run); <code>Demo/web/</code>: Vue3 verification demo (<code>npm run dev</code>).
+            <code>Demo/linux/</code>: C++ send/receive samples (see its README for build &amp; run); <code>Demo/web/</code>: Vue3 verification demo (<code>npm run dev</code>); <code>Demo/macOS/</code>: macOS sender/receiver verification apps (SwiftUI + CocoaPods).
           </p>
         </a>
       </div>
@@ -237,6 +243,13 @@
           (x86_64 / aarch64). Downloads:
           <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz" target="_blank" rel="noopener">x86_64</a>,
           <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz" target="_blank" rel="noopener">aarch64</a>.
+        </li>
+        <li>
+          <strong>Native SDK (macOS)</strong>: the public CocoaPods build <code>AgoraRtcEngine_macOS</code>.
+          Version boundary (verified 2026-10-12): <strong>≥ 4.5.3 for multi-channel sending</strong>
+          (4.5.2 clamps custom-track input to 2 channels); <strong>receiving works since 4.5.2</strong>;
+          there is no macOS 4.6.7 (4.6.2 is followed by 4.7.0). See the
+          <a href="native-sdk-multichannel.html">Native SDK multi-channel doc</a>.
         </li>
         <li>
           <strong>Pricing</strong>: multi-channel audio is currently charged the same as normal stereo
@@ -287,8 +300,8 @@
 
   <footer class="site-footer">
     <div class="container">
-      <span data-lang="zh">内容依据：多声道设计文档（ExT-1485178709 / ExT-1485178492）与 Spec/ 下 PRD；示例代码取自 Demo/linux 与 Demo/web。浏览器侧背景与多端支持分析见 References/chromium_webrtc_multi_channel_audio_references.md。</span>
-      <span data-lang="en">Sources: multi-channel design docs (ExT-1485178709 / ExT-1485178492) and the PRDs under Spec/; code samples are taken from Demo/linux and Demo/web. For browser-side background and multi-endpoint support analysis, see References/chromium_webrtc_multi_channel_audio_references_en.md.</span>
+      <span data-lang="zh">内容依据：多声道设计文档（ExT-1485178709 / ExT-1485178492）与 Spec/ 下 PRD；示例代码取自 Demo/linux、Demo/web 与 Demo/macOS；macOS 版本实测结论见 Test/macos_sender_multi-channel_audio_test_result.md。浏览器侧背景与多端支持分析见 References/chromium_webrtc_multi_channel_audio_references.md。</span>
+      <span data-lang="en">Sources: multi-channel design docs (ExT-1485178709 / ExT-1485178492) and the PRDs under Spec/; code samples are taken from Demo/linux, Demo/web and Demo/macOS; the verified macOS version matrix lives in Test/macos_sender_multi-channel_audio_test_result.md. For browser-side background and multi-endpoint support analysis, see References/chromium_webrtc_multi_channel_audio_references_en.md.</span>
     </div>
   </footer>
 

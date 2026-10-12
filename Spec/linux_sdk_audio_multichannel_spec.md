@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 背景单：CSD-74687（音画不同步）、CSD-76350（Multipath 音频延迟）、CSD-76354（Linux SDK 4.2.32 Crash）、ASS-2272（Linux SDK 特殊版申请，含 MultiPath）；需求 Jira 待补充 |
-| 需求版本 | v0.6 |
+| 需求版本 | v0.7 |
 
 ---
 
@@ -311,7 +311,7 @@
 #### 场景8.1：编码与解码 dump
 
 - 当：在日志目录放置名为 `multi_channel.pcm` 的素材（声道数与 `custom_channel_num` 一致）
-- 则：该素材被喂入编码器；日志目录可生成 `before_encoded.pcm`（解码后数据，声道数与编码前一致）与 `mixed_output.pcm`（混音后数据，恒 2 声道）
+- 则：该素材被喂入编码器；日志目录可生成 `before_encoded.pcm`（编码前/编码器输入数据，声道数与配置一致；命名与 macOS 侧 `before_mixed` dump 同口径）与 `mixed_output.pcm`（混音后数据，恒 2 声道）
 - 且：dump 文件用于问题定位，声道数以配置为准
 
 #### 场景8.2：Web 端端到端验证
@@ -320,6 +320,9 @@
 - 当：订阅 Linux 端发布的多声道流
 - 则：`getVolumeLevels()` 返回数组长度等于实际解码声道数；底层 codec 显示为 `multiopus`；可通过 `selectChannels(channels, "surround"|"stereo"|"mono")` 选择任意声道组合播放
 - 且：stereo 模式将 0,2,4,6… 声道混入左、1,3,5,7… 声道混入右；mono 模式全部混为单声道（输出为立体声容器）；Safari/Firefox 加入多声道频道行为未定义（可能无声或仅立体声）
+- 且：`getVolumeLevels()` 为 dB 宽量程刻度（`(dBFS_RMS + 100) / 100`）：静音声道在 16bit dither
+  素材下读数约 10%，仅精确数字零为 0%——判定逐声道内容以「有无内容级峰值」为准，
+  勿把底噪读数误判为串声道（实测分析见 `Test/web_volume_meter_floor_linux2web.md`）
 
 #### 场景8.3：Channel ID 素材逐声道核对
 
@@ -375,7 +378,7 @@
 | 接收多声道（PCM 回调） | 按用户回调多声道解码 PCM，可落盘 | 10 ms 帧回调 | 落盘文件逐声道可核对 | P0 | 同上 | — | 不涉及 | 当前 Demo：sample_receive_pcm_multiopus |
 | 接收多声道（编码帧） | 订阅端接收 OPUSMC 编码帧 | — | 回调的 codec 与原始帧可落盘核对；声道数/采样率由协商或业务上下文提供 | P1 | 同上 | — | 不涉及 | 当前 Demo：sample_receive_encoded_audio |
 | 多声道混音接收 | 混音输出恒 2 声道（奇/偶声道分路） | — | 混音内容可听辨 | P1 | 同上 | — | 不涉及 | sample：sample_receive_mixed_audio |
-| 验证与可观测性 | 日志、dump、Web demo 逐声道验证链路可用 | — | getVolumeLevels 数组长度=声道数，codec=multiopus | P0 | 同上 | — | 不涉及 | quick-demo-multiopus |
+| 验证与可观测性 | 日志、dump、Web demo 逐声道验证链路可用 | — | getVolumeLevels 数组长度=声道数，codec=multiopus；静音声道 ~10% 读数为 dither 底噪（非内容） | P0 | 同上 | — | 不涉及 | Demo/web（quick-demo-multiopus 已移除，功能由 Demo/web 继承） |
 
 ### 8.2 产出物
 
@@ -432,7 +435,7 @@
 
 | # | 问题 | 维度 | 建议确认人 | 状态 |
 | --- | --- | --- | --- | --- |
-| 1 | 能力协商回退的目标格式：Linux 设计文档记"回退到单声道（mono）"，Web 设计文档记"回退到双声道（dual-channel）"，两处表述不一致，需以实际版本行为为准 | 兼容性 | 研发 / QA | 待确认 |
+| 1 | 能力协商回退的目标格式：Linux 设计文档记"回退到单声道（mono）"，Web 设计文档记"回退到双声道（dual-channel）"，两处表述不一致，需以实际版本行为为准。2026-10-12 补充：回退行为本身与 `che.audio.codec_unfallback` 强制开关已实测生效（Linux 发送遇不支持端回退普通 Opus；Web 发送不回退且不支持端无声），剩余未定点仅为回退后声道数（mono/stereo） | 兼容性 | 研发 / QA | 部分确认（行为与开关已实测）；回退目标声道数待研发确认 |
 | 2 | 多声道流在云录制、水晶球等云端链路上的表现与计费影响 | 协同 | PM / 服务端 | 待确认 |
 | 3 | 客户 VID、需求 Reporter 与期望交付版本号需在需求 Jira 中补齐 | 流程 | PM | 待确认 |
 | 4 | 3/5/7 奇数声道在 Native 端可自适应解码，但客户实际业务是否使用奇数声道（当前素材与 sample 均按 4/6/8 验证） | 场景 | 客户 / PM | 待确认 |
@@ -491,7 +494,7 @@
 | `8ch_2.opus` | Opus 裸帧流（非 ogg），640 字节/帧 | 48000 | 8 | — | 约 112 s（3,575,680 字节 ÷ 640 字节/帧 × 20 ms） | 需求点3 预编码 Opus 发送 | `References/LinuxSampleCodes/8ch_2.opus` |
 | `8_Channel_ID_signed_16_bit_pcm.wav` | WAV pcm_s16le | 48000 | 8 | 16bit | 约 14 s | 需求点2 八声道 WAV 发送主验证素材 | ffprobe 元数据（`*_metadata.txt`） |
 | `8_Channel_ID_signed_16_bit_pcm.raw.pcm` | raw PCM s16le 交错 | 48000 | 8 | 16bit | 约 14 s | 需求点1 PCM 发送默认素材（由同名 WAV 提取，`Demo/linux/public/`） | 本仓库生成 |
-| `8_Channel_ID.wav` | WAV | 48000（Web demo 直发，浏览器解码） | 8 | 16bit（本仓库 `Demo/web/public` 拷贝实测为 24bit，浏览器解码不受影响） | — | Web demo 发布素材；v4.4.30.130 sample 默认音频文件 | `quick-demo-multiopus/public/`（已随 demo 移除；素材见 `Demo/web/public`）、`example/out/public/` |
+| `8_Channel_ID.wav` | WAV pcm_s24le | 48000（Web demo 直发，浏览器解码） | 8 | 24bit（`Demo/web/public` 拷贝 afinfo 实测） | — | Web demo 发布素材；v4.4.30.130 sample 默认音频文件 | `quick-demo-multiopus/public/`（已随 demo 移除；素材见 `Demo/web/public`）、`example/out/public/` |
 | `8_Channel_ID_24bit.wav` | WAV pcm_s24le | 48000 | 8 | 24bit | — | 需求点2 场景2.2（24bit→16bit）验证素材（拷贝自 `Demo/web/public/8_Channel_ID.wav`，`Demo/linux/public/`） | 本仓库 |
 | `4_Channel_ID_48k.wav` / `6_Channel_ID_48k.wav` | WAV pcm_s16le | 48000 | 4 / 6 | 16bit | 约 5.8 s | Linux sample 4/6 声道发送验证（由 44.1 kHz 源重采样，`Demo/linux/public/`） | 本仓库生成 |
 | `6_Channel_ID.wav` | WAV pcm_s16le | 44100 | 6（5.1 布局） | 16bit | 约 5.8 s | 六声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
@@ -512,3 +515,4 @@
 | v0.4 | 2026-08-12 | 依据 `audio_mutil_channel_mapping.txt` 与两张映射图更正最终声道映射：8 声道逐样本交错、声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R（场景9.2 改写）；补充杂音问题根因（交错数据按平面块序读取）与 2025-04-14 已解决结论；待确认问题6 关闭；FAQ、8.1、附录同步更正 | Kimi Code |
 | v0.5 | 2026-08-12 | 全文一致性对齐：摘要与 6.1 功能点概述补入 4×双声道布局映射（第⑨项），文档基础信息需求版本更新为 v0.5，研发准入自检表述对齐 | Kimi Code |
 | v0.6 | 2026-10-10 | 场景1.2 更新：本仓库已包含音视频同发 sample（`sample_send_mkv_multiopus`，音频 10ms/帧 + 视频按 PTS 节奏双线程独立发送），替换"未包含该音视频同发 sample"的过时表述 | Kimi Code |
+| v0.7 | 2026-10-12 | 一致性修订：场景8.1 `before_encoded.pcm` 括注更正为「编码前/编码器输入数据」（与命名及 macOS `before_mixed` dump 口径一致）；场景8.2 与 8.1 验收补 `getVolumeLevels` dB 刻度底噪 caveat（~10% 为 dither 底噪）；8.1 验证 demo 备注更新为 Demo/web（quick-demo-multiopus 已移除）；待确认问题1 收窄——回退行为与 unfallback 开关已实测，仅剩回退目标声道数（mono/stereo）待研发确认；附录素材表 `8_Channel_ID.wav` 位深更正为 24bit（afinfo 实测） | Kimi Code |

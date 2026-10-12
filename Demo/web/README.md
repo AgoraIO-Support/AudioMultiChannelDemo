@@ -87,6 +87,16 @@ URL 参数一览（均优先于 localStorage 回填值）：
 
 注意：频道内应保证所有端都支持多声道。Linux 发送时若有不支持端加入，发送端会回退普通 Opus（Web 端观测到 codec 变为 opus、声道数下降）；Web 发送时不回退，不支持端无声。
 
+## 配合 macOS sender 做端到端验证
+
+1. macOS 端（`Demo/macOS/MultiChannelAudioSender`，需 AgoraRtcEngine_macOS ≥ 4.5.3）以主播角色发布内置
+   4/6/8 声道 Channel ID WAV；支持命令行自动化：
+   `./MultiChannelAudioSender -autoChannel <频道> -autoUid <uid> -autoWav 0 -autoJoin YES -autoPublish YES`。
+2. 本 demo 以订阅端角色打开：`?channel=<同一频道>&uid=<web端uid>&subTo=<macOS端uid>`，加入频道后点「订阅检测」。
+3. 预期：音量条出现对应声道数（4/6/8）且各声道均有内容级峰值，codec 判定为 multiopus。
+   注意：macOS **4.5.2** 发送时仅前 2 声道有内容（已知输入钳制），**≥ 4.5.3** 全声道正常；
+   版本实测矩阵见 `Test/macos_sender_multi-channel_audio_test_result.md`。
+
 ## 判定方法
 
 | 判据 | 多声道生效 | 未生效 |

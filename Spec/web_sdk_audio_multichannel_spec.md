@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 背景单：CSD-74687（音画不同步）、ASS-2272（Linux SDK 特殊版申请）；需求 Jira 待补充 |
-| 需求版本 | v0.1 |
+| 需求版本 | v0.2 |
 
 ---
 
@@ -95,7 +95,7 @@
 | 内容项 | 描述 | 备注 |
 | --- | --- | --- |
 | API 接口（描述性语言） | 逐声道音量（`getVolumeLevels`）、声道选择（`selectChannels`）、codec 与声道数判定（demo 内 getStats 轮询） | 现成能力 |
-| 体验指标概述 | 订阅后可在约 1 s 内判定实际声道数（demo 以 300 ms 周期刷新音量、800 ms 轮询 codec，最多 6 次）；声道选择即时生效；各声道音量逐路可辨 | 阈值见第七章与 8.1 |
+| 体验指标概述 | 订阅后约 1 s 内可判定实际声道数（`getVolumeLevels` 数组长度路径，300 ms 周期刷新）；底层 codec 判定（getStats 轮询 800 ms×最多 6 次）最迟约 5 s；声道选择即时生效；各声道音量逐路可辨（注意 dB 刻度底噪，见场景5.1） | 阈值见第七章与 8.1 |
 | 性能指标概述 | 频道为多声道流时，不支持端加入不应影响已订阅端（Web 发送场景除外，见需求点7）；具体 CPU/内存指标待性能测试报告补充 | |
 
 ### 6.3 客户/用户场景技术拆解
@@ -179,7 +179,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 #### 场景1.2：未开启时的默认行为
 
 - 当：未设置开关即订阅多声道流
-- 则：按普通单/双声道处理，无法还原多声道（demo 备注：只有开启后订阅端才可能收到 3-8 声道的多声道流）
+- 则：按普通单/双声道处理，无法还原多声道（demo 备注：只有开启后订阅端才可能收到多声道流；Web 端仅支持 4/6/8 偶数声道解码，3/5/7 不适用）
 
 #### 场景1.3：解码能力声明
 
@@ -201,7 +201,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 #### 场景2.2：声道布局约定
 
 - 当：发布 8 声道内容
-- 则：声道路由（哪路对应哪个逻辑声道）由发布素材与业务约定决定，SDK 不做声道光箱重排；客户场景下应与 Linux 侧已确认映射（T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）保持一致
+- 则：声道路由（哪路对应哪个逻辑声道）由发布素材与业务约定决定，SDK 不做声道重排；客户场景下应与 Linux 侧已确认映射（T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）保持一致
 - 且：素材采样率经 Web Audio 图后按协商 48 kHz 编码（多声道编解码仅 48 kHz）
 
 ### 需求点3：Web 端多声道订阅与播放
@@ -250,6 +250,9 @@ Linux 端发布 8ch OPUSMC (payload 125)
 - 当：订阅/创建多声道音轨后调用 `getVolumeLevels()`
 - 则：返回全部声道音量数组（0~1）；传入声道列表（如 `[0,1,2]`）时仅返回所列声道
 - 且：demo 以 300 ms 周期刷新并渲染逐声道音量条，作为声道数与内容正确性的可视化判据
+- 且：音量为 dB 宽量程刻度（`(dBFS_RMS + 100) / 100`）——16bit 素材静音段因 dither 读数约 10%，
+  仅精确数字零显示 0%；判定时须区分「底噪读数」与「内容」，勿把静音声道的 ~10% 误判为串声道
+  （实测分析见 `Test/web_volume_meter_floor_linux2web.md`）
 
 ### 需求点6：浏览器兼容性边界
 
@@ -311,9 +314,9 @@ Linux 端发布 8ch OPUSMC (payload 125)
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 多声道能力开启与协商 | `ENABLE_MULTIOPUS_CODEC` 开启后 ORTC multiopus 协商生效，未开启保持普通行为 | — | 开关在 createClient 前设置 | P0 | 已交付（4.20.1-100/200） | — | 不涉及 | |
 | Web 端多声道发布 | channelCount 4/6/8 自定义音轨发布，payload 自动生成 | — | 发布后远端可解出对应声道数 | P1 | 同上 | — | 不涉及 | demo 已含 WAV 发布路径 |
-| Web 端多声道订阅与播放 | 订阅 OPUSMC 流播放，`channelCount` 可读 | — | 约 1 s 内完成声道数判定 | P0 | 同上 | — | 不涉及 | 仅偶数声道 |
+| Web 端多声道订阅与播放 | 订阅 OPUSMC 流播放，`channelCount` 可读 | — | 声道数判定约 1 s（音量数组长度）；codec 判定最迟约 5 s | P0 | 同上 | — | 不涉及 | 仅偶数声道 |
 | 声道选择播放 | `selectChannels` 三模式（surround/stereo/mono）任意声道组合 | — | 选择即时生效 | P0 | 同上 | — | 不涉及 | Insertable Streams 实现 |
-| 逐声道音量获取 | `getVolumeLevels` 返回各声道音量数组 | — | 数组长度 = 实际声道数 | P0 | 同上 | — | 不涉及 | |
+| 逐声道音量获取 | `getVolumeLevels` 返回各声道音量数组 | — | 数组长度 = 实际声道数 | P0 | 同上 | — | 不涉及 | dB 刻度：静音声道在 dither 素材下读数 ~10%（非串声道，见场景5.1） |
 | 浏览器兼容性 | Chrome 96+ 可用、110+ 完全支持；Safari/Firefox 不支持 | — | 明确的不支持声明 | P0 | 同上 | — | 不涉及 | |
 | 回退端侧表现 | Linux 发送回退可观测（codec/声道数变化）；Web 发送不回退 | — | 不支持端行为符合规则 | P0 | 同上 | — | 不涉及 | 与 Linux 侧 spec 交叉引用 |
 | 验证 demo | quick-demo-multiopus 双标签页流程可用 | — | 逐声道音量条 + codec 判定 | P0 | 已交付 | — | 不涉及 | |
@@ -405,7 +408,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 - 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Web SDK 4.20.1-200 多声道定制版及 Test Report）
 - 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（`src/Multiopus.vue`、`USAGE.md`、`README.md`）——已于 2026-10 移除，功能由 `Demo/web/` 继承
 - 关联文档：`Spec/linux_sdk_audio_multichannel_spec.md`（Linux 侧发送/接收/布局映射需求）
-- 布局映射沟通记录：`References/沟通记录/`（最终确认声道映射：逐样本交错 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）
+- 布局映射沟通记录：原 `References/沟通记录/` 已于 2026-10-09 删除；内容存档见 `References/communication_records_backup.md` / `communication_records_backup_en.md`（最终确认声道映射：逐样本交错 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）
 - Chrome 缺陷依据：<https://bugs.chromium.org/p/chromium/issues/detail?id=1116042>；Opus multistream API：<https://www.opus-codec.org/docs/opus_api-1.1.2/group__opus__multistream.html>
 
 ### 变更记录
@@ -413,3 +416,4 @@ Linux 端发布 8ch OPUSMC (payload 125)
 | 版本 | 日期 | 变更内容 | 作者 |
 | --- | --- | --- | --- |
 | v0.1 | 2026-08-12 | 初稿：基于 Web 多声道设计文档与 quick-demo-multiopus 收敛发布/订阅/声道选择需求 | Kimi Code |
+| v0.2 | 2026-10-12 | 一致性修订：场景1.2「3-8 声道」更正为「仅 4/6/8 偶数声道」（与 :120/:216 对齐）；场景2.2「声道光箱重排」笔误更正；参考资料中已删除的 `References/沟通记录/` 指向文字化存档；判定口径补齐（音量数组约 1 s / codec 最迟约 5 s）；场景5.1 与 8.1 补 dB 刻度底噪 caveat（~10% 为 dither 底噪非内容）；同步认可此前 quick-demo 移除等未入记录的正文修订 | Kimi Code |
