@@ -1,7 +1,7 @@
 # macOS Multi-Channel Audio Receiver Demo (MultiChannelAudioReceiver)
 
 A **pure receiver** verification app built on the Agora Native SDK for macOS
-(`AgoraRtcEngine_macOS` 4.5.2, integrated via CocoaPods). It joins a channel as
+(`AgoraRtcEngine_macOS` 4.7.0, integrated via CocoaPods). It joins a channel as
 **audience**, receives a remote host's multi-channel (OPUSMC, payload types
 123/124/125, 48 kHz, 3~8 channels) or normal stereo/mono audio stream, and lets the
 tester **select which channels to hear and set per-channel volume** through Native SDK
@@ -53,7 +53,7 @@ interpolation); log and status lines are emitted in the language active at the t
 - **Per-channel control**: each row has an enable toggle and a 0~100% volume slider,
   applied immediately through the `che.audio.neteq.adjust_decoded_volume` private
   parameter. All channels default to enabled at 100.
-- **Audio frame dump**: `che.audio.frame_dump` toggle. Verified on macOS 4.5.2: dumps land in
+- **Audio frame dump**: `che.audio.frame_dump` toggle. Verified on macOS 4.5.2 / 4.7.0: dumps land in
   **`~/Library/Logs/`** — per-user decoded output
   `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`
   (48 kHz / N ch / 16-bit, stops growing at ~120 MB; Leave+Join starts a new timestamped file);
@@ -71,7 +71,7 @@ interpolation); log and status lines are emitted in the language active at the t
 
 ```bash
 cd Demo/macOS/MultiChannelAudioReceiver
-pod install        # integrates AgoraRtcEngine_macOS 4.5.2, creates MultiChannelAudioReceiver.xcworkspace
+pod install        # integrates AgoraRtcEngine_macOS (version pinned in the Podfile), creates MultiChannelAudioReceiver.xcworkspace
 open MultiChannelAudioReceiver.xcworkspace   # open the workspace in Xcode (NOT the xcodeproj)
 ```
 
@@ -134,8 +134,24 @@ sandbox, so local builds need no developer certificate.
 ```
 
 When enabled, the SDK writes decoded audio frames to disk for offline channel-content
-verification. On macOS 4.5.2 the dump directory is `~/Library/Logs/` (file naming in
-"Features" above).
+verification. On macOS 4.5.2 and 4.7.0 the dump directory is the same: `~/Library/Logs/`
+(file naming in "Features" above).
+
+## Command-line automation (for regression testing)
+
+Launch arguments (mapped into `UserDefaults`) replace UI interaction; the app log is also
+mirrored to stdout unbuffered:
+
+```bash
+./MultiChannelAudioReceiver.app/Contents/MacOS/MultiChannelAudioReceiver \
+    -autoChannel <channel> -autoJoin YES -autoDump YES -autoQuitAfter 120
+```
+
+- `autoJoin`: join as audience on launch (uid 0 = auto-assign); `autoDump`: enable
+  `che.audio.frame_dump` at join; `autoQuitAfter`: seconds until the app terminates
+  itself (> 0).
+- Used on 2026-10-12 for the 4.7.0 ↔ 4.7.0 native interop regression (per-channel NCC
+  check against the dump); results in `Test/macos_sender_multi-channel_audio_test_result.md`.
 
 ## Notes
 

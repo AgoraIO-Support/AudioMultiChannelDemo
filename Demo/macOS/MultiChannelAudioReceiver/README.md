@@ -1,6 +1,6 @@
 # macOS 音频多声道接收 Demo（MultiChannelAudioReceiver）
 
-基于 Agora Native SDK macOS 版（`AgoraRtcEngine_macOS` 4.5.2，CocoaPods 集成）的
+基于 Agora Native SDK macOS 版（`AgoraRtcEngine_macOS` 4.7.0，CocoaPods 集成）的
 **纯接收端** 验证 app：以观众（audience）角色加入频道，接收远端主播的多声道
 （OPUSMC，payload type 123/124/125，48 kHz，3~8 声道）或普通立体声/单声道音频流，
 并通过 Native SDK 私参 **逐声道选择收听、逐声道调节音量**。需求背景与验收基线见
@@ -39,7 +39,7 @@
   即选 2 并不会把 8 声道流的 3~8 声道静音——要静音请用对应行的开关。
 - **逐声道控制**：每个声道一行，包含启用开关（Toggle）与音量滑杆（0~100%），改动立即通过私参
   `che.audio.neteq.adjust_decoded_volume` 生效。默认全部声道启用、音量 100。
-- **音频帧 Dump**：`che.audio.frame_dump` 开关。macOS 4.5.2 实测 dump 落在 **`~/Library/Logs/`**：
+- **音频帧 Dump**：`che.audio.frame_dump` 开关。macOS 4.5.2 / 4.7.0 实测 dump 落在 **`~/Library/Logs/`**：
   按远端用户解码输出为 `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`
   （48 kHz / N 声道 / 16bit，约 120 MB 封顶后停止写入，Leave 重进会按新时间戳另建）；
   混音输出 `audio_dump_playback_mixer_0.wav`（恒 2 声道）；播放输出 `audio_dump_play_0.wav`；
@@ -55,7 +55,7 @@
 
 ```bash
 cd Demo/macOS/MultiChannelAudioReceiver
-pod install        # 集成 AgoraRtcEngine_macOS 4.5.2，生成 MultiChannelAudioReceiver.xcworkspace
+pod install        # 集成 AgoraRtcEngine_macOS（版本见 Podfile），生成 MultiChannelAudioReceiver.xcworkspace
 open MultiChannelAudioReceiver.xcworkspace   # 用 Xcode 打开 workspace（不是 xcodeproj）
 ```
 
@@ -111,8 +111,22 @@ xcodebuild -workspace MultiChannelAudioReceiver.xcworkspace \
 {"che.audio.frame_dump":true}
 ```
 
-开启后 SDK 将解码后的音频帧落盘，用于离线核对声道内容。macOS 4.5.2 实测落盘位置为
-`~/Library/Logs/`（文件名规则见上方「功能说明」）。
+开启后 SDK 将解码后的音频帧落盘，用于离线核对声道内容。macOS 4.5.2 与 4.7.0 实测落盘位置一致，
+均为 `~/Library/Logs/`（文件名规则见上方「功能说明」）。
+
+## 命令行自动化（回归测试用）
+
+通过启动参数（映射进 `UserDefaults`）免去 UI 操作，App 日志同时无缓冲镜像到 stdout：
+
+```bash
+./MultiChannelAudioReceiver.app/Contents/MacOS/MultiChannelAudioReceiver \
+    -autoChannel <频道> -autoJoin YES -autoDump YES -autoQuitAfter 120
+```
+
+- `autoJoin`：启动后自动以观众角色加入（uid 0 自动分配）；`autoDump`：join 时开启
+  `che.audio.frame_dump`；`autoQuitAfter`：秒数，>0 时到点自动退出。
+- 2026-10-12 即用此方式完成 4.7.0 ↔ 4.7.0 原生互通回归（dump 逐声道 NCC 核对），
+  结果见 `Test/macos_sender_multi-channel_audio_test_result.md`。
 
 ## 注意事项
 

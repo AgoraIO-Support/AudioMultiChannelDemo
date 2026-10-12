@@ -1,6 +1,6 @@
 # macOS 音频多声道发送 Demo（MultiChannelAudioSender）
 
-基于 Agora Native SDK macOS 版（`AgoraRtcEngine_macOS` 4.5.2，CocoaPods 集成）的
+基于 Agora Native SDK macOS 版（`AgoraRtcEngine_macOS` 4.7.0，CocoaPods 集成；Podfile 可切换版本）的
 **发送端** 验证 app：以主播（broadcaster）角色加入频道，将多声道 WAV 素材
 （48 kHz / 16bit / N 声道）经自定义音轨循环发布到频道。与接收端
 `MultiChannelAudioReceiver`（`Demo/macOS/MultiChannelAudioReceiver/`）配套使用。
@@ -34,7 +34,7 @@
 ```bash
 cd Demo/macOS/MultiChannelAudioSender
 xcodegen generate   # 由 project.yml 生成 MultiChannelAudioSender.xcodeproj
-pod install         # 集成 AgoraRtcEngine_macOS 4.5.2，生成 xcworkspace
+pod install         # 集成 AgoraRtcEngine_macOS（版本见 Podfile），生成 xcworkspace
 open MultiChannelAudioSender.xcworkspace
 ```
 
@@ -55,18 +55,48 @@ xcodebuild -workspace MultiChannelAudioSender.xcworkspace \
 4. 接收端验证：用 `MultiChannelAudioReceiver` 或 `Demo/web/` 订阅该频道，
    核对 codec（multiopus）、声道数与逐声道内容。
 
-## 已知限制（2026-10-10 实测结论）
+## 命令行自动化（回归测试用）
 
-**AgoraRtcEngine_macOS 4.5.2（CocoaPods 公开版）的发送侧自定义音轨输入最高按 2 声道读取**：
+通过启动参数（映射进 `UserDefaults`）免去 UI 操作，App 日志同时无缓冲镜像到 stdout：
 
-- 私参协商正常生效——对端解出对应声道数的 multiopus 流（8ch/6ch/4ch 均验证通过）；
-- 但只有前 2 声道携带内容，第 3 声道起静音（接收端逐声道音量与 dump 双重实证）；
-- `pushExternalAudioFrameRawData` 与 `pushExternalAudioFrameSampleBuffer`
-  （ASBD 自描述 8ch）两种推入方式结论相同；
-- `setExternalAudioSource(channels: 8)` 与私参 `che.audio.input_channels: 8`
-  均返回 0 但不解除钳制；
-- 即：多声道**发送**在公开版 macOS SDK 上需要 SDK 侧支持（参照 Linux 定制版的做法），
-  本 app 可作为该能力回归验证的现成工具。
+```bash
+./MultiChannelAudioSender.app/Contents/MacOS/MultiChannelAudioSender \
+    -autoChannel <频道> -autoUid <uid> -autoWav 0 \
+    -autoJoin YES -autoPublish YES -autoQuitAfter 300
+```
+
+- `autoWav`：素材下标（0=8ch, 1=6ch, 2=4ch）；`autoJoin`/`autoPublish`：启动后自动加入并在
+  join 成功后自动发布；`autoQuitAfter`：秒数，>0 时到点自动退出。
+- 配合 Web 端 `?channel=<频道>&uid=<webuid>&subTo=<autoUid>` 打开订阅页即可做版本回归
+  （采样 `window.__mcRemoteTrack.getVolumeLevels()` 逐声道峰值判定，见下文矩阵）。
+
+## 发送侧多声道能力：版本实测矩阵（2026-10-12 更新）
+
+方法：本 app 以 8 声道 Channel ID 素材（内容逐声道轮播，循环 14 s）自动发布，Web 验证端
+（`Demo/web/`）订阅后对 `getVolumeLevels()` 连续采样 20 s 取各声道峰值判定——内容级 ≈ 56~85%，
+素材 dither 底噪 ≈ 10%，数字零 = 0%。
+
+| AgoraRtcEngine_macOS | 协商 | Web 端逐声道内容 | 结论 |
+| --- | --- | --- | --- |
+| 4.5.2 | multiopus 8ch 正常 | 仅 CH0/CH1 有内容（且内容雷同），CH2-7 恒为数字零 | ✗ 2 声道钳制 |
+| 4.5.3 | multiopus 8ch 正常 | 8 声道均出现内容级峰值（74~83%），底噪 ~10% | ✓ 已修复（**修复点**） |
+| 4.6.0 | multiopus 8ch 正常 | 8 声道均出现内容级峰值（75~84%），底噪 ~10% | ✓ 已修复 |
+| 4.6.2 | multiopus 8ch 正常 | 8 声道均出现内容级峰值（75~85%），底噪 ~10% | ✓ 已修复 |
+| 4.7.0 | multiopus 8ch 正常 | 8 声道均出现内容级峰值（71~83%），底噪 ~10%；4ch/6ch 素材同验全通 | ✓ 已修复 |
+
+证据截图：`Test/web_recv_8ch_from_macos_{452_control,453,460,462,470}_20261012.png`、
+`Test/web_recv_{4,6}ch_from_macos_470_20261012.png`。
+注：macOS 版 SDK 不存在 4.6.7（CocoaPods 与发版说明中 4.6.2 之后为 4.7.0；iOS 侧另有 4.6.4）。
+4.5.3 起的峰值按序出现在不同声道，与素材逐声道轮播一致；声道序号与素材声道的逐一对应
+关系已于 2026-10-12 闭环（4.7.0↔4.7.0 原生链路 dump 与源 WAV 包络互相关，同序号 NCC 0.67~0.78、
+跨声道 ≈0，无重排）。
+
+**4.5.2 的历史结论（2026-10-10 实测）**：公开发送侧自定义音轨输入最高按 2 声道读取——
+私参协商正常生效（对端解出对应声道数的 multiopus 流，8ch/6ch/4ch 均验证通过），但只有
+前 2 声道携带内容，第 3 声道起静音（接收端逐声道音量与 dump 双重实证）；
+`pushExternalAudioFrameRawData` 与 `pushExternalAudioFrameSampleBuffer`（ASBD 自描述 8ch）
+结论相同；`setExternalAudioSource(channels: 8)` 与私参 `che.audio.input_channels: 8`
+均返回 0 但不解除钳制。该限制自 4.5.3 起已解除（见上表）。
 
 另注意 `pushExternalAudioFrameRawData` 的 `samples` 是**全部声道的总样本数**
 （官方 API-Examples CustomAudioSource 同样用法），与 Linux `sendAudioPcmData`

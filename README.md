@@ -26,7 +26,7 @@
 | `Spec/` | 需求规格（PRD）：Linux SDK、Web SDK 与 Native SDK（macOS）音频多声道 |
 | `Demo/linux/` | Linux C++ demo：发送 3 路径（raw PCM / WAV 16bit/24bit / 预编码 Opus）+ 接收 3 路径（解码 PCM / 编码帧 / 混音），x86_64 + aarch64 |
 | `Demo/web/` | Web 验证 demo（Vue3 + Vite，agora-rtc-sdk-ng 4.20.1-200）：多声道发布/订阅、声道选择播放、逐声道音量 |
-| `Demo/macOS/` | macOS 验证 app（SwiftUI + AgoraRtcEngine_macOS 4.5.2，CocoaPods）：`MultiChannelAudioReceiver` 观众角色纯接收多声道/立体声流（逐声道控制、远端视频显示、码率走势图、音频帧 dump）；`MultiChannelAudioSender` 主播角色发布内置 4/6/8 声道 Channel ID WAV（10ms pacer + 多声道私参协商） |
+| `Demo/macOS/` | macOS 验证 app（SwiftUI + AgoraRtcEngine_macOS，CocoaPods）：`MultiChannelAudioReceiver` 观众角色纯接收多声道/立体声流（逐声道控制、远端视频显示、码率走势图、音频帧 dump）；`MultiChannelAudioSender` 主播角色发布内置 4/6/8 声道 Channel ID WAV（10ms pacer + 多声道私参协商；发送侧 2 声道钳制仅存在于 4.5.2，4.5.3 起已修复） |
 | `Demo/docs/` | 多声道接入文档站（随 Web 构建发布到 `dist/docs/`） |
 | `Docs/` | 部署与运维文档（AWS 测试服务器部署、前端缓存管理） |
 | `LinuxSDKFolder/` | Agora Linux SDK v4.4.30.149（X86_64 / Aarch64，含符号包） |

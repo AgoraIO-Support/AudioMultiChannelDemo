@@ -2,7 +2,7 @@
 
 ## Native SDK（macOS）音频多声道接收验证与发送验证需求
 
-> 摘要：Native SDK（macOS）需要支持多声道音频的接收与发送验证。**接收侧**：以观众（audience）角色加入频道，接收远端主播的 OPUSMC 多声道流（payload type 123/124/125，48 kHz，3~8 声道）或普通立体声/单声道流，通过私参逐声道选择收听与调节音量（`che.audio.neteq.adjust_decoded_volume`），支持远端视频显示、音/视频接收码率走势与音频帧 dump（`che.audio.frame_dump`）。**发送侧**：以主播（broadcaster）角色将多声道 WAV 经自定义音轨循环发布（`createCustomAudioTrack` + `pushExternalAudioFrameRawData` + 多声道私参）；实测公开版 4.5.2 协商正常但自定义音轨输入被钳制为 2 声道（见需求点7 与待确认问题1）。Native SDK 与 Linux SDK 多声道实现同源，接收端在 123/124/125 协商机制下自适应解码（含 3/5/7 奇数声道），无需任何多声道私参。配套验证 app 为本仓库 `Demo/macOS/`（`MultiChannelAudioReceiver` 接收 + `MultiChannelAudioSender` 发送，SwiftUI + AgoraRtcEngine_macOS 4.5.2，CocoaPods 集成，中/英文 UI 默认英文），本文档将其能力事实、行为边界与验收口径收敛为需求基线。
+> 摘要：Native SDK（macOS）需要支持多声道音频的接收与发送验证。**接收侧**：以观众（audience）角色加入频道，接收远端主播的 OPUSMC 多声道流（payload type 123/124/125，48 kHz，3~8 声道）或普通立体声/单声道流，通过私参逐声道选择收听与调节音量（`che.audio.neteq.adjust_decoded_volume`），支持远端视频显示、音/视频接收码率走势与音频帧 dump（`che.audio.frame_dump`）。**发送侧**：以主播（broadcaster）角色将多声道 WAV 经自定义音轨循环发布（`createCustomAudioTrack` + `pushExternalAudioFrameRawData` + 多声道私参）；公开版 4.5.2 曾存在自定义音轨输入钳制为 2 声道的限制，**4.5.3 起已解除**（2026-10-12 多版本回归实测，见需求点7 与待确认问题1）。Native SDK 与 Linux SDK 多声道实现同源，接收端在 123/124/125 协商机制下自适应解码（含 3/5/7 奇数声道），无需任何多声道私参。配套验证 app 为本仓库 `Demo/macOS/`（`MultiChannelAudioReceiver` 接收 + `MultiChannelAudioSender` 发送，SwiftUI + AgoraRtcEngine_macOS，CocoaPods 集成，当前集成 4.7.0，中/英文 UI 默认英文），本文档将其能力事实、行为边界与验收口径收敛为需求基线。
 
 ---
 
@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 待补充（多声道项目背景单见 Linux 侧 spec） |
-| 需求版本 | v1.4 |
+| 需求版本 | v1.6 |
 
 ---
 
@@ -22,7 +22,7 @@
 
 ### 2.1 客户原始需求
 
-多声道项目场景下，发送侧（Linux SDK，3~8 声道 OPUSMC）与 Web 验证链路已交付（见 `Spec/linux_sdk_audio_multichannel_spec.md`、`Spec/web_sdk_audio_multichannel_spec.md`），Native 侧需要配套的可视化验证手段：一款 macOS app 以观众角色纯接收远端多声道流，验证 Native SDK 能正常听到、能按声道选择收听并调节音量、能同步观看远端视频，且兼容普通双声道流；另配一款 macOS 发送端 app 用于验证 Native 发送路径（实测公开版 4.5.2 发送输入钳制为 2 声道，见需求点7 场景7.2）。
+多声道项目场景下，发送侧（Linux SDK，3~8 声道 OPUSMC）与 Web 验证链路已交付（见 `Spec/linux_sdk_audio_multichannel_spec.md`、`Spec/web_sdk_audio_multichannel_spec.md`），Native 侧需要配套的可视化验证手段：一款 macOS app 以观众角色纯接收远端多声道流，验证 Native SDK 能正常听到、能按声道选择收听并调节音量、能同步观看远端视频，且兼容普通双声道流；另配一款 macOS 发送端 app 用于验证 Native 发送路径（公开版 4.5.2 发送输入曾钳制为 2 声道，**4.5.3 起解除**，见需求点7 场景7.2）。
 
 | 内容项 | 详情 | 备注 |
 | --- | --- | --- |
@@ -78,7 +78,7 @@
 | 内容项 | 描述 | 备注 |
 | --- | --- | --- |
 | API 接口（描述性语言） | 引擎创建与频道加入（`AgoraRtcEngineKit`、`joinChannel`，观众角色、liveBroadcasting）；远端音频状态回调（`remoteAudioStateChangedOfUid`）；逐声道解码音量私参（`che.audio.neteq.adjust_decoded_volume`）；音频帧 dump 私参（`che.audio.frame_dump`）；远端音频统计回调（`remoteAudioStats`） | 私参均无公开文档 |
-| 功能点概述 | 接收侧：① 观众角色纯接收加入频道（不发布麦克风/摄像头、自动订阅音频与视频）；② 多声道/立体声/单声道流接收播放（自适应解码，接收端免私参）；③ 远端 host 列表（按音频或视频发布状态收录，观众不入列；覆盖 音频+视频 / 仅音频 / 仅视频 三种 host）；④ 逐声道选择收听与音量调节（1-based 声道序号、0~100%，仅对有音频的 host 下发）；⑤ 音频帧 dump 开关；⑥ 声道数显示选择（纯 UI 行数控制，对齐发送端声道数）；⑦ 远端视频显示（host 发布视频时渲染所选 uid 画面）+ 音/视频接收码率走势图；⑧ 中/英文 UI（默认英文）。发送侧：⑨ 主播角色多声道 WAV 循环发布（内置 4/6/8 声道 Channel ID 素材，payload 123/124/125 私参协商，10ms pacer；公开版 4.5.2 输入钳制为 2 声道，见需求点7） | |
+| 功能点概述 | 接收侧：① 观众角色纯接收加入频道（不发布麦克风/摄像头、自动订阅音频与视频）；② 多声道/立体声/单声道流接收播放（自适应解码，接收端免私参）；③ 远端 host 列表（按音频或视频发布状态收录，观众不入列；覆盖 音频+视频 / 仅音频 / 仅视频 三种 host）；④ 逐声道选择收听与音量调节（1-based 声道序号、0~100%，仅对有音频的 host 下发）；⑤ 音频帧 dump 开关；⑥ 声道数显示选择（纯 UI 行数控制，对齐发送端声道数）；⑦ 远端视频显示（host 发布视频时渲染所选 uid 画面）+ 音/视频接收码率走势图；⑧ 中/英文 UI（默认英文）。发送侧：⑨ 主播角色多声道 WAV 循环发布（内置 4/6/8 声道 Channel ID 素材，payload 123/124/125 私参协商，10ms pacer；4.5.2 曾输入钳制为 2 声道，4.5.3 起解除，见需求点7） | |
 | 客户使用逻辑概述 | 接收验证：启动发送端（Linux sample / macOS sender / Web publisher）→ receiver app 填 App ID/频道名以观众加入 → 选择远端 host uid → 逐声道开关/音量试听核对 → 需要时开启 dump 落盘核对。发送验证：sender app 选择内置 WAV → 主播加入 → Publish 循环发布 → 用 receiver/Web 端订阅核对 | |
 
 ### 6.2 体验性需求
@@ -95,7 +95,7 @@
 
 - macOS（观众角色）订阅 Linux 端发布的 OPUSMC 多声道流（payload 123/124/125）。
 - macOS（观众角色）订阅普通立体声/单声道流（兼容性场景）。
-- macOS（主播角色）发布多声道 WAV 到频道，供 Web / Native / Linux 端订阅验证（发送侧受公开版 2 声道钳制限制，见需求点7）。
+- macOS（主播角色）发布多声道 WAV 到频道，供 Web / Native / Linux 端订阅验证（4.5.3 起全声道可用；4.5.2 存在 2 声道钳制，见需求点7）。
 - 频道内多个远端 host 并存时，按 uid 分别做逐声道控制。
 
 **用户场景覆盖**
@@ -127,13 +127,13 @@
 | 私参 `che.audio.neteq.adjust_decoded_volume` | Agora API-Examples macOS `JoinChannelAudio` 示例；`Demo/macOS/.../AgoraManager.swift` | 逐声道解码音量 | `{"remoteUid":…, "index":1~8, "volume":0~100}`，逐声道下发 | 可复用 |
 | 私参 `che.audio.frame_dump` | 同上 | 音频帧 dump | `true/false`；dump 到 SDK 默认位置 | 可复用 |
 | `remoteAudioStats` / `remoteVideoStats` | `Demo/macOS/.../AgoraManager.swift` | 远端音/视频接收码率显示与走势图 | 按 uid 刷新；音频码率可旁证流是否存活与声道数档位；视频 stats 同时提供流宽高（驱动视频等比渲染） | 可复用 |
-| `createCustomAudioTrack(.mixable)` + `publishCustomAudioTrackId` + `pushExternalAudioFrameRawData` | `Demo/macOS/MultiChannelAudioSender/.../AgoraSenderManager.swift`；官方 API-Examples macOS `CustomAudioSource` | 自定义音轨多声道发布 | `samples` 为全部声道总样本数（≠ Linux 每声道语义）；公开版 4.5.2 输入钳制 2 声道（实测） | 可复用（受限） |
+| `createCustomAudioTrack(.mixable)` + `publishCustomAudioTrackId` + `pushExternalAudioFrameRawData` | `Demo/macOS/MultiChannelAudioSender/.../AgoraSenderManager.swift`；官方 API-Examples macOS `CustomAudioSource` | 自定义音轨多声道发布 | `samples` 为全部声道总样本数（≠ Linux 每声道语义）；4.5.2 输入钳制 2 声道，4.5.3 起解除（2026-10-12 实测） | 可复用（4.5.3 起无限制） |
 | 私参 `che.audio.custom_payload_type` / `custom_channel_num` / `custom_sample_rate` | sender app；Linux 侧 spec | 发送端多声道编码协商 | RtcEngine 上 `setParameters`、join 之前设置；协商在公开版 4.5.2 实测生效 | 可复用 |
 | 混音输出（恒 2 声道，奇/偶声道分路） | 设计文档 ExT-1485178709（Native/Linux 同源） | 多声道流的默认播放混音 | 本 demo 用逐声道音量私参替代混音验证，不依赖混音布局 | 可复用（背景事实） |
 
 **API 间关系**：频道加入是所有能力的前置；逐声道音量与 dump 私参在引擎创建后即可设置（建议在加入频道前后均可，demo 在加入成功后按 uid 下发）；host 列表驱动 UI 的声道控制对象选择；发送侧私参与自定义音轨必须在 join 之前设置/创建，`publishCustomAudioTrackId` 把音轨挂进发布。
 
-**能力差距**：多声道能力完全依赖私有参数，无公开 API 与文档化；接收端无法获知实际协商声道数（无回调，无 getStats 声道字段暴露到界面）；dump 文件位置/命名随 SDK 内部约定（macOS 4.5.2 实测见 FAQ）；macOS 4.5.2 无 `didOccurWarning` 回调（仅 `didOccurError`）；**公开版 4.5.2 发送侧自定义音轨输入钳制为 2 声道（实测，见需求点7/待确认问题1）**。
+**能力差距**：多声道能力完全依赖私有参数，无公开 API 与文档化；接收端无法获知实际协商声道数（无回调，无 getStats 声道字段暴露到界面）；dump 文件位置/命名随 SDK 内部约定（macOS 4.5.2 实测见 FAQ）；macOS 4.5.2 无 `didOccurWarning` 回调（仅 `didOccurError`）；公开版 4.5.2 发送侧自定义音轨输入曾钳制为 2 声道，**4.5.3 起已解除**（2026-10-12 多版本回归实测，见需求点7/待确认问题1）。
 
 ### 6.5 流程图（Optional）
 
@@ -247,11 +247,12 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 - 则：频道内产生 OPUSMC 流，对端解出的声道数与素材一致（Web 端 codec=multiopus、channelCount=N；已实测 8/6/4ch）
 - 且：发布节奏实时（100 帧/秒），界面显示已发送帧数/时长
 
-#### 场景7.2：公开版 4.5.2 的 2 声道钳制（实测限制，2026-10-10）
+#### 场景7.2：发送侧声道数能力的版本边界（2026-10-10 初测 / 2026-10-12 多版本回归）
 
-- 当：在公开版 AgoraRtcEngine_macOS 4.5.2（CocoaPods）上按场景7.1 发布 N>2 声道
+- 当：按场景7.1 在公开版 AgoraRtcEngine_macOS **4.5.2**（CocoaPods）上发布 N>2 声道
 - 则：协商正常（对端解出 N 声道 multiopus），但只有前 2 声道携带内容、ch3+ 静音（Web 逐声道音量与 receiver dump 双重实证；raw push 与 CMSampleBuffer 两种推入路径、`setExternalAudioSource(channels: N)`、`che.audio.input_channels` 私参均不改变结果）
-- 且：多声道发送的完整能力需 SDK 侧支持（参照 Linux 定制版做法）；sender app 作为该能力的回归工具保留
+- 且：**该钳制自 4.5.3 起解除**——2026-10-12 回归（sender app 命令行自动化发布 8ch Channel ID 素材 + Web 端 `getVolumeLevels()` 20 s 逐声道峰值采样，判据：内容级 ≈56~85% / 素材 dither 底噪 ~10% / 数字零 =0%）：4.5.2 对照组 CH2-7 恒 0（复现钳制）；4.5.3 / 4.6.0 / 4.6.2 / 4.7.0 的 8 声道均出现内容级峰值（71~85%），发送端全程无 push 报错；4.7.0 另补测 4ch/6ch 素材（payload 123/124），全声道内容送达。macOS SDK 无 4.6.7 版本（4.6.2 之后为 4.7.0）
+- 汇总文档：`Test/macos_sender_multi-channel_audio_test_result.md`；sender app 保留为该能力的回归工具（命令行自动化用法见其 README）
 
 ### 需求点8：双语界面
 
@@ -278,13 +279,13 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | 立体声/单声道兼容 | 普通流免配置接收与逐声道控制 | — | 声道数选择器对齐行数 | P0 | 同上 | — | 不涉及 | |
 | 远端视频显示 | host 发布视频时在右侧监控栏渲染所选 uid 画面（等比撑满栏宽），纯音频 host 不出现视频 | — | 按需出现；切换 uid 即时重绑、监控栏标题联动；停发即回收 | P1 | 同上 | — | 不涉及 | enableVideo + autoSubscribeVideo，仍不发布本地轨道 |
 | 双语 UI | 中/英文切换，默认英文，持久化 | — | 切换即时渲染 | P1 | 同上 | — | 不涉及 | |
-| 多声道 WAV 发送 | 主播角色经自定义音轨循环发布 4/6/8 声道 WAV，私参协商（payload 123/124/125） | 10ms/帧实时推送 | 对端解出对应声道数 multiopus | P1 | 已交付（Demo/macOS/MultiChannelAudioSender） | — | 不涉及 | 公开版 4.5.2 输入钳制为 2 声道（ch3+ 静音），见需求点7 场景7.2 |
+| 多声道 WAV 发送 | 主播角色经自定义音轨循环发布 4/6/8 声道 WAV，私参协商（payload 123/124/125） | 10ms/帧实时推送 | 对端解出对应声道数 multiopus 且逐声道内容齐全 | P1 | 已交付（Demo/macOS/MultiChannelAudioSender） | — | 不涉及 | 4.5.2 输入钳制为 2 声道（ch3+ 静音），**4.5.3 起解除**（2026-10-12 回归），见需求点7 场景7.2 |
 
 ### 8.2 产出物
 
 | 产出物 | 产出物描述 | Jira（可选） | 是否必须 | 交付时间 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| Demo | macOS 验证 app 两个（Demo/macOS 下 `MultiChannelAudioReceiver` 接收 + `MultiChannelAudioSender` 发送，SwiftUI + AgoraRtcEngine_macOS 4.5.2） | — | 必须 | 已交付 | 均构建验证通过；receiver 真频道收听验证已完成（2026-10-10，见变更记录 v0.2）；sender 真频道发布验证已完成（同日，含 2 声道钳制结论，见变更记录 v1.2） |
+| Demo | macOS 验证 app 两个（Demo/macOS 下 `MultiChannelAudioReceiver` 接收 + `MultiChannelAudioSender` 发送，SwiftUI + AgoraRtcEngine_macOS，CocoaPods，当前集成 4.7.0） | — | 必须 | 已交付 | 均构建验证通过；receiver 真频道收听验证已完成（2026-10-10，见变更记录 v0.2）；sender 真频道发布验证已完成（同日，含 2 声道钳制结论，见变更记录 v1.2）；sender 发送侧 4.5.2/4.5.3/4.6.0/4.6.2/4.7.0 版本回归 + 4ch/6ch 素材与双端 4.7.0 原生互通均完成（2026-10-12，见变更记录 v1.5/v1.6） |
 | API 文档 | 两个私参的用法说明（Demo/macOS README） | 待补充 | 必须 | 已交付（README 形式） | 未官方文档化 |
 
 ### 8.3 平台/语言/框架支持需求
@@ -317,7 +318,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 
 | # | 问题 | 维度 | 建议确认人 | 状态 |
 | --- | --- | --- | --- | --- |
-| 1 | ~~Native 发送侧多声道：设计与 Linux 同源（理论支持 3~8 声道 OPUSMC 发送），但本仓库未含 Native 发送 demo，发送路径未实测~~ **已实测（2026-10-10，新增 `Demo/macOS/MultiChannelAudioSender`）**：私参协商在公开版 macOS 4.5.2 上正常生效（对端解出对应声道数的 multiopus 流，8/6/4ch 均验证），但**自定义音轨输入最高按 2 声道读取**——只有前 2 声道携带内容，第 3 声道起静音；`pushExternalAudioFrameRawData` 与 `pushExternalAudioFrameSampleBuffer`（ASBD 自描述 8ch）结论一致；`setExternalAudioSource(channels: 8)` 与私参 `che.audio.input_channels: 8` 均返回 0 但不解除钳制（二进制 strings 可见 `che.audio.input_channels`/`output_channels` 存在）。结论：多声道发送需要 SDK 侧支持（参照 Linux 定制版），sender app 可作为该能力的回归工具 | 功能边界 | 研发 / QA | 已实测（公开版受限，待 SDK 支持） |
+| 1 | ~~Native 发送侧多声道：设计与 Linux 同源（理论支持 3~8 声道 OPUSMC 发送），但本仓库未含 Native 发送 demo，发送路径未实测~~ **已实测（2026-10-10，新增 `Demo/macOS/MultiChannelAudioSender`）**：私参协商在公开版 macOS 4.5.2 上正常生效（对端解出对应声道数的 multiopus 流，8/6/4ch 均验证），但**自定义音轨输入最高按 2 声道读取**——只有前 2 声道携带内容，第 3 声道起静音；`pushExternalAudioFrameRawData` 与 `pushExternalAudioFrameSampleBuffer`（ASBD 自描述 8ch）结论一致；`setExternalAudioSource(channels: 8)` 与私参 `che.audio.input_channels: 8` 均返回 0 但不解除钳制（二进制 strings 可见 `che.audio.input_channels`/`output_channels` 存在）。结论：多声道发送需要 SDK 侧支持（参照 Linux 定制版），sender app 可作为该能力的回归工具。**更新（2026-10-12）**：4.5.3 / 4.6.0 / 4.6.2 / 4.7.0 回归全部通过——8 声道内容完整送达（Web 端逐声道峰值 71~85%，4.5.2 对照组 CH2-7 恒 0 复现钳制），钳制自 4.5.3 起解除（修复点定位为 4.5.2→4.5.3）；4.7.0 补测 4ch/6ch 素材全声道送达。~~声道序号映射~~ 已闭环（2026-10-12：4.7.0 原生链路 dump 与源 WAV 包络互相关，dumpCHi↔srcCHi 同序号，NCC 0.67~0.78、跨声道 ≈0） | 功能边界 | 研发 / QA | 已关闭（4.5.3 起可用） |
 | 2 | `che.audio.neteq.adjust_decoded_volume` 在 iOS/Android/Windows Native SDK 上是否同名可用（macOS 4.5.2 已用） | 兼容性 | 研发 / QA | 待确认 |
 | 3 | 接收端获知实际协商声道数的正式手段（回调或 getStats 字段），当前 UI 只能手动对齐 | 能力差距 | 研发 / PM | 待确认 |
 | 4 | ~~dump 文件的具体位置与命名规则~~ **已实测（2026-10-10，macOS 4.5.2）**：dump 落在 `~/Library/Logs/`；按远端用户解码输出 `audio_dump_playback_before_mixed_0_<yyyy_MM_dd_HHmmss>_<uid>.wav`（48 kHz / N 声道 / 16bit，约 120 MB 封顶停止，Leave 重进按新时间戳另建）；混音 `audio_dump_playback_mixer_0.wav`（恒 2 声道）；另有 `audio_dump_play_0.wav`、`far_in_48000hz_2ch.wav`。其他平台/版本的位置未逐一验证 | 可观测性 | 研发 | 已确认（macOS 4.5.2） |
@@ -347,7 +348,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | 1 | 功能点有明确的输入/输出/边界行为 | ✅ | 加入/逐声道控制/dump/host 列表/双语均有场景化描述 |
 | 2 | 平台差异已逐条说明 | ✅ | Native 自适应解码（含奇数声道）vs Web 仅偶数声道；接收免私参 vs 发送需私参 |
 | 3 | 有可量化的验收标准（性能+体验） | [待澄清] | 逐声道一致性可验证；码率/CPU/内存基线待性能报告 |
-| 4 | 客户在用版本和预期交付版本已明确 | ✅ | AgoraRtcEngine_macOS 4.5.2 |
+| 4 | 客户在用版本和预期交付版本已明确 | ✅ | AgoraRtcEngine_macOS 4.5.2（在用）；发送侧多声道需 ≥4.5.3（4.5.2 钳制 2 声道，4.5.3 起解除，2026-10-12 回归） |
 | 5 | 客户/用户场景已拆解为技术维度问题 | ✅ | 见 6.3 技术维度问题清单 |
 | 6 | 现有 API 关联关系已梳理 | ✅ | 见 6.4，均附代码/文档来源 |
 
@@ -376,3 +377,5 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | v1.2 | 2026-10-10 | 新增 Native 发送侧 demo `Demo/macOS/MultiChannelAudioSender`（broadcaster 角色发布内置 4/6/8 声道 Channel ID WAV，`createCustomAudioTrack(.mixable)` + `pushExternalAudioFrameRawData`，10ms pacer 循环）。实测关闭待确认问题 1：公开版 macOS 4.5.2 私参协商正常（对端解出对应声道数 multiopus），但自定义音轨输入被钳制为 2 声道（ch1/2 有内容、ch3+ 静音，raw push 与 CMSampleBuffer 两种路径一致），多声道发送需 SDK 侧支持。另记录 API 差异：push 的 `samples` 为全部声道总样本数（Linux 为每声道） | Kimi Code |
 | v1.3 | 2026-10-10 | Demo/macOS 目录重组：receiver 的 Podfile/xcodeproj/README 从目录顶层收进 `MultiChannelAudioReceiver/` 工程根，与 `MultiChannelAudioSender/` 平级对称；顶层新增目录级 README（双 app 总览）。6.4 表格与参考资料路径同步更新；receiver 在新位置 pod install + 构建验证通过 | Kimi Code |
 | v1.4 | 2026-10-10 | 系统性收编：标题与摘要由"纯接收"扩为收发双侧；新增需求点7（多声道 WAV 发送 + 场景7.2 公开版 2 声道钳制实测限制），双语界面顺延为需求点8；6.1 功能点概述加第⑨项、6.3 场景覆盖加发送验证、6.4 加自定义音轨发送 API 行与"能力差距"钳制条目；8.1/8.2 验收表与产出物加 sender app | Kimi Code |
+| v1.5 | 2026-10-12 | 发送侧多版本回归（4.5.2 对照 / 4.6.0 / 4.6.2 / 4.7.0）：sender app 新增命令行自动化（`-autoChannel/-autoUid/-autoWav/-autoJoin/-autoPublish/-autoQuitAfter`，日志实时镜像 stdout），逐版本切换 Podfile 后发布 8ch Channel ID 素材，Web 端 `getVolumeLevels()` 20 s 逐声道峰值采样判定（内容级 ≈56~85% / dither 底噪 ~10% / 数字零 =0%）。结果：4.5.2 复现 2 声道钳制（CH2-7 恒 0），4.6.0/4.6.2/4.7.0 八声道全通（峰值 71~85%）——发送侧多声道自 4.6.0 起可用（v1.6 修正为 4.5.3）；macOS SDK 无 4.6.7 版本。摘要、2.1、6.1/6.3/6.4、需求点7 场景7.2、8.1/8.2、待确认问题1（关闭）、自检#4 同步更新；汇总文档 `Test/macos_sender_multi-channel_audio_test_result.md` | Kimi Code |
+| v1.6 | 2026-10-12 | 遗留项补测：① **4.5.3 实测 8 声道全通**（峰值 [79,79,74,83,77,78,78,75]），发送侧修复点由 4.6.0 修正为 **4.5.3**（修复点为 4.5.2→4.5.3，已用 Podfile.lock 与 framework 版本号双重核实）；② 4.7.0 补测 4ch（payload 123，峰值 [78,78,79,84]）与 6ch（payload 124，峰值 [76,77,76,84,78,80]）素材，全声道内容送达；③ 同日上午已完成 sender+receiver 双端 4.7.0 升级与原生互通回归（receiver 命令行自动化 + dump NCC 声道 1:1 核对）。全部"4.6.0 起"表述修正为"4.5.3 起"；待确认问题1 残留项清零 | Kimi Code |

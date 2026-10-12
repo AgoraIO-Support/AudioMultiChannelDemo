@@ -23,6 +23,7 @@ const files = [
   'index.html',
   'linux-sdk-multichannel.html',
   'web-sdk-multichannel.html',
+  'native-sdk-multichannel.html',
 ];
 
 function generateBuildId() {
