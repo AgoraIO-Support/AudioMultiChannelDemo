@@ -111,15 +111,56 @@ playing；仅有的日志为 `user-published` 提示与备用 WebSocket 竞速�
 解码、内容失真（末声道被复制出幻影声道）、音量条全部有量、demo 误判为多声道 ✓**——结果完全不可信，
 奇数声道流切勿用 Web 端验证。这一表现比"直接报错"更危险，务必注意。
 
-## 6. 结论
+## 6. 补丁方案：不改 SDK 修复 Web 端解析/显示/播放（2026-10-12 实测通过）
+
+### 6.1 可行性边界（SDP 实测）
+
+订阅 3ch 流时抓取的 SDP（offer 与 answer 一致）只包含三个偶数 multiopus 配置
+（PT 112/106/105 ↔ 8/6/4ch）与普通 opus——**奇数声道的真实配置（coupled=1/streams=2 等）
+不在 SDP 中**：VOS 不透传发送端 fmtp，码流也不内嵌配置。因此「让浏览器按正确奇数配置解码」
+必须改 SDK 或 VOS，外部补丁拿不到真实声道数。
+
+### 6.2 补丁设计（`Demo/web/src/oddChannelFix.ts`，不改 SDK 文件）
+
+解码后的 PCM 内容本身正确（stereo 子流正常；mono 子流被复制为末两声道幻影对），补丁在运行时修正：
+
+1. **检测**：读 `track.transformer.lastSplitAudioData`（SDK 用 Insertable Streams 拆出的逐声道 PCM），
+   采样窗口内末两声道逐样本恒等（±1e-6）且见过非零内容 → 判定为奇数声道流（真实 N = 解码 N+1 − 1）；
+2. **显示修正**：包装 `getVolumeLevels()` 去掉幻影末项（音量条显示真实 N 路）；
+   `track.channelCount` 改为真实 N；
+3. **播放修正**：`selectChannels([0..N-1], "surround")` 让播放输出丢弃幻影声道
+   （避免末声道内容重复响度）；逐声道试听序号 0..N-1 本就映射正确，无需改映射。
+
+已接入 `Demo/web/src/Multiopus.vue` 订阅路径（命中时页面弹提示）。
+
+### 6.3 补丁效果实测（3/5/7 全通过）
+
+| 发送 | 补丁后 channelCount | 音量条数 | 15 s 各声道峰值 | 界面判定 |
+| --- | --- | --- | --- | --- |
+| 3ch | **3**（原误显 4） | 3 | [74, 78, 80] | 「3 声道 → 多声道 ✓」（正确） |
+| 5ch | **5**（原误显 6） | 5 | [84, 80, 78, 83, 79] | 「5 声道 → 多声道 ✓」（正确） |
+| 7ch | **7**（原误显 8） | 7 | [82, 76, 80, 84, 73, 78, 78] | 「7 声道 → 多声道 ✓」（正确） |
+
+截图：`Test/web_recv_odd7ch_patched_20261012.png`（7 路音量条）。
+
+### 6.4 补丁限制
+
+- 检测签名「末两声道恒等」理论上可能与「末两声道恰好同内容的真偶数流」撞车（Channel ID 类
+  逐声道可辨素材不会）；
+- codec 行仍显示 SDP 协商的偶数声道数（来自 getStats，属参考信息，与内容无关）；
+- 补丁按次生效（每次订阅独立检测）；当前只接入 Live Demo 1（V2/V3 未接入）；
+- 根本修复仍应在 SDK/VOS 侧（按流真实配置生成 fmtp），补丁仅为验证链路的过渡手段。
+
+## 7. 结论
 
 1. **奇数声道（3/5/7）端到端互通在 Native（macOS）与 Linux 之间全部验证通过**，
    包括混合方向（mac 发 linux 收、linux 发 mac 收）。
 2. 奇数声道的必要条件不变：发送端须设置 `che.audio.custom_channel_num`（本仓库 demo 自动处理）；
    接收端免私参自适应解码；Linux 接收 sample 的 `--numOfChannels` 须与发送端一致。
-3. Web 端不能用于奇数声道验证：实测表现不是报错，而是按 N+1 偶数声道误解码且内容失真（§5）。
+3. Web 端不能用于奇数声道验证：实测表现不是报错，而是按 N+1 偶数声道误解码且内容失真（§5）；
+   验证 demo 已内置运行时补丁可修正显示与播放（§6），但根本修复应在 SDK/VOS 侧。
 
-## 7. 复现
+## 8. 复现
 
 - macOS 发送/接收自动化：`MultiChannelAudioSender -autoChannel <ch> -autoUid 12345 -autoWavPath <素材> -autoJoin YES -autoPublish YES`；
   `MultiChannelAudioReceiver -autoChannel <ch> -autoJoin YES -autoDump YES -autoQuitAfter 50`。

@@ -7,8 +7,8 @@
     data-title-zh="Web SDK 音频多声道（multiopus）文档"
     data-title-en="Web SDK Audio Multi-Channel (multiopus) Docs"
   >Web SDK 音频多声道（multiopus）文档</title>
-  <link rel="stylesheet" href="assets/style.css?v=f676866">
-  <meta name="build-id" content="f676866">
+  <link rel="stylesheet" href="assets/style.css?v=11f08b1">
+  <meta name="build-id" content="11f08b1">
   </head>
 <body>
   <header class="site-header">
@@ -91,6 +91,8 @@
         代码级根因：SDK 的 multiopus 声道表写死为偶数（<code>4 + 2 * t</code>），
         SDP fmtp 与拆声道数量都查该表——浏览器（Chrome 内置 multi-channel opus 解码器）只是按
         错误声明忠实解码。修复需 SDK 按流的真实配置生成/使用 fmtp，而非查偶数表。
+        过渡方案：本仓库 Demo/web 已内置运行时补丁（<code>src/oddChannelFix.ts</code>，
+        检测「末两声道恒等」签名后修正显示声道数与播放输出，3/5/7 实测通过，见同文档 §6）。
       </p>
 
       <h3>1.4 selectChannels 声道选择（三种模式）</h3>
@@ -402,7 +404,10 @@ await client.publish(track);</code></pre>
         (<code>4 + 2 * t</code>), and both the SDP fmtp and the frame-splitting count are derived from it —
         the browser (Chrome's built-in multi-channel opus decoder) simply decodes faithfully per the
         wrong declaration. The fix belongs to the SDK: use the stream's real configuration instead of
-        the even-count table.
+        the even-count table. Interim workaround: this repo's Demo/web ships a runtime patch
+        (<code>src/oddChannelFix.ts</code>) that detects the "last two channels sample-identical"
+        signature and then corrects the displayed channel count and playback output — verified for
+        3/5/7 (see §6 of the same document).
       </p>
 
       <h3>1.4 selectChannels (three modes)</h3>
@@ -662,6 +667,6 @@ await client.publish(track);</code></pre>
     </div>
   </footer>
 
-  <script src="assets/i18n.js?v=f676866"></script>
+  <script src="assets/i18n.js?v=11f08b1"></script>
 </body>
 </html>

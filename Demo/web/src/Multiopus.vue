@@ -129,6 +129,7 @@ import type {
 } from "agora-rtc-sdk-ng";
 
 import { NButton, NInput, NSelect } from "naive-ui";
+import { patchOddChannelStream } from "./oddChannelFix";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useNotification } from "naive-ui";
 
@@ -195,6 +196,8 @@ const messages = {
     noAudio: (uid: string) => `uid ${uid} 尚未发布音频`,
     joinFail: (msg: string) => `加入频道失败: ${msg}`,
     subscribeFail: (msg: string) => `订阅失败: ${msg}`,
+    oddFixApplied: (trueN: number, decodedN: number) =>
+      `检测到奇数声道流：真实 ${trueN} 声道（SDK 误解码为 ${decodedN}），补丁已修正显示与播放`,
   },
   en: {
     appTitle: "Agora Multi-Channel Audio Demo",
@@ -246,6 +249,8 @@ const messages = {
     noAudio: (uid: string) => `uid ${uid} has not published audio`,
     joinFail: (msg: string) => `Join failed: ${msg}`,
     subscribeFail: (msg: string) => `Subscribe failed: ${msg}`,
+    oddFixApplied: (trueN: number, decodedN: number) =>
+      `Odd-channel stream detected: true ${trueN} ch (SDK mis-decoded as ${decodedN}); display & playback corrected by patch`,
   },
 };
 const m = computed(() => messages[locale.value]);
@@ -595,6 +600,17 @@ async function subscribe() {
   subscribedUid.value = String(target.uid);
   // channelCount 来自信令 pt 值（设计文档中的扩展属性，d.ts 未声明，运行时存在）。
   remoteChannelCount.value = (track as any).channelCount || 0;
+
+  // 奇数声道流修正补丁（不改 SDK 文件，见 src/oddChannelFix.ts 与
+  // Test/odd_channels_interop_test_20261012.md §5）：检测「末两声道恒等」的幻影签名，
+  // 命中后修正音量显示声道数、channelCount 与播放输出
+  void patchOddChannelStream(track, (r) => {
+    notification.warning({
+      title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels),
+      duration: 5000,
+    });
+    remoteChannelCount.value = r.trueChannels;
+  });
 
   // 每 300ms 取一次各声道音量；数组长度 = 声道数，是判定多声道的主信号。
   // channelCount 在 subscribe resolve 时可能尚未就绪，随音量轮询一并刷新。

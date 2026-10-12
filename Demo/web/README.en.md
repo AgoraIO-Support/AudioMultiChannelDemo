@@ -22,6 +22,12 @@ See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
 - **Channel selection playback**: `selectChannels(channels, mode)` plays any combination of
   channels from the remote track in `surround` / `stereo` / `mono` mode — used to listen to each
   channel of the Channel ID files one by one.
+- **Odd-channel fix patch (`src/oddChannelFix.ts`)**: when subscribing to a 3/5/7-channel stream, the
+  SDK mis-decodes it as the next even channel count (the last channel is a duplicated phantom and the
+  demo would show a false multi-channel ✓). The patch detects the "last two channels sample-identical"
+  signature at runtime and, on hit, corrects the displayed channel count, `channelCount`, and the
+  playback output (dropping the phantom channel), with an on-page notification. See
+  `Test/odd_channels_interop_test_20261012.md` §5/§6 for the mechanism and limitations.
 - **Simultaneous video + multi-channel audio subscribe (Live Demo 3)**: open with `?demo=3`.
   Enter the channel, your uid (+token), and the target uid, then subscribe to the remote's
   multi-channel audio and video in one click: the video renders into the page's video area,
