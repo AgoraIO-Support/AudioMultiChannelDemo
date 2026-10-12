@@ -32,7 +32,8 @@ Demo/linux/
 ├── receive/                  # 接收端 4 个 sample
 ├── public/                   # 素材：8ch_2.opus、8_Channel_ID_signed_16_bit_pcm.wav（及同名 .raw.pcm）、
 │                             # 4/6_Channel_ID_48k.wav（48kHz 重采样版）、8_Channel_ID_24bit.wav（24bit 验证素材）、
-│                             # VictoriaMulti.mkv（1 路 mpeg4 1080p + 4 条 AC-3 44.1kHz stereo 轨 = 8 声道，不进 git）
+│                             # odd_3ch/odd_5ch/odd_7ch.wav（3/5/7 奇数声道素材，ffmpeg channelmap 自 8ch 素材截取）、
+│                             # VictoriaMulti.mkv（1 路 mpeg4 1080p + 4 条 AC-3 44.1kHz stereo 轨 = 8 声道，已入库 Git LFS 约 133MB）
 └── out/                      # 构建产物（二进制 + public 素材副本）
 ```
 
@@ -118,6 +119,10 @@ docker run --rm -it --network host agora-multichannel-linux \
 > 4/6 声道用 `public/4_Channel_ID_48k.wav` / `public/6_Channel_ID_48k.wav`（已由 44.1 kHz
 > 重采样到 48 kHz），对应 `--numOfChannels 4 --custom_channel_num 4 --custom_payload_type 123`
 > 与 `--numOfChannels 6 --custom_channel_num 6 --custom_payload_type 124`。
+> 3/5/7 奇数声道用 `public/odd_3ch.wav` / `odd_5ch.wav` / `odd_7ch.wav`（ffmpeg channelmap 自
+> 8ch 素材截取），如 5 声道：`--audioFile public/odd_5ch.wav --numOfChannels 5
+> --custom_channel_num 5 --custom_payload_type 124 --sampleRate 48000`（互通已实测，见
+> `Test/odd_channels_interop_test_20261012.md`）。
 
 ### 2. 发送 raw PCM 多声道（3~8 声道）
 
@@ -236,7 +241,7 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例
 3. `getVolumeLevels()` 返回数组长度等于实际解码声道数，底层 codec 显示为 `multiopus`；
 4. `selectChannels(channels, "surround"|"stereo"|"mono")` 可选择任意声道组合播放。
 
-注意：Web 端仅支持偶数声道解码，3/5/7 声道流不适用；Safari/Firefox 行为未定义。
+注意：Web 端仅支持偶数声道解码；3/5/7 声道流在 Web 端不报错但会被误解码为 N+1 声道（末声道复制出幻影、界面误判多声道 ✓），结果不可信，奇数声道请用 Native/Linux 端验证（详见 `Test/odd_channels_interop_test_20261012.md` §5）；Safari/Firefox 行为未定义。
 
 ### 编码帧落盘（sample_receive_encoded_audio）
 
@@ -287,8 +292,9 @@ ffplay -f s16le -ar 48000 -ch_layout stereo received_mixed.pcm
 - **MKV 发送 sample 依赖 ffmpeg**：`sample_send_mkv_multiopus` 是本工程唯一依赖
   ffmpeg（libavformat/libavcodec/libavutil/libswresample/libswscale）的 target，本机构建需
   `pkg-config` 与对应 `-dev` 包；Dockerfile 已在 builder/runtime 两阶段分别装好开发包与运行库。
-  `public/VictoriaMulti.mkv`（约 133MB）被根 `.gitignore` 的 `*.mkv` 规则排除、不进 git，
-  需自行放入 `public/`；Docker 构建会把它打进镜像。
+  `public/VictoriaMulti.mkv`（约 133MB）已通过 Git LFS 入库（根 `.gitignore` 的 `*.mkv` 规则有
+  例外 `!Demo/linux/public/VictoriaMulti.mkv`）；克隆后若 `public/` 下为指针文件，先 `git lfs pull`。
+  Docker 构建会把它打进镜像。
 - **视频发送仅限 MKV sample**：其余发送 sample 只做音频多声道（参考 sample 名中的 h264 已移除）；
   `sample_send_mkv_multiopus` 音/视频各一个线程、各自独立循环，不做严格 AV 同步。
 - 混音/播放路径输出恒为 2 声道（奇数声道混一路、偶数声道混一路）；需逐声道数据请用

@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 背景单：CSD-74687（音画不同步）、CSD-76350（Multipath 音频延迟）、CSD-76354（Linux SDK 4.2.32 Crash）、ASS-2272（Linux SDK 特殊版申请，含 MultiPath）；需求 Jira 待补充 |
-| 需求版本 | v0.9 |
+| 需求版本 | v1.0 |
 
 ---
 
@@ -32,11 +32,11 @@
 | 客户业务场景 | Linux 服务器端注入多声道音频（最高 8 声道）到 RTC 频道，供 Web / Native / Linux 端订阅接收并按需选择声道播放或后处理；客户源端 8 声道内容以 **4 条双声道（stereo）音轨**承载（AC-3、44.1 kHz，参考 `VictoriaMulti.mkv`：1 路 mpeg4 视频 + 4 条 ac3 stereo 音频流） | |
 | 客户碰到的问题 | 标准 SDK 音频仅支持单/双声道（Native 此前最多 4 声道、Linux 此前仅双声道），无法传输 4/6/8 声道素材；客户通过 4 条双声道音轨承载 8 声道，送入 Agora Linux SDK 时需重排为 RTC 频道中的 8 声道流，存在 **audio layout 声道映射问题**——2025-04 联调中接收端出现杂音，根因为发送端把逐样本交错（LRLR…）的源数据按平面块序（LLL…RRR…）读取，最终声道映射经双方确认（客户侧与 Agora 侧声道映射图），2025-04-14 客户确认问题解决；交付过程中曾反馈音画不同步（CSD-74687）、多声道功能异常、Multipath 下音频延迟（CSD-76350）、4.2.32 Crash（CSD-76354） | |
 | 该问题解决对客户的价值 | Linux 服务器可直接收发 3~8 声道音频，接收端可按声道选择播放/处理，支撑广电多声道制作链路 | |
-| 当前客户在用方案 | Linux SDK `example/multiopus` 系列 sample：raw PCM 发送、WAV（16/24bit）发送、预编码 Opus（8ch）发送；本仓库 Demo 对应 `sample_receive_pcm_multiopus`（解码 PCM 回调）与 `sample_receive_encoded_audio`（编码帧回调）；Web 端使用 quick-demo-multiopus 验证 | 旧 SDK reference sample 名称见 6.4，当前 Demo 名称见 8.1 |
+| 当前客户在用方案 | Linux SDK `example/multiopus` 系列 sample：raw PCM 发送、WAV（16/24bit）发送、预编码 Opus（8ch）发送；本仓库 Demo 对应 `sample_receive_pcm_multiopus`（解码 PCM 回调）与 `sample_receive_encoded_audio`（编码帧回调）；Web 端使用 quick-demo-multiopus 验证（已于 2026-10 移除，现行为 `Demo/web/`） | 旧 SDK reference sample 名称见 6.4，当前 Demo 名称见 8.1 |
 | 客户做了哪些尝试 | 基于 v4.2.32（0715）与 v4.4.30.130（verified0805）两个版本的多声道 sample 完成收发验证 | |
 | 是否有竞品在 pk 中 | 无明确竞品信息 | |
 | 竞品方案 | 无明确竞品线路 | |
-| 客户在用版本 | Agora-RTC-x86_64/aarch64-linux-gnu v4.2.32-20240827（定制版）；v4.4.30.130-20250409（正式版，QA 验证通过）；后续修复版本 4.4.30.148 / 4.4.30.149 | 来源：Linux SDK ARM Version 交付记录（ExT-1574700707） |
+| 客户在用版本 | Agora-RTC-x86_64/aarch64-linux-gnu v4.2.32-20240827（定制版）；v4.4.30.130-20250409（正式版，QA 验证通过）；后续修复版本 4.4.30.148 / 4.4.30.149 | 来源：Linux SDK ARM Version 交付记录（ExT-1574700707）。注：版本串内日期为构建日期（如 20250409），QA 验证通过日期为 2025-04-23（见第三章交付线），两者不矛盾 |
 | 当前使用的平台/语言/框架 | Linux Server（x86_64、aarch64），C++；验证端为 Web（Chrome，agora-rtc-sdk-ng 4.20.1-200 多声道定制版） | |
 | 期望交付版本 | release/4.4.30.130 交付分支后续版本（当前最新 4.4.30.149） | |
 | 期望交付的平台/框架 | Linux Server x86_64 + aarch64（C++ SDK） | |
@@ -48,7 +48,7 @@
 | 多声道编码发送（OPUSMC） | `IAudioPcmDataSender::sendAudioPcmData` / `IAudioEncodedFrameSender::sendEncodedAudioFrame` + 私参 `che.audio.custom_payload_type`、`che.audio.custom_channel_num` | Linux SDK 将多声道音频编码为 OPUSMC（payload 123/124/125）发送至 SD-RTN | 定制版能力 | 已在 v4.2.32 / v4.4.30.130 验证交付 | 依赖私有参数配置，无公开 API；声道数 >4 时收发两端声道数配置需一致；对端不支持时触发编解码回退 |
 | 多声道接收（解码 PCM） | `IAudioFrameObserverBase::onPlaybackAudioFrameBeforeMixing` + `ILocalUser::setPlaybackAudioFrameBeforeMixingParameters` | 按远端用户回调解码后的多声道 PCM，可落盘或后处理 | 定制版能力 | 已验证 | 回调声道数需与发送端一致；播放混音输出恒为 2 声道 |
 | 多声道接收（编码帧） | `RtcConnectionConfiguration::audioRecvEncodedFrame` + `IAudioEncodedFrameReceiver::onEncodedAudioFrameReceived` | 订阅端直接获取 OPUSMC 编码帧（不解码、不播放） | 定制版能力 | 已验证 | 需业务侧自行解码/转发 |
-| Web 端多声道收发验证 | `ENABLE_MULTIOPUS_CODEC`、`createCustomAudioTrack({channelCount})`、`selectChannels`、`getVolumeLevels` | Web 端发布/订阅多声道流，按声道选择播放并显示各声道音量 | 验证链路（quick-demo-multiopus） | 已验证（Chrome 96+） | Safari / Firefox 不支持；Web 仅支持偶数声道解码 |
+| Web 端多声道收发验证 | `ENABLE_MULTIOPUS_CODEC`、`createCustomAudioTrack({channelCount})`、`selectChannels`、`getVolumeLevels` | Web 端发布/订阅多声道流，按声道选择播放并显示各声道音量 | 验证链路（quick-demo-multiopus，已于 2026-10 移除，现为 `Demo/web/`） | 已验证（Chrome 96+） | Safari / Firefox 不支持；Web 仅支持偶数声道解码 |
 
 ---
 
@@ -389,7 +389,7 @@
 | 体验测试报告 | 多声道收发主观/客观验证报告（逐声道一致性、回退场景表现） | 待补充 | 必须 | 已有 QA 验证（v4.4.30.130，2025-04-23） | Web SDK 4.20.1-200 Test Report 已有 |
 | API 文档 | 多声道私有参数与 sample 使用说明 | 待补充 | 必须 | 待补充 | 当前仅有内部设计文档（ExT-1485178709/ExT-1485178492） |
 | 最佳实践文档 | 发送/接收集成命令与参数组合（见 FAQ） | 待补充 | 必须 | 待补充 | |
-| Demo | Linux sample（multiopus 系列 + receive 系列）与 Web quick-demo-multiopus | — | 必须 | 已交付 | |
+| Demo | Linux sample（multiopus 系列 + receive 系列）与 Web Demo（`Demo/web/`，quick-demo-multiopus 已移除并继承） | — | 必须 | 已交付 | |
 | 安全合规审查结论 | 不涉及新增对外数据采集 | — | 【待明确】 | — | |
 
 ### 8.3 平台/语言/框架支持需求
@@ -449,7 +449,7 @@
 | 问题 | 回复 |
 | --- | --- |
 | 如何发送 8 声道 WAV？ | `./sample_send_wav_multiopus --channelId <name> --token <token> --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000`（在本仓库 `Demo/linux/out/` 目录运行） |
-| 4/6 声道如何选 payload type？ | 4 声道 → 123，6 声道 → 124，8 声道 → 125；3/5/7 声道在对应 payload type 下加 `--custom_channel_num`。设计文档示例：`--audioFile 4_Channel_ID.wav --numOfChannels 4 --custom_channel_num 4 --custom_payload_type 123 --sampleRate 48000` |
+| 4/6 声道如何选 payload type？ | 4 声道 → 123，6 声道 → 124，8 声道 → 125；3/5/7 声道在对应 payload type 下加 `--custom_channel_num`。示例（仓库内 48 kHz 素材）：`--audioFile public/4_Channel_ID_48k.wav --numOfChannels 4 --custom_channel_num 4 --custom_payload_type 123 --sampleRate 48000`（设计文档旧示例用的 `4_Channel_ID.wav` 为 44.1 kHz，与场景2.3 的 48 kHz 强制校验冲突，勿照抄文件名） |
 | 接收端需要设置多声道私参吗？ | payload 123/124/125 协商机制下不需要；但用 PCM 回调拿完整多声道时，`setPlaybackAudioFrameBeforeMixingParameters` 的声道数须与发送端一致 |
 | 44.1 kHz 的 Channel ID 素材能直接发吗？ | 不能按原样发送。多声道编解码仅支持 48 kHz，sample 不做重采样；需先重采样到 48 kHz（如 `8_Channel_ID_signed_16_bit_pcm.wav` 即 48 kHz 版本） |
 | 如何判断多声道配置已生效？ | 看日志 `MultistreamEncoder channel num:N rate:48000 coupled:M channel_mapping:... bitrate:...`；或 Web 端订阅后 `getVolumeLevels()` 数组长度等于 N、codec 显示 multiopus |
@@ -482,7 +482,7 @@
 - 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Linux SDK ARM Version 交付记录）
 - Web 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（USAGE.md、src/Multiopus.vue）——已于 2026-10 移除，功能由 `Demo/web/` 继承
 - 沟通记录：原 `References/沟通记录/` 已于 2026-10-09 删除；全部内容已文字化存档于 `References/communication_records_backup.md` / `communication_records_backup_en.md`（含 2025-04 杂音排查与布局确认全过程、最终确认的声道映射、双方布局表内容、VictoriaMulti.mkv 元数据）
-- 音频素材元数据（ffprobe 实测）：8_Channel_ID_signed_16_bit_pcm.wav = 48 kHz/8ch/16bit；6_Channel_ID.wav = 44.1 kHz/6ch(5.1)；4_Channel_ID.wav = 44.1 kHz/4ch（原 `*_metadata.txt` 记录已随历史参考包于 2026-10-12 一并删除；素材本身见 `Demo/linux/public/` 与 `Demo/web/public/`，可用 ffprobe 复测）
+- 音频素材元数据（ffprobe 实测）：8_Channel_ID_signed_16_bit_pcm.wav = 48 kHz/8ch/16bit；6_Channel_ID.wav = 44.1 kHz/6ch(5.1)；4_Channel_ID.wav = 44.1 kHz/4ch（原 `*_metadata.txt` 记录已随历史参考包于 2026-10-12 一并删除；48 kHz 素材见 `Demo/linux/public/`（含 `odd_{3,5,7}ch.wav`），44.1 kHz 素材与 8ch 24bit 素材见 `Demo/web/public/`，可用 ffprobe 复测）
 
 ### 音频素材清单（已验证元数据）
 
@@ -491,13 +491,13 @@
 | `8ch_2.opus` | Opus 裸帧流（非 ogg），640 字节/帧 | 48000 | 8 | — | 约 112 s（3,575,680 字节 ÷ 640 字节/帧 × 20 ms） | 需求点3 预编码 Opus 发送 | `Demo/linux/public/8ch_2.opus`（与历史参考包 `References/LinuxSampleCodes/8ch_2.opus` md5 一致，后者已删除） |
 | `8_Channel_ID_signed_16_bit_pcm.wav` | WAV pcm_s16le | 48000 | 8 | 16bit | 约 14 s | 需求点2 八声道 WAV 发送主验证素材 | ffprobe 元数据（`*_metadata.txt`） |
 | `8_Channel_ID_signed_16_bit_pcm.raw.pcm` | raw PCM s16le 交错 | 48000 | 8 | 16bit | 约 14 s | 需求点1 PCM 发送默认素材（由同名 WAV 提取，`Demo/linux/public/`） | 本仓库生成 |
-| `8_Channel_ID.wav` | WAV pcm_s24le | 48000（Web demo 直发，浏览器解码） | 8 | 24bit（`Demo/web/public` 拷贝 afinfo 实测） | — | Web demo 发布素材；v4.4.30.130 sample 默认音频文件 | `quick-demo-multiopus/public/`（已随 demo 移除；素材见 `Demo/web/public`）、`example/out/public/` |
+| `8_Channel_ID.wav` | WAV pcm_s24le | 48000（Web demo 直发，浏览器解码） | 8 | 24bit（`Demo/web/public` 拷贝 afinfo 实测） | — | Web demo 发布素材；v4.4.30.130 sample 默认音频文件 | `quick-demo-multiopus/public/`（已随 demo 移除；素材见 `Demo/web/public`）、`example/out/public/`（已随历史参考包删除） |
 | `8_Channel_ID_24bit.wav` | WAV pcm_s24le | 48000 | 8 | 24bit | — | 需求点2 场景2.2（24bit→16bit）验证素材（拷贝自 `Demo/web/public/8_Channel_ID.wav`，`Demo/linux/public/`） | 本仓库 |
 | `4_Channel_ID_48k.wav` / `6_Channel_ID_48k.wav` | WAV pcm_s16le | 48000 | 4 / 6 | 16bit | 约 5.8 s | Linux sample 4/6 声道发送验证（由 44.1 kHz 源重采样，`Demo/linux/public/`） | 本仓库生成 |
 | `6_Channel_ID.wav` | WAV pcm_s16le | 44100 | 6（5.1 布局） | 16bit | 约 5.8 s | 六声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `4_Channel_ID.wav` | WAV pcm_s16le | 44100 | 4 | 16bit | 约 5.8 s | 四声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `send_audio_16k_1ch.pcm` | raw PCM | 16000 | 1 | 16bit | — | 普通单声道基线（非多声道） | SDK 包 `test_data/`（sync-data.sh 下载） |
-| `VictoriaMulti.mkv` | MKV：1 × mpeg4 视频 + 4 × ac3 音频流 | 44100 | 每轨 2（stereo），共 8 | fltp | 约 4 min | 客户源端 4×双声道承载 8 声道的实际内容样例（布局映射用） | 原 `References/沟通记录/VictoriaMulti.mkv`（已于 2026-10-09 随目录删除；ffprobe 元数据见 `References/communication_records_backup.md` §2.6） |
+| `VictoriaMulti.mkv` | MKV：1 × mpeg4 视频 + 4 × ac3 音频流 | 44100 | 每轨 2（stereo），共 8 | fltp | 约 4 min | 客户源端 4×双声道承载 8 声道的实际内容样例（布局映射用） | 仓库现存 `References/VictoriaMulti.mkv` 与 `Demo/linux/public/VictoriaMulti.mkv`（Git LFS，两者同 md5；最初来源 `References/沟通记录/` 内拷贝已随目录删除，ffprobe 元数据见 `References/communication_records_backup.md` §2.6） |
 | 客户布局约定表 / `Agora_Order_Expectation.xlsx` | 布局约定文档（非音频，排查过程中间产物） | — | — | — | — | 客户当前布局（track 块序）与排查中期望布局的对比材料；**最终确认映射以双方确认的声道映射图为准**（逐样本交错，T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R） | 原 `References/沟通记录/`（已于 2026-10-09 删除；内容存档见 `References/communication_records_backup.md` §2.3/§2.4） |
 
 注：Channel ID 系列素材各声道内容可区分，用于接收端逐声道核对；44.1 kHz 素材仅作素材格式参考，多声道发送必须使用 48 kHz 版本。
@@ -515,3 +515,4 @@
 | v0.7 | 2026-10-12 | 一致性修订：场景8.1 `before_encoded.pcm` 括注更正为「编码前/编码器输入数据」（与命名及 macOS `before_mixed` dump 口径一致）；场景8.2 与 8.1 验收补 `getVolumeLevels` dB 刻度底噪 caveat（~10% 为 dither 底噪）；8.1 验证 demo 备注更新为 Demo/web（quick-demo-multiopus 已移除）；待确认问题1 收窄——回退行为与 unfallback 开关已实测，仅剩回退目标声道数（mono/stereo）待研发确认；附录素材表 `8_Channel_ID.wav` 位深更正为 24bit（afinfo 实测） | Kimi Code |
 | v0.8 | 2026-10-12 | 历史参考包 `References/LinuxSampleCodes/` 删除（其多声道测试功能已由 `Demo/linux/` 全覆盖并增强，素材已迁入 `Demo/linux/public/`）：6.4 表 API 事实来源改指 Demo/linux 对应 sample（含行号），参考资料与素材表来源同步修订 | Kimi Code |
 | v0.9 | 2026-10-12 | 奇数声道互通实测：3/5/7 声道经 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部通过（逐声道 NCC 0.46~1.00、同序号对应）；素材 `Demo/linux/public/odd_{3,5,7}ch.wav`（ffmpeg channelmap 截取）；待确认问题4 更新为「解码能力已实证、客户用量待确认」。详见 `Test/odd_channels_interop_test_20261012.md` | Kimi Code |
+| v1.0 | 2026-10-12 | 复审修订：附录素材表 VictoriaMulti.mkv 来源更正（仓库现存 `References/VictoriaMulti.mkv` 与 `Demo/linux/public/VictoriaMulti.mkv`，Git LFS 同 md5；仅 `References/沟通记录/` 内拷贝被删除）；素材位置精确化（48 kHz 素材在 Demo/linux/public，44.1 kHz 与 24bit 素材在 Demo/web/public）；quick-demo-multiopus 残留引用补移除注解（2.1/2.2/8.2）；FAQ 示例改用仓库内 48 kHz 素材（旧示例 44.1 kHz 与场景2.3 强制校验冲突）；2.1 版本串日期与 QA 日期关系加注 | Kimi Code |

@@ -7,8 +7,8 @@
     data-title-zh="Web SDK 音频多声道（multiopus）文档"
     data-title-en="Web SDK Audio Multi-Channel (multiopus) Docs"
   >Web SDK 音频多声道（multiopus）文档</title>
-  <link rel="stylesheet" href="assets/style.css?v=6e8dec3">
-  <meta name="build-id" content="6e8dec3">
+  <link rel="stylesheet" href="assets/style.css?v=2e9f377">
+  <meta name="build-id" content="2e9f377">
   </head>
 <body>
   <header class="site-header">
@@ -138,7 +138,7 @@
           <strong>注意：音量柱是 dB 宽量程刻度，静音声道可能不归零，且底数随发送端素材类型不同而不同。</strong>
           音量公式为 <code>(dBFS_RMS + 100) / 100</code>，仅当解码样本精确为数字零时才显示 0%。
           实测（Linux→Web）：静音段含 dither（-84 dB）的 16bit 素材经编码传输后残余约 -90 dB，
-          静音声道音量柱显示 ~6~10%；静音段为精确数字零的 24bit 素材则精确显示 0%。
+          静音声道音量柱显示约 10%（实测 4.6~12%，dB 刻度下 -90dB 残余的读数）；静音段为精确数字零的 24bit 素材则精确显示 0%。
           该残余不可闻、非 SDK 缺陷——逐声道内容核对请以 <code>selectChannels</code> + 试听为准，
           读音量柱时把 ~10% 视为无声。完整排查记录见
           <code>Test/web_volume_meter_floor_linux2web.md</code>。
@@ -444,7 +444,7 @@ await client.publish(track);</code></pre>
           zero — and the floor varies with the sender's source material.</strong> The level formula is
           <code>(dBFS_RMS + 100) / 100</code>, and only exact digital zeros show 0%. In Linux→Web
           testing, 16-bit material whose silent segments carry dither (−84 dB) left about −90 dB of
-          residue after encoding, so silent channels read ~6–12%, while 24-bit material with exact
+          residue after encoding, so silent channels read ≈10% (measured 4.6–12%, the dB-scale reading of a -90 dB residue), while 24-bit material with exact
           digital zeros read exactly 0%. The residue is inaudible and is not an SDK defect — for
           per-channel content verification, rely on <code>selectChannels</code> plus listening, and
           treat a ~10% reading as silence. Full investigation:
@@ -644,6 +644,6 @@ await client.publish(track);</code></pre>
     </div>
   </footer>
 
-  <script src="assets/i18n.js?v=6e8dec3"></script>
+  <script src="assets/i18n.js?v=2e9f377"></script>
 </body>
 </html>

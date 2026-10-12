@@ -34,6 +34,11 @@ English / 中文, defaults to English; switch via the Language picker at the top
 - **Pacing**: 10 ms-per-frame pacer loops the file via `pushExternalAudioFrameRawData`;
   the UI shows sent frame count / audio duration.
 - **Audio frame dump**: `che.audio.frame_dump` toggle (applied on join).
+- **Odd-channel warning**: selecting a 3/5/7-channel asset (indices 3/4/5, entries marked with ⚠)
+  shows an orange banner — odd-channel streams are verifiable only with Native/Linux receivers;
+  the Web SDK mis-decodes them (as N+1 channels with a duplicated phantom channel and a false
+  multi-channel ✓ verdict), so results are untrustworthy. Screenshots:
+  `Test/macos_sender_odd_channel_warning_{en,zh}_20261012.png`.
 
 ## Prerequisites & Build
 

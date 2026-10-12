@@ -57,7 +57,7 @@ enum L10n {
         "send.stats": [.en: "Sent %ld frames (%.1f s of audio)", .zhHans: "已发送 %ld 帧（%.1f 秒音频）"],
         "send.needJoin": [.en: "Join a channel first", .zhHans: "请先加入频道"],
         "send.loopHint": [.en: "The file loops until stopped. Frames are pushed at 10 ms per frame.", .zhHans: "文件循环发送直到停止；按 10 ms/帧 节奏推入。"],
-        "send.oddChannelWarning": [.en: "⚠ Odd channel count (3/5/7): can be received/verified by Native (macOS) / Linux SDK receivers only — the Web SDK cannot decode odd-channel streams (Web supports even 4/6/8 only).", .zhHans: "⚠ 奇数声道（3/5/7）：仅 Native（macOS）/ Linux SDK 端可接收验证；Web SDK 无法解码奇数声道流（仅支持 4/6/8 偶数声道）。"],
+        "send.oddChannelWarning": [.en: "⚠ Odd channel count (3/5/7): verifiable only with Native (macOS) / Linux SDK receivers — the Web SDK mis-decodes them (as N+1 channels with a duplicated phantom channel and a false multi-channel ✓ verdict); results are untrustworthy.", .zhHans: "⚠ 奇数声道（3/5/7）：仅 Native（macOS）/ Linux SDK 端可接收验证；Web SDK 会误解码（按 N+1 声道、末声道复制幻影、界面误判多声道 ✓），结果不可信。"],
 
         // 日志面板
         "log.section": [.en: "Log", .zhHans: "日志"],

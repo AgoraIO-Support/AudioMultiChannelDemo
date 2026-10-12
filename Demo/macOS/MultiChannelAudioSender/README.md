@@ -28,6 +28,9 @@
   `che.audio.custom_channel_num`、`che.audio.custom_sample_rate`。
 - **发布节奏**：10 ms/帧 pacer 循环推送（`pushExternalAudioFrameRawData`），界面显示已发送帧数/时长。
 - **音频帧 Dump**：`che.audio.frame_dump` 开关（加入频道时应用）。
+- **奇数声道警示**：选中 3/5/7 声道素材（下标 3/4/5，条目带 ⚠）时发送面板显示橙色警示条——
+  奇数声道流仅 Native/Linux 端可验证，Web SDK 会误解码（按 N+1 声道、末声道复制幻影、界面误判
+  多声道 ✓），结果不可信。截图：`Test/macos_sender_odd_channel_warning_{zh,en}_20261012.png`。
 
 ## 环境要求与构建
 

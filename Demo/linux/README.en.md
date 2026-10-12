@@ -35,7 +35,8 @@ Demo/linux/
 ├── receive/                  # 4 receiver samples
 ├── public/                   # Assets: 8ch_2.opus, 8_Channel_ID_signed_16_bit_pcm.wav (+ same-name .raw.pcm),
 │                             # 4/6_Channel_ID_48k.wav (48 kHz resampled), 8_Channel_ID_24bit.wav (24-bit verification asset),
-│                             # VictoriaMulti.mkv (1 mpeg4 1080p stream + 4 AC-3 44.1 kHz stereo tracks = 8 channels; not committed to git)
+│                             # odd_3ch/odd_5ch/odd_7ch.wav (3/5/7 odd-channel assets, cut from the 8ch one via ffmpeg channelmap),
+│                             # VictoriaMulti.mkv (1 mpeg4 1080p stream + 4 AC-3 44.1 kHz stereo tracks = 8 channels; committed via Git LFS, ~133MB)
 └── out/                      # Build output (binaries + copy of public assets)
 ```
 
@@ -127,7 +128,11 @@ carries either a token or an appId (pass the appId when no certificate is enable
 > (scenario 2.2, same command); use `public/4_Channel_ID_48k.wav` / `public/6_Channel_ID_48k.wav`
 > (resampled from 44.1 kHz to 48 kHz) for 4/6-channel verification with
 > `--numOfChannels 4 --custom_channel_num 4 --custom_payload_type 123` and
-> `--numOfChannels 6 --custom_channel_num 6 --custom_payload_type 124`.
+> `--numOfChannels 6 --custom_channel_num 6 --custom_payload_type 124`. For odd channel counts,
+> use `public/odd_3ch.wav` / `odd_5ch.wav` / `odd_7ch.wav` (cut from the 8ch asset via ffmpeg
+> channelmap) — e.g. 5 channels: `--audioFile public/odd_5ch.wav --numOfChannels 5
+> --custom_channel_num 5 --custom_payload_type 124 --sampleRate 48000` (interop verified, see
+> `Test/odd_channels_interop_test_20261012.md`).
 
 ### 2. Send raw multi-channel PCM (3~8 channels)
 
@@ -255,7 +260,10 @@ Use the Web verification demo (`Demo/web/` in this repo, agora-rtc-sdk-ng 4.20.1
    underlying codec shows as `multiopus`.
 4. `selectChannels(channels, "surround"|"stereo"|"mono")` plays any combination of channels.
 
-Note: the Web side decodes even channel counts only — 3/5/7-channel streams do not apply.
+Note: the Web side decodes even channel counts only — a 3/5/7-channel stream raises no error there but
+is mis-decoded as the next even count (the last channel is duplicated into a phantom one and the demo
+even shows a false multi-channel ✓); results are untrustworthy, so verify odd channels with a
+Native/Linux receiver (see `Test/odd_channels_interop_test_20261012.md` §5).
 Safari/Firefox behavior is undefined.
 
 ### Encoded frame dump (sample_receive_encoded_audio)
@@ -319,8 +327,9 @@ The buffer repeats [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] for every sample
   on ffmpeg (libavformat/libavcodec/libavutil/libswresample/libswscale). Local builds need
   `pkg-config` and the matching `-dev` packages; the Dockerfile installs the dev packages in the
   builder stage and the runtime libraries in the final stage. `public/VictoriaMulti.mkv`
-  (~133 MB) is excluded from git by the root `.gitignore` (`*.mkv`) — drop it into `public/`
-  yourself; the Docker build packs it into the image.
+  (~133 MB) is committed via Git LFS (the root `.gitignore` `*.mkv` rule has an exception
+  `!Demo/linux/public/VictoriaMulti.mkv`) — if you see a pointer file under `public/` after
+  cloning, run `git lfs pull` first; the Docker build packs it into the image.
 - **Video sending is limited to the MKV sample**: the other sender samples handle audio only
   (the h264 part of the reference sample was removed). `sample_send_mkv_multiopus` runs audio
   and video on separate threads with independent loops and does not do strict AV sync.

@@ -162,7 +162,9 @@ mirrored to stdout unbuffered:
   **sender** side (see `Demo/linux/README.en.md`).
 - **Odd channel counts (3/5/7)**: decoded adaptively on the Native side (interop verified
   2026-10-12, see `Test/odd_channels_interop_test_20261012.md`); the Web side
-  (`Demo/web`) only supports even channel counts, so 3/5/7-channel streams do not apply.
+  (`Demo/web`) raises no error for such streams but mis-decodes them as N+1 channels (the last
+  channel is duplicated into a phantom one and the demo shows a false multi-channel ✓) —
+  results are untrustworthy, so never verify odd-channel streams on Web (§5 of the same document).
 - **The channel-count selector only controls the UI rows**: switching it pushes no SDK
   parameter; setting an `index` beyond the stream's actual channel count has no effect in
   the SDK; whenever the selected uid changes, the state of all 8 rows (including hidden

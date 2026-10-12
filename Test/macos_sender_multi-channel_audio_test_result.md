@@ -37,7 +37,8 @@
     落盘解码后 PCM，供离线逐声道核对）。
 - 凭证：App ID `43f818097c124394821bd44598b7ca9d`（无证书，token 留空）；
   发送 uid 固定 12345，Web uid 54321，receiver uid 0（自动分配）。
-- 自动化：sender 支持 `-autoChannel/-autoUid/-autoWav/-autoJoin/-autoPublish/-autoQuitAfter`，
+- 自动化：sender 支持 `-autoChannel/-autoUid/-autoWav/-autoWavPath/-autoJoin/-autoPublish/-autoQuitAfter`
+  （`-autoWavPath` 为 2026-10-12 新增，可发布任意路径 WAV，奇数声道测试即用此参数/内置素材下标 3~5），
   receiver 支持 `-autoChannel/-autoJoin/-autoDump/-autoQuitAfter`（autoDump 即 join 时开启 frame dump），
   两端日志均无缓冲镜像 stdout；Web 端经 Chrome DevTools 协议驱动点击与采样。
 

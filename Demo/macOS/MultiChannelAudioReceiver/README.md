@@ -133,7 +133,7 @@ xcodebuild -workspace MultiChannelAudioReceiver.xcworkspace \
 - **接收端无需任何多声道私参**：Native SDK 在 123/124/125 协商机制下自适应解码 OPUSMC
   多声道流（包括 3/5/7 奇数声道），接收普通 stereo/mono 流也无需特殊处理。payload type /
   `custom_channel_num` 等参数只需在**发送端**设置（见 `Demo/linux/README.md`）。
-- **奇数声道（3/5/7）**：Native 端可自适应解码（2026-10-12 已实测互通，见 `Test/odd_channels_interop_test_20261012.md`）；Web 端（`Demo/web`）仅支持偶数声道解码，3/5/7 声道流不适用。
+- **奇数声道（3/5/7）**：Native 端可自适应解码（2026-10-12 已实测互通，见 `Test/odd_channels_interop_test_20261012.md`）；Web 端（`Demo/web`）对奇数声道流不报错但会误解码为 N+1 声道（末声道复制出幻影、界面误判多声道 ✓），结果不可信，切勿用 Web 端验证（同文档 §5）。
 - **声道数选择器只是 UI 行数控制**：切换它不下发任何 SDK 参数；SDK 对超出流实际声道数的
   `index` 设置不产生效果；切换远端 uid 时会把全部 8 行（含隐藏行）状态重新下发，保证行为确定。
 - **音量私参作用在解码后、播放前**：只影响本端听到的声音，不影响频道内其他用户。

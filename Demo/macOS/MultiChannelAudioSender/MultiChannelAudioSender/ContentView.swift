@@ -5,7 +5,7 @@ import AppKit
 /// 通过启动参数传入（映射进 UserDefaults），例如：
 ///   MultiChannelAudioSender -autoChannel test8ch -autoUid 12345 -autoWav 0 \
 ///       -autoJoin YES -autoPublish YES -autoQuitAfter 90
-/// - autoWav: 内置素材下标（0=8ch, 1=6ch, 2=4ch）
+/// - autoWav: 内置素材下标（0=8ch, 1=6ch, 2=4ch, 3=3ch, 4=5ch, 5=7ch）
 /// - autoWavPath: 自定义 WAV 文件路径（优先于 autoWav；须 48 kHz / 16bit / 1~8 声道）
 /// - autoQuitAfter: 秒数，>0 时到点自动退出 App
 struct AutoRunConfig {
@@ -200,7 +200,8 @@ struct ContentView: View {
 
     private var sendPanel: some View {
         GroupBox(tr("send.section")) {
-            VStack(alignment: .leading, spacing: 10) {                HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 12) {
                     Text(tr("send.wav"))
                     Picker("", selection: $selectedWav) {
                         ForEach(0..<wavChoices.count, id: \.self) { i in

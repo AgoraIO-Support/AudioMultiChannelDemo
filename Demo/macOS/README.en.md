@@ -7,7 +7,7 @@ English as default). Requirements baseline: `Spec/native_sdk_audio_multichannel_
 | App | Role | Purpose |
 | --- | --- | --- |
 | [`MultiChannelAudioReceiver/`](MultiChannelAudioReceiver/README.en.md) | Audience (receive-only) | Subscribe to remote multi-channel/stereo streams: per-channel listen/volume control, remote video display, audio/video receive bitrate charts, audio frame dump |
-| [`MultiChannelAudioSender/`](MultiChannelAudioSender/README.en.md) | Broadcaster (publish-only) | Loop-publish bundled 4/6/8-channel Channel ID WAV files through a custom audio track (multi-channel private-parameter negotiation) |
+| [`MultiChannelAudioSender/`](MultiChannelAudioSender/README.en.md) | Broadcaster (publish-only) | Loop-publish bundled 4/6/8-channel Channel ID WAVs and 3/5/7 odd-channel WAVs through a custom audio track (multi-channel private-parameter negotiation; selecting an odd-channel asset shows a "Web mis-decodes" warning banner) |
 
 Each app is an independent project (own Podfile / xcodeproj / README): run `pod install`
 in its directory and open its own `.xcworkspace`.

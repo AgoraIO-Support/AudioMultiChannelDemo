@@ -18,7 +18,7 @@ See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
 - **Per-channel volume bars**: after subscribing, `getVolumeLevels()` is called every 300 ms to
   render live volume for each channel.
 - **Codec detection**: hooks `RTCPeerConnection.getStats()` to read the inbound codec
-  (`opus` / `multiopus`), polling every 800 ms, up to 6 times.
+  (`opus` / `multiopus`), polling continuously every 800 ms while subscribed (so negotiated fallbacks are observable).
 - **Channel selection playback**: `selectChannels(channels, mode)` plays any combination of
   channels from the remote track in `surround` / `stereo` / `mono` mode — used to listen to each
   channel of the Channel ID files one by one.
@@ -185,7 +185,7 @@ To listen to one channel: enter a single index (e.g. `3`) and choose mono, or en
   and subscribes to the Local UID's stream (subTo) for per-channel checking. Both links carry
   the current channel name into the new tab (the page shows the same explanation above the
   links).
-- **Silent channels still show ~6~10% on the volume bars for a Linux-sent 8-channel stream?**
+- **Silent channels still show ~10% (measured 4.6–12%) on the volume bars for a Linux-sent 8-channel stream?**
   Two compounding reasons: (1) the meter uses a wide dB scale — `getVolumeLevels()` computes
   `(dBFS_RMS + 100) / 100`, so only exact digital zeros read 0%, and an inaudible -90 dB residue
   already reads ~10% (the implementation has no Linux/Web branch and reads the real decoded PCM);

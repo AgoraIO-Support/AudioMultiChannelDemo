@@ -6,7 +6,7 @@ macOS 12.0+，中/英文 UI 默认英文），需求基线见 `Spec/native_sdk_a
 | App | 角色 | 用途 |
 | --- | --- | --- |
 | [`MultiChannelAudioReceiver/`](MultiChannelAudioReceiver/README.md) | 观众（纯接收） | 订阅远端多声道/立体声流：逐声道选择收听与音量调节、远端视频显示、音/视频接收码率走势图、音频帧 dump |
-| [`MultiChannelAudioSender/`](MultiChannelAudioSender/README.md) | 主播（纯发布） | 将内置 4/6/8 声道 Channel ID WAV 经自定义音轨循环发布（多声道私参协商） |
+| [`MultiChannelAudioSender/`](MultiChannelAudioSender/README.md) | 主播（纯发布） | 将内置 4/6/8 声道 Channel ID WAV 与 3/5/7 奇数声道 WAV 经自定义音轨循环发布（多声道私参协商；选中奇数声道素材时 UI 显示「Web 会误解码」警示条） |
 
 两个 app 均为独立工程（各自含 Podfile / xcodeproj / README），分别 `pod install` 后打开
 各自的 `.xcworkspace` 构建。

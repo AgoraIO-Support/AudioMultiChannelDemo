@@ -1,10 +1,12 @@
 # macOS SDK 多声道发送仅前 2 声道有声——问题记录与跟踪
 
 > 日期：2026-10-10
-> 状态：**已复现、已定位到 SDK 侧限制，待 SDK 研发跟进**
+> 状态：**已闭环（2026-10-12）**——发送侧 2 声道钳制为 4.5.2 独有，修复点 4.5.2→4.5.3；
+> 4.5.3/4.6.0/4.6.2/4.7.0 实测 8 声道全通。汇总见
+> `Test/macos_sender_multi-channel_audio_test_result.md`；本文以下为 2026-10-10 的历史排查记录。
 > 怀疑方向（未证实）：Linux 定制版的多声道发送相关代码未同步合并进 macOS SDK 对应分支
 > 相关文档：`Spec/native_sdk_audio_multichannel_spec.md` 需求点7 场景7.2、待确认问题1；
-> `Demo/macOS/MultiChannelAudioSender/README.md` 已知限制章节
+> `Demo/macOS/MultiChannelAudioSender/README.md`「发送侧多声道能力：版本实测矩阵」章节
 
 ## 1. 问题现象
 

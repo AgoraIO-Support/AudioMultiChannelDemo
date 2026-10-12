@@ -55,7 +55,8 @@ ffmpeg -y -i 8_Channel_ID_signed_16_bit_pcm.wav -af "channelmap=map=0|1|2|3|4|5|
 
 方法：macOS sender 4.7.0 分别以 3/5/7 声道（内置 `odd_{3,5,7}ch.wav`，payload 123/124/125 +
 `custom_channel_num`）发布，Web demo（Chrome，agora-rtc-sdk-ng 4.20.1-200 + `ENABLE_MULTIOPUS_CODEC`）
-订阅并采样 `getVolumeLevels()` 15 s。
+订阅。下表数据来自首轮 15 s 采样（200 ms 间隔）；「末两声道恒等」证据来自后续补采轮
+（120 ms 间隔、20 s 窗，5ch/7ch 各 165 样本）——两轮采样窗口不同，峰值数字不跨轮比较。
 
 | 发送 | 订阅 | codec 判定 | 信令 channelCount | `getVolumeLevels()` 15 s 峰值 | demo 界面判定 |
 | --- | --- | --- | --- | --- | --- |
