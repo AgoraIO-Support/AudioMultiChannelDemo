@@ -21,6 +21,7 @@ struct WavFile {
         case unsupportedFormat(Int)
         case unsupportedBits(Int)
         case unsupportedSampleRate(Int)
+        case unsupportedChannels(Int)
 
         var errorDescription: String? {
             switch self {
@@ -30,6 +31,7 @@ struct WavFile {
             case .unsupportedFormat(let f): return "Unsupported audio format \(f) (only PCM=1)"
             case .unsupportedBits(let b): return "Unsupported bit depth \(b) (only 16-bit)"
             case .unsupportedSampleRate(let r): return "Unsupported sample rate \(r) (multi-channel requires 48000)"
+            case .unsupportedChannels(let c): return "Unsupported channel count \(c) (multi-channel supports 1...8)"
             }
         }
     }
@@ -76,6 +78,7 @@ struct WavFile {
         guard audioFormat == 1 else { throw WavError.unsupportedFormat(audioFormat) }
         guard bitsPerSample == 16 else { throw WavError.unsupportedBits(bitsPerSample) }
         guard sampleRate == 48000 else { throw WavError.unsupportedSampleRate(sampleRate) }
+        guard (1...8).contains(channels) else { throw WavError.unsupportedChannels(channels) }
         guard !pcm.isEmpty else { throw WavError.noDataChunk }
         return WavFile(channels: channels, sampleRate: sampleRate,
                        bitsPerSample: bitsPerSample, pcmData: pcm)

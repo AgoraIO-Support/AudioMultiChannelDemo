@@ -71,11 +71,14 @@ struct ContentView: View {
             Spacer(minLength: 0)
         }
         .padding(12)
-        .onAppear { autoRunOnAppear() }
+        .onAppear {
+            loadSelectedWav()   // 每次出现都确保素材已加载（幂等）
+            autoRunOnce()
+        }
         .onChange(of: selectedWav) { _ in loadSelectedWav() }
         .onChange(of: senderManager.isJoined) { joined in
-            // 自动发布：join 成功后触发一次
-            if joined && autoCfg.publish && !autoPublished {
+            // 自动发布：仅在自动化 join 成功后触发一次（纯手动 join 不触发）
+            if joined && autoCfg.join && autoCfg.publish && !autoPublished {
                 autoPublished = true
                 senderManager.log("[AutoRun] joined, auto publishing")
                 publishButtonTapped()
@@ -85,11 +88,16 @@ struct ContentView: View {
 
     // MARK: - 命令行自动化入口
 
-    private func autoRunOnAppear() {
-        if let idx = autoCfg.wavIndex, wavChoices.indices.contains(idx) {
-            selectedWav = idx
+    /// 进程级一次性守卫：onAppear 会随窗口重开重复触发，自动化动作只允许执行一次
+    private static var didAutoRun = false
+
+    private func autoRunOnce() {
+        guard !Self.didAutoRun else { return }
+        Self.didAutoRun = true
+        if let idx = autoCfg.wavIndex, wavChoices.indices.contains(idx), idx != selectedWav {
+            selectedWav = idx   // onChange 会触发加载
+            loadSelectedWav()   // 显式再加载一次，保证紧随的 join 用到新素材（不依赖 onChange 时机）
         }
-        loadSelectedWav()
         if let ch = autoCfg.channel { channelId = ch }
         if let u = autoCfg.uid { uidText = u }
         if autoCfg.quitAfter > 0 {

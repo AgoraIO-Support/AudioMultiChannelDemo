@@ -379,7 +379,12 @@ struct ContentView: View {
 
     // MARK: - 命令行自动化入口
 
+    /// 进程级一次性守卫：onAppear 会随窗口重开重复触发，自动化动作只允许执行一次
+    private static var didAutoRun = false
+
     private func autoRunOnAppear() {
+        guard !Self.didAutoRun else { return }
+        Self.didAutoRun = true
         if let ch = autoCfg.channel { channelId = ch }
         if autoCfg.quitAfter > 0 {
             DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(autoCfg.quitAfter)) {
@@ -387,9 +392,10 @@ struct ContentView: View {
             }
         }
         if autoCfg.join {
-            dumpEnabled = autoCfg.dump
             agoraManager.log("[AutoRun] auto join: channel=\(channelId) dump=\(autoCfg.dump)")
             joinButtonTapped()
+            // 引擎已随 join 创建，此时置 dumpEnabled 由 onChange 直接下发（避免引擎未创建时的 deferred 日志）
+            if autoCfg.dump { dumpEnabled = true }
         }
     }
 

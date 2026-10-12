@@ -6,7 +6,7 @@ import AgoraRtcKit
 /// 与 Linux `sample_send_pcm_multiopus` 同口径：
 /// - 私参 che.audio.custom_payload_type / custom_channel_num / custom_sample_rate 在 join 之前设置；
 /// - payload type 映射：≤4ch → 123，≤6ch → 124，否则 → 125；
-/// - 自定义音轨用 AUDIO_TRACK_DIRECT（不经过 3A）；
+/// - 自定义音轨用 mixable（不经过 3A）；
 /// - 推送节奏 10 ms/帧，samplesPerChannel = 48000/100 = 480。
 class AgoraSenderManager: NSObject, ObservableObject {
     @Published var isJoined = false
@@ -21,7 +21,20 @@ class AgoraSenderManager: NSObject, ObservableObject {
     private var trackId: NSInteger = -1
 
     private var sendThread: Thread?
-    private var sendStopFlag = false
+    private let sendStopLock = NSLock()
+    private var sendStopFlag = false   // 跨线程读写，由 sendStopLock 保护
+
+    private func isSendStopped() -> Bool {
+        sendStopLock.lock()
+        defer { sendStopLock.unlock() }
+        return sendStopFlag
+    }
+
+    private func setSendStopped(_ value: Bool) {
+        sendStopLock.lock()
+        sendStopFlag = value
+        sendStopLock.unlock()
+    }
 
     override init() {
         super.init()
@@ -137,7 +150,7 @@ class AgoraSenderManager: NSObject, ObservableObject {
         let channels = wav.channels
         let sampleRate = wav.sampleRate
 
-        sendStopFlag = false
+        setSendStopped(false)
         DispatchQueue.main.async { self.sentFrames = 0 }
         log(L10n.t("log.publishStart", in: L10n.current(), channels, sampleRate))
 
@@ -145,7 +158,7 @@ class AgoraSenderManager: NSObject, ObservableObject {
             var offset = 0
             var frames = 0
             var nextPush = Date()
-            while let self = self, !self.sendStopFlag {
+            while let self = self, !self.isSendStopped() {
                 if offset + bytesPerFrame > pcm.count {
                     offset = 0   // 循环发送
                 }
@@ -187,7 +200,7 @@ class AgoraSenderManager: NSObject, ObservableObject {
     }
 
     func stopPublishing() {
-        sendStopFlag = true
+        setSendStopped(true)
         sendThread = nil
         if isPublishing {
             log(L10n.t("log.publishStop", in: L10n.current()))
