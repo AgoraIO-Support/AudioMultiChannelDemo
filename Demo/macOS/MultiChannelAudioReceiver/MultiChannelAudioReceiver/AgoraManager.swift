@@ -40,6 +40,8 @@ class AgoraManager: NSObject, ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss.SSS"
         let line = "[\(formatter.string(from: Date()))] \(message)"
+        // stdout 镜像（无缓冲直写，重定向到文件也能实时落盘），便于命令行自动化采集日志
+        FileHandle.standardOutput.write(Data((line + "\n").utf8))
         DispatchQueue.main.async {
             self.logs.append(line)
             if self.logs.count > 1000 {

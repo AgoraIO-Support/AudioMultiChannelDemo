@@ -2,7 +2,7 @@ platform :osx, '12.0'
 
 target 'MultiChannelAudioReceiver' do
   use_frameworks!
-  pod 'AgoraRtcEngine_macOS', '4.5.2'
+  pod 'AgoraRtcEngine_macOS', '4.7.0'
 end
 
 post_install do |installer|

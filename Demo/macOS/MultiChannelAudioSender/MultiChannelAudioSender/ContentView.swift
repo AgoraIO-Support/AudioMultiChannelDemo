@@ -1,4 +1,31 @@
 import SwiftUI
+import AppKit
+
+/// 命令行自动化配置（供回归测试脚本驱动，UI 手动操作不受影响）。
+/// 通过启动参数传入（映射进 UserDefaults），例如：
+///   MultiChannelAudioSender -autoChannel test8ch -autoUid 12345 -autoWav 0 \
+///       -autoJoin YES -autoPublish YES -autoQuitAfter 90
+/// - autoWav: 素材下标（0=8ch, 1=6ch, 2=4ch）
+/// - autoQuitAfter: 秒数，>0 时到点自动退出 App
+struct AutoRunConfig {
+    var channel: String? = nil
+    var uid: String? = nil
+    var wavIndex: Int? = nil
+    var join = false
+    var publish = false
+    var quitAfter = 0
+
+    static func fromDefaults(_ d: UserDefaults = .standard) -> AutoRunConfig {
+        var c = AutoRunConfig()
+        c.channel = d.string(forKey: "autoChannel")
+        c.uid = d.string(forKey: "autoUid")
+        if let s = d.string(forKey: "autoWav"), let i = Int(s) { c.wavIndex = i }
+        c.join = d.bool(forKey: "autoJoin")
+        c.publish = d.bool(forKey: "autoPublish")
+        c.quitAfter = d.integer(forKey: "autoQuitAfter")
+        return c
+    }
+}
 
 struct ContentView: View {
     @EnvironmentObject var senderManager: AgoraSenderManager
@@ -19,6 +46,9 @@ struct ContentView: View {
     ]
     @State private var selectedWav = 0
     @State private var wav: WavFile?
+    /// 自动化配置与“已自动发布”守卫（防止 isJoined 反复触发重复发布）
+    private let autoCfg = AutoRunConfig.fromDefaults()
+    @State private var autoPublished = false
 
     private var lang: UILanguage {
         UILanguage(rawValue: uiLanguage) ?? .en
@@ -41,8 +71,36 @@ struct ContentView: View {
             Spacer(minLength: 0)
         }
         .padding(12)
-        .onAppear { loadSelectedWav() }
+        .onAppear { autoRunOnAppear() }
         .onChange(of: selectedWav) { _ in loadSelectedWav() }
+        .onChange(of: senderManager.isJoined) { joined in
+            // 自动发布：join 成功后触发一次
+            if joined && autoCfg.publish && !autoPublished {
+                autoPublished = true
+                senderManager.log("[AutoRun] joined, auto publishing")
+                publishButtonTapped()
+            }
+        }
+    }
+
+    // MARK: - 命令行自动化入口
+
+    private func autoRunOnAppear() {
+        if let idx = autoCfg.wavIndex, wavChoices.indices.contains(idx) {
+            selectedWav = idx
+        }
+        loadSelectedWav()
+        if let ch = autoCfg.channel { channelId = ch }
+        if let u = autoCfg.uid { uidText = u }
+        if autoCfg.quitAfter > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(autoCfg.quitAfter)) {
+                NSApplication.shared.terminate(nil)
+            }
+        }
+        if autoCfg.join {
+            senderManager.log("[AutoRun] auto join: channel=\(channelId) uid=\(uidText)")
+            joinButtonTapped()
+        }
     }
 
     // MARK: - Language picker

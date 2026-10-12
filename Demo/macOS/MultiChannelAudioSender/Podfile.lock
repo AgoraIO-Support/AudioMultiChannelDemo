@@ -1,48 +1,44 @@
 PODS:
-  - AgoraInfra_macOS (1.2.13.1)
-  - AgoraRtcEngine_macOS (4.5.2):
-    - AgoraRtcEngine_macOS/AIAEC (= 4.5.2)
-    - AgoraRtcEngine_macOS/AIAECLL (= 4.5.2)
-    - AgoraRtcEngine_macOS/AINS (= 4.5.2)
-    - AgoraRtcEngine_macOS/AINSLL (= 4.5.2)
-    - AgoraRtcEngine_macOS/AudioBeauty (= 4.5.2)
-    - AgoraRtcEngine_macOS/ClearVision (= 4.5.2)
-    - AgoraRtcEngine_macOS/ContentInspect (= 4.5.2)
-    - AgoraRtcEngine_macOS/FaceCapture (= 4.5.2)
-    - AgoraRtcEngine_macOS/FaceDetection (= 4.5.2)
-    - AgoraRtcEngine_macOS/LipSync (= 4.5.2)
-    - AgoraRtcEngine_macOS/RtcBasic (= 4.5.2)
-    - AgoraRtcEngine_macOS/ScreenCapture (= 4.5.2)
-    - AgoraRtcEngine_macOS/SpatialAudio (= 4.5.2)
-    - AgoraRtcEngine_macOS/VideoAv1CodecDec (= 4.5.2)
-    - AgoraRtcEngine_macOS/VideoAv1CodecEnc (= 4.5.2)
-    - AgoraRtcEngine_macOS/VideoCodecDec (= 4.5.2)
-    - AgoraRtcEngine_macOS/VideoCodecEnc (= 4.5.2)
-    - AgoraRtcEngine_macOS/VirtualBackground (= 4.5.2)
-    - AgoraRtcEngine_macOS/VQA (= 4.5.2)
-  - AgoraRtcEngine_macOS/AIAEC (4.5.2)
-  - AgoraRtcEngine_macOS/AIAECLL (4.5.2)
-  - AgoraRtcEngine_macOS/AINS (4.5.2)
-  - AgoraRtcEngine_macOS/AINSLL (4.5.2)
-  - AgoraRtcEngine_macOS/AudioBeauty (4.5.2)
-  - AgoraRtcEngine_macOS/ClearVision (4.5.2)
-  - AgoraRtcEngine_macOS/ContentInspect (4.5.2)
-  - AgoraRtcEngine_macOS/FaceCapture (4.5.2)
-  - AgoraRtcEngine_macOS/FaceDetection (4.5.2)
-  - AgoraRtcEngine_macOS/LipSync (4.5.2)
-  - AgoraRtcEngine_macOS/RtcBasic (4.5.2):
-    - AgoraInfra_macOS (= 1.2.13.1)
-  - AgoraRtcEngine_macOS/ScreenCapture (4.5.2)
-  - AgoraRtcEngine_macOS/SpatialAudio (4.5.2)
-  - AgoraRtcEngine_macOS/VideoAv1CodecDec (4.5.2)
-  - AgoraRtcEngine_macOS/VideoAv1CodecEnc (4.5.2)
-  - AgoraRtcEngine_macOS/VideoCodecDec (4.5.2)
-  - AgoraRtcEngine_macOS/VideoCodecEnc (4.5.2)
-  - AgoraRtcEngine_macOS/VirtualBackground (4.5.2)
-  - AgoraRtcEngine_macOS/VQA (4.5.2)
+  - AgoraInfra_macOS (1.3.16)
+  - AgoraRtcEngine_macOS (4.7.0):
+    - AgoraRtcEngine_macOS/AIAEC (= 4.7.0)
+    - AgoraRtcEngine_macOS/AIAECLL (= 4.7.0)
+    - AgoraRtcEngine_macOS/AINS (= 4.7.0)
+    - AgoraRtcEngine_macOS/AINSLL (= 4.7.0)
+    - AgoraRtcEngine_macOS/AudioBeauty (= 4.7.0)
+    - AgoraRtcEngine_macOS/ClearVision (= 4.7.0)
+    - AgoraRtcEngine_macOS/ContentInspect (= 4.7.0)
+    - AgoraRtcEngine_macOS/FaceCapture (= 4.7.0)
+    - AgoraRtcEngine_macOS/FaceDetection (= 4.7.0)
+    - AgoraRtcEngine_macOS/LipSync (= 4.7.0)
+    - AgoraRtcEngine_macOS/RtcBasic (= 4.7.0)
+    - AgoraRtcEngine_macOS/ScreenCapture (= 4.7.0)
+    - AgoraRtcEngine_macOS/SpatialAudio (= 4.7.0)
+    - AgoraRtcEngine_macOS/VideoAv1CodecEnc (= 4.7.0)
+    - AgoraRtcEngine_macOS/VideoCodecEnc (= 4.7.0)
+    - AgoraRtcEngine_macOS/VirtualBackground (= 4.7.0)
+    - AgoraRtcEngine_macOS/VQA (= 4.7.0)
+  - AgoraRtcEngine_macOS/AIAEC (4.7.0)
+  - AgoraRtcEngine_macOS/AIAECLL (4.7.0)
+  - AgoraRtcEngine_macOS/AINS (4.7.0)
+  - AgoraRtcEngine_macOS/AINSLL (4.7.0)
+  - AgoraRtcEngine_macOS/AudioBeauty (4.7.0)
+  - AgoraRtcEngine_macOS/ClearVision (4.7.0)
+  - AgoraRtcEngine_macOS/ContentInspect (4.7.0)
+  - AgoraRtcEngine_macOS/FaceCapture (4.7.0)
+  - AgoraRtcEngine_macOS/FaceDetection (4.7.0)
+  - AgoraRtcEngine_macOS/LipSync (4.7.0)
+  - AgoraRtcEngine_macOS/RtcBasic (4.7.0):
+    - AgoraInfra_macOS (= 1.3.16)
+  - AgoraRtcEngine_macOS/ScreenCapture (4.7.0)
+  - AgoraRtcEngine_macOS/SpatialAudio (4.7.0)
+  - AgoraRtcEngine_macOS/VideoAv1CodecEnc (4.7.0)
+  - AgoraRtcEngine_macOS/VideoCodecEnc (4.7.0)
+  - AgoraRtcEngine_macOS/VirtualBackground (4.7.0)
+  - AgoraRtcEngine_macOS/VQA (4.7.0)
 
 DEPENDENCIES:
-  - AgoraRtcEngine_macOS (= 4.5.2)
+  - AgoraRtcEngine_macOS (= 4.7.0)
 
 SPEC REPOS:
   trunk:
@@ -50,9 +46,9 @@ SPEC REPOS:
     - AgoraRtcEngine_macOS
 
 SPEC CHECKSUMS:
-  AgoraInfra_macOS: 9bc9cea2486446c87d3ee3e69325cdb45ecf99c2
-  AgoraRtcEngine_macOS: ca423379ffb023c12a267e9ce6234f90a431f4d2
+  AgoraInfra_macOS: bc13d2f575dc8e898f93e6d22517e53492f3cc03
+  AgoraRtcEngine_macOS: e78daef13d62785c84745ac58cc54351374f0d3e
 
-PODFILE CHECKSUM: 5c08a59b808c99059a94023de3423f50adb406d4
+PODFILE CHECKSUM: 1c8321003849106300754ed5edddddb131d90905
 
 COCOAPODS: 1.16.2

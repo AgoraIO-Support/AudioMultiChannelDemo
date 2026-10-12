@@ -62,6 +62,27 @@ struct ChannelControlState: Equatable {
     var volume: Double = 100
 }
 
+/// 命令行自动化配置（供回归测试脚本驱动，UI 手动操作不受影响）。
+/// 通过启动参数传入（映射进 UserDefaults），例如：
+///   MultiChannelAudioReceiver -autoChannel test8ch -autoJoin YES -autoDump YES -autoQuitAfter 120
+/// - autoDump: join 时开启 `che.audio.frame_dump`
+/// - autoQuitAfter: 秒数，>0 时到点自动退出 App
+struct AutoRunConfig {
+    var channel: String? = nil
+    var join = false
+    var dump = false
+    var quitAfter = 0
+
+    static func fromDefaults(_ d: UserDefaults = .standard) -> AutoRunConfig {
+        var c = AutoRunConfig()
+        c.channel = d.string(forKey: "autoChannel")
+        c.join = d.bool(forKey: "autoJoin")
+        c.dump = d.bool(forKey: "autoDump")
+        c.quitAfter = d.integer(forKey: "autoQuitAfter")
+        return c
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var agoraManager: AgoraManager
     @AppStorage("uiLanguage") private var uiLanguage = "en"
@@ -75,6 +96,8 @@ struct ContentView: View {
     @State private var channelCount = 8
     @State private var selectedUid: UInt?
     @State private var channelStates = [ChannelControlState](repeating: ChannelControlState(), count: 8)
+    /// 命令行自动化配置（启动参数，见 AutoRunConfig）
+    private let autoCfg = AutoRunConfig.fromDefaults()
 
     private var lang: UILanguage {
         UILanguage(rawValue: uiLanguage) ?? .en
@@ -103,6 +126,7 @@ struct ContentView: View {
             Spacer(minLength: 0)
         }
         .padding(12)
+        .onAppear { autoRunOnAppear() }
         .onChange(of: agoraManager.remoteUsers.map { $0.uid }) { uids in
             if let current = selectedUid, uids.contains(current) {
                 return
@@ -352,6 +376,22 @@ struct ContentView: View {
     }
 
     // MARK: - Actions
+
+    // MARK: - 命令行自动化入口
+
+    private func autoRunOnAppear() {
+        if let ch = autoCfg.channel { channelId = ch }
+        if autoCfg.quitAfter > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(autoCfg.quitAfter)) {
+                NSApplication.shared.terminate(nil)
+            }
+        }
+        if autoCfg.join {
+            dumpEnabled = autoCfg.dump
+            agoraManager.log("[AutoRun] auto join: channel=\(channelId) dump=\(autoCfg.dump)")
+            joinButtonTapped()
+        }
+    }
 
     private func joinButtonTapped() {
         if agoraManager.isJoined {

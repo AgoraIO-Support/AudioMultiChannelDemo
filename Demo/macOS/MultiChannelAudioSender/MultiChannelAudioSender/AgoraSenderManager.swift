@@ -46,6 +46,8 @@ class AgoraSenderManager: NSObject, ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss.SSS"
         let line = "[\(formatter.string(from: Date()))] \(message)"
+        // stdout 镜像（无缓冲直写，重定向到文件也能实时落盘），便于命令行自动化采集日志
+        FileHandle.standardOutput.write(Data((line + "\n").utf8))
         DispatchQueue.main.async {
             self.logs.append(line)
             if self.logs.count > 1000 {
@@ -150,12 +152,9 @@ class AgoraSenderManager: NSObject, ObservableObject {
                 // samples 语义（官方 API-Examples CustomAudioSource）：全部声道的总样本数
                 // = 每声道样本数 × 声道数，与 Linux sendAudioPcmData 的每声道语义不同。
                 //
-                // 已知限制（2026-10-10 实测，AgoraRtcEngine_macOS 4.5.2 公开版）：
-                // push 输入管线最高按 2 声道读取——8ch 流协商正常（对端解出 8 声道），
-                // 但只有前 2 声道携带内容，3~8 声道静音；换 CMSampleBuffer 推入（ASBD 自描述
-                // 8ch）结论相同；`setExternalAudioSource(channels: 8)` 与私参
-                // `che.audio.input_channels: 8` 均返回 0 但不解除钳制。
-                // 多声道发送需 SDK 侧支持（同 Linux 定制版的做法）。
+                // 发送侧声道数钳制的版本实测（2026-10-12，本 app + Web 端逐声道音量峰值）：
+                // 4.5.2 输入管线最高按 2 声道读取（协商正常，但仅前 2 声道有内容，CH2+ 静音）；
+                // 4.6.0 / 4.6.2 / 4.7.0 已修复，8 声道内容全部送达。详见 README 版本实测矩阵。
                 let ret = pcm.withUnsafeBytes { raw -> Int32 in
                     kit.pushExternalAudioFrameRawData(
                         UnsafeMutableRawPointer(mutating: raw.baseAddress!.advanced(by: offset)),
