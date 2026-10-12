@@ -51,14 +51,6 @@ ffmpeg -y -i 8_Channel_ID_signed_16_bit_pcm.wav -af "channelmap=map=0|1|2|3|4|5|
 - 发送端日志：Linux WAV sender 正确解析奇数声道头（如 "Sample Rate: 48000, Channels: 3"）
   并循环发送；macOS sender 私参按素材自动映射（3→123、5→124、7→125 + custom_channel_num）。
 
-## 5. 结论
-
-1. **奇数声道（3/5/7）端到端互通在 Native（macOS）与 Linux 之间全部验证通过**，
-   包括混合方向（mac 发 linux 收、linux 发 mac 收）。
-2. 奇数声道的必要条件不变：发送端须设置 `che.audio.custom_channel_num`（本仓库 demo 自动处理）；
-   接收端免私参自适应解码；Linux 接收 sample 的 `--numOfChannels` 须与发送端一致。
-3. Web 端不能用于奇数声道验证：实测表现不是报错，而是按 N+1 偶数声道误解码且内容失真（§5）。
-
 ## 5. 反向验证：Web 端接收奇数声道流的实际表现（2026-10-12）
 
 方法：macOS sender 4.7.0 分别以 3/5/7 声道（内置 `odd_{3,5,7}ch.wav`，payload 123/124/125 +
@@ -87,8 +79,9 @@ playing；仅有的日志为 `user-published` 提示与备用 WebSocket 竞速�
    - 7ch：120 ms 采样 165/165 样本 CH6 == CH7（±2pp），含内容峰值 [80,80]、[74,74]，
      且内容时刻以 14.0 s 素材循环周期整倍复现（0.6~1.5 s 与 14.6~15.4 s 两段完全对应）；
    与「mono 子流复制为立体声对」一致；
-3. **听感吻合**：源素材只有 3 路内容，主观试听能听到 3 种不同声音——Web 的 CH0/CH1/CH2 对应源
-   CH0/CH1/CH2，CH3 只是 CH2 的复制品，所以"听 3 种、显示 4 路"。
+3. **听感吻合**：主观试听能听到 N 种不同声音、界面却显示 N+1 路——源素材只有 N 路内容，
+   Web 的 CH0…CH(N-1) 对应源 CH0…CH(N-1)，第 N+1 路只是末声道的复制品（3/5/7 三个用例均已
+   实测确认这一听感与显示的对应关系）。
 
 由此也解释了为什么 demo 界面会误判「多声道 ✓」：判定依据 `getVolumeLevels()` 数组长度（=解码输出
 声道数 4/6/8）与信令 channelCount（=payload 默认偶数声道数），两者都被误解码带偏。
@@ -97,7 +90,15 @@ playing；仅有的日志为 `user-published` 提示与备用 WebSocket 竞速�
 解码、内容失真（末声道被复制出幻影声道）、音量条全部有量、demo 误判为多声道 ✓**——结果完全不可信，
 奇数声道流切勿用 Web 端验证。这一表现比"直接报错"更危险，务必注意。
 
-## 6. 复现
+## 6. 结论
+
+1. **奇数声道（3/5/7）端到端互通在 Native（macOS）与 Linux 之间全部验证通过**，
+   包括混合方向（mac 发 linux 收、linux 发 mac 收）。
+2. 奇数声道的必要条件不变：发送端须设置 `che.audio.custom_channel_num`（本仓库 demo 自动处理）；
+   接收端免私参自适应解码；Linux 接收 sample 的 `--numOfChannels` 须与发送端一致。
+3. Web 端不能用于奇数声道验证：实测表现不是报错，而是按 N+1 偶数声道误解码且内容失真（§5）。
+
+## 7. 复现
 
 - macOS 发送/接收自动化：`MultiChannelAudioSender -autoChannel <ch> -autoUid 12345 -autoWavPath <素材> -autoJoin YES -autoPublish YES`；
   `MultiChannelAudioReceiver -autoChannel <ch> -autoJoin YES -autoDump YES -autoQuitAfter 50`。

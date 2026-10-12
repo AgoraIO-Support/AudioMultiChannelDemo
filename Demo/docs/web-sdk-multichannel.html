@@ -7,8 +7,8 @@
     data-title-zh="Web SDK 音频多声道（multiopus）文档"
     data-title-en="Web SDK Audio Multi-Channel (multiopus) Docs"
   >Web SDK 音频多声道（multiopus）文档</title>
-  <link rel="stylesheet" href="assets/style.css?v=0cb5b4a">
-  <meta name="build-id" content="0cb5b4a">
+  <link rel="stylesheet" href="assets/style.css?v=6e8dec3">
+  <meta name="build-id" content="6e8dec3">
   </head>
 <body>
   <header class="site-header">
@@ -85,7 +85,9 @@
       <p>
         <code>client.subscribe(user, "audio")</code> 成功后调用 <code>track.play()</code> 即按多声道解码播放。
         远端音轨的 <code>channelCount</code> 属性来自 <code>on_add_audio_stream</code> 信令中的 pt 值，
-        反映信令协商的声道数（4/6/8）。仅支持偶数声道解码。
+        反映信令协商的声道数（4/6/8）。仅支持偶数声道解码；3/5/7 奇数声道流不报错但会按
+        N+1 偶数声道误解码（末声道复制出幻影声道、音量条误判多声道 ✓），结果不可信
+        （2026-10-12 实测，见仓库 <code>Test/odd_channels_interop_test_20261012.md</code> §5）。
       </p>
 
       <h3>1.4 selectChannels 声道选择（三种模式）</h3>
@@ -385,7 +387,10 @@ await client.publish(track);</code></pre>
         After <code>client.subscribe(user, "audio")</code> succeeds, calling <code>track.play()</code>
         plays the stream decoded as multi-channel. The remote track's <code>channelCount</code> property
         comes from the pt value in the <code>on_add_audio_stream</code> signaling and reflects the
-        negotiated channel count (4/6/8). Only even channel counts can be decoded.
+        negotiated channel count (4/6/8). Only even channel counts can be decoded; a 3/5/7-channel
+        stream raises no error but is mis-decoded as the next even channel count (the last channel is
+        duplicated into a phantom one and the volume bars misjudge it as multi-channel ✓) — results are
+        untrustworthy (verified 2026-10-12, see <code>Test/odd_channels_interop_test_20261012.md</code> §5 in the repo).
       </p>
 
       <h3>1.4 selectChannels (three modes)</h3>
@@ -639,6 +644,6 @@ await client.publish(track);</code></pre>
     </div>
   </footer>
 
-  <script src="assets/i18n.js?v=0cb5b4a"></script>
+  <script src="assets/i18n.js?v=6e8dec3"></script>
 </body>
 </html>
