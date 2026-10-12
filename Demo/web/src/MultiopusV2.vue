@@ -79,6 +79,10 @@
         <n-button type="info" @click="cancelSubscribe" :disabled="!subscribed">
           {{ m.unsubscribe }}
         </n-button>
+        <span class="odd-fix-toggle" :title="m.oddFixHint">
+          <span>{{ m.oddFix }}</span>
+          <n-switch v-model:value="oddFixEnabled" size="small" />
+        </span>
       </div>
 
       <!-- 音量条：与 Live Demo 1 对齐（CH 标签 + 横条 + 百分比） -->
@@ -109,7 +113,8 @@ import type {
   IRemoteAudioTrack,
 } from "agora-rtc-sdk-ng";
 
-import { NButton, NInput, NInputNumber, useNotification } from "naive-ui";
+import { NButton, NInput, NInputNumber, NSwitch, useNotification } from "naive-ui";
+import { oddFixEnabled, patchOddChannelStream, unpatchOddChannelStream } from "./oddChannelFix";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 
 const notification = useNotification();
@@ -162,6 +167,11 @@ const messages = {
     publishFail: (msg: string) => `发布失败: ${msg}`,
     joinFail: (msg: string) => `加入频道失败: ${msg}`,
     subscribeFail: (msg: string) => `订阅失败: ${msg}`,
+    oddFix: "奇数声道补丁",
+    oddFixHint: "3/5/7 奇数声道流会被 SDK 误解码（多出一路幻影声道）；开启补丁可修正显示与播放。关闭可对比原始行为",
+    oddFixApplied: (trueN: number, decodedN: number) =>
+      `检测到奇数声道流：真实 ${trueN} 声道（SDK 误解码为 ${decodedN}），补丁已修正显示与播放`,
+    oddFixOff: "已关闭奇数声道补丁，恢复 SDK 原始（误解码）行为",
   },
   en: {
     appTitle: "Agora Multi-Channel Audio Demo",
@@ -201,6 +211,11 @@ const messages = {
     publishFail: (msg: string) => `Publish failed: ${msg}`,
     joinFail: (msg: string) => `Join failed: ${msg}`,
     subscribeFail: (msg: string) => `Subscribe failed: ${msg}`,
+    oddFix: "Odd-channel fix",
+    oddFixHint: "3/5/7-channel streams are mis-decoded by the SDK (one extra phantom channel). Enable the patch to correct display & playback; disable to compare with the raw behavior",
+    oddFixApplied: (trueN: number, decodedN: number) =>
+      `Odd-channel stream detected: true ${trueN} ch (SDK mis-decoded as ${decodedN}); display & playback corrected by patch`,
+    oddFixOff: "Odd-channel fix off — back to the raw (mis-decoded) SDK behavior",
   },
 };
 const m = computed(() => messages[locale.value]);
@@ -450,11 +465,32 @@ async function subscribe() {
   subscribed.value = true;
   subscribedUser = user;
 
+  // 奇数声道误解码修正补丁（开关关闭时跳过，用于对比验证；见 oddChannelFix.ts）
+  if (oddFixEnabled.value) {
+    void patchOddChannelStream(track, (r) => {
+      notification.warning({ title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels), duration: 5000 });
+    });
+  }
+
   window.clearInterval(volumeTimer);
   volumeTimer = window.setInterval(() => {
     if (remoteAudioTrack) volumes.value = remoteAudioTrack.getVolumeLevels();
   }, 300);
 }
+
+// 补丁开关实时切换：订阅中关掉立即撤销（恢复 SDK 原始行为）；打开则重新检测
+watch(oddFixEnabled, (on) => {
+  if (!subscribed.value || !remoteAudioTrack) return;
+  if (!on) {
+    if (unpatchOddChannelStream(remoteAudioTrack)) {
+      notification.info({ title: m.value.oddFixOff, duration: 3000 });
+    }
+  } else if (!(remoteAudioTrack as any).__oddFix) {
+    void patchOddChannelStream(remoteAudioTrack, (r) => {
+      notification.warning({ title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels), duration: 5000 });
+    });
+  }
+});
 
 async function cancelSubscribe() {
   if (!client) return;
@@ -560,6 +596,14 @@ onBeforeUnmount(() => {
     .operation {
       margin: 8px;
       padding: 8px;
+      .odd-fix-toggle {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #5a6069;
+      }
     }
     .content {
       display: flex;

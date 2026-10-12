@@ -26,7 +26,11 @@ See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
   SDK mis-decodes it as the next even channel count (the last channel is a duplicated phantom and the
   demo would show a false multi-channel ✓). The patch detects the "last two channels sample-identical"
   signature at runtime and, on hit, corrects the displayed channel count, `channelCount`, and the
-  playback output (dropping the phantom channel), with an on-page notification. See
+  playback output (dropping the phantom channel), with an on-page notification. **All three Live Demos
+  have an "Odd-channel fix" switch in the operation row** (on by default, shared and persisted across
+  the three pages): turning it off mid-subscription immediately reverts to the raw SDK behavior (N+1
+  bars with the identical phantom pair), turning it back on re-runs detection and re-applies the fix —
+  handy for side-by-side comparison. See
   `Test/odd_channels_interop_test_20261012.md` §5/§6 for the mechanism and limitations.
 - **Simultaneous video + multi-channel audio subscribe (Live Demo 3)**: open with `?demo=3`.
   Enter the channel, your uid (+token), and the target uid, then subscribe to the remote's

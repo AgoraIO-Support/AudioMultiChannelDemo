@@ -54,6 +54,10 @@
         >
         <n-button @click="unsubscribe" :disabled="!subscribed">{{ m.unsubscribe }}</n-button>
         <n-button @click="leaveChannel" :disabled="!joined || leaving">{{ m.leave }}</n-button>
+        <span class="odd-fix-toggle" :title="m.oddFixHint">
+          <span>{{ m.oddFix }}</span>
+          <n-switch v-model:value="oddFixEnabled" size="small" />
+        </span>
       </div>
 
       <!-- 声道选择（音频）：先订阅，再选择声道组合与渲染模式 -->
@@ -119,7 +123,8 @@ import type {
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
 
-import { NButton, NInput, useNotification } from "naive-ui";
+import { NButton, NInput, NSwitch, useNotification } from "naive-ui";
+import { oddFixEnabled, patchOddChannelStream, unpatchOddChannelStream } from "./oddChannelFix";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 
 const notification = useNotification();
@@ -180,6 +185,11 @@ const messages = {
     noAv: (uid: string) => `uid ${uid} 尚未发布音视频`,
     joinFail: (msg: string) => `加入频道失败: ${msg}`,
     subscribeFail: (msg: string) => `订阅失败: ${msg}`,
+    oddFix: "奇数声道补丁",
+    oddFixHint: "3/5/7 奇数声道流会被 SDK 误解码（多出一路幻影声道）；开启补丁可修正显示与播放。关闭可对比原始行为",
+    oddFixApplied: (trueN: number, decodedN: number) =>
+      `检测到奇数声道流：真实 ${trueN} 声道（SDK 误解码为 ${decodedN}），补丁已修正显示与播放`,
+    oddFixOff: "已关闭奇数声道补丁，恢复 SDK 原始（误解码）行为",
   },
   en: {
     appTitle: "Agora Video + Multi-Channel Audio Subscribe Demo",
@@ -227,6 +237,11 @@ const messages = {
     noAv: (uid: string) => `uid ${uid} has not published audio or video`,
     joinFail: (msg: string) => `Join failed: ${msg}`,
     subscribeFail: (msg: string) => `Subscribe failed: ${msg}`,
+    oddFix: "Odd-channel fix",
+    oddFixHint: "3/5/7-channel streams are mis-decoded by the SDK (one extra phantom channel). Enable the patch to correct display & playback; disable to compare with the raw behavior",
+    oddFixApplied: (trueN: number, decodedN: number) =>
+      `Odd-channel stream detected: true ${trueN} ch (SDK mis-decoded as ${decodedN}); display & playback corrected by patch`,
+    oddFixOff: "Odd-channel fix off — back to the raw (mis-decoded) SDK behavior",
   },
 };
 const m = computed(() => messages[locale.value]);
@@ -295,6 +310,25 @@ watch(myUid, (v) => localStorage.setItem("myUid", v));
 watch(token, (v) => localStorage.setItem("token", v));
 watch(targetUid, (v) => localStorage.setItem("targetUid", v));
 watch(appId, (v) => localStorage.setItem("appId", v));
+
+// 补丁开关实时切换：订阅中关掉立即撤销（恢复 SDK 原始行为用于对比）；打开则重新检测
+watch(oddFixEnabled, (on) => {
+  if (!audioSubscribed.value || !remoteAudioTrack) return;
+  if (!on) {
+    if (unpatchOddChannelStream(remoteAudioTrack)) {
+      remoteChannelCount.value = (remoteAudioTrack as any).channelCount || 0;
+      notification.info({ title: m.value.oddFixOff, duration: 3000 });
+    }
+  } else if (!(remoteAudioTrack as any).__oddFix) {
+    void patchOddChannelStream(remoteAudioTrack, (r) => {
+      notification.warning({
+        title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels),
+        duration: 5000,
+      });
+      remoteChannelCount.value = r.trueChannels;
+    });
+  }
+});
 
 // ---------------- 订阅端：同时订阅视频 + 多声道音频 ----------------
 let client: IAgoraRTCClient | null = null;
@@ -486,6 +520,13 @@ async function subscribeMedia(user: IAgoraRTCRemoteUser, mediaType: "audio" | "v
       (window as any).__mcRemoteTrack = audioTrack;
       audioTrack.play();
       audioSubscribed.value = true;
+      // 奇数声道误解码修正补丁（开关关闭时跳过，用于对比验证；见 oddChannelFix.ts）
+      if (oddFixEnabled.value) {
+        void patchOddChannelStream(audioTrack, (r) => {
+          notification.warning({ title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels), duration: 5000 });
+          remoteChannelCount.value = r.trueChannels;
+        });
+      }
       // channelCount 来自信令 pt 值（设计文档中的扩展属性，d.ts 未声明，运行时存在）。
       remoteChannelCount.value = (audioTrack as any).channelCount || 0;
 
@@ -749,6 +790,14 @@ onBeforeUnmount(() => {
     .operation {
       margin: 8px;
       padding: 8px;
+      .odd-fix-toggle {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #5a6069;
+      }
     }
 
     .content {

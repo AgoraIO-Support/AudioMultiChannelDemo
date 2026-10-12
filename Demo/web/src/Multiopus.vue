@@ -71,6 +71,10 @@
           >{{ m.subscribeCheck }}</n-button
         >
         <n-button @click="leaveChannel" :disabled="!joined || leaving">{{ m.leave }}</n-button>
+        <span class="odd-fix-toggle" :title="m.oddFixHint">
+          <span>{{ m.oddFix }}</span>
+          <n-switch v-model:value="oddFixEnabled" size="small" />
+        </span>
       </div>
 
       <!-- 声道选择：先订阅，再选择声道组合与渲染模式 -->
@@ -128,8 +132,8 @@ import type {
   IRemoteAudioTrack,
 } from "agora-rtc-sdk-ng";
 
-import { NButton, NInput, NSelect } from "naive-ui";
-import { patchOddChannelStream } from "./oddChannelFix";
+import { NButton, NInput, NSelect, NSwitch } from "naive-ui";
+import { oddFixEnabled, patchOddChannelStream, unpatchOddChannelStream } from "./oddChannelFix";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useNotification } from "naive-ui";
 
@@ -198,6 +202,9 @@ const messages = {
     subscribeFail: (msg: string) => `订阅失败: ${msg}`,
     oddFixApplied: (trueN: number, decodedN: number) =>
       `检测到奇数声道流：真实 ${trueN} 声道（SDK 误解码为 ${decodedN}），补丁已修正显示与播放`,
+    oddFix: "奇数声道补丁",
+    oddFixHint: "3/5/7 奇数声道流会被 SDK 误解码（多出一路幻影声道）；开启补丁可修正显示与播放。关闭可对比原始行为",
+    oddFixOff: "已关闭奇数声道补丁，恢复 SDK 原始（误解码）行为",
   },
   en: {
     appTitle: "Agora Multi-Channel Audio Demo",
@@ -251,6 +258,9 @@ const messages = {
     subscribeFail: (msg: string) => `Subscribe failed: ${msg}`,
     oddFixApplied: (trueN: number, decodedN: number) =>
       `Odd-channel stream detected: true ${trueN} ch (SDK mis-decoded as ${decodedN}); display & playback corrected by patch`,
+    oddFix: "Odd-channel fix",
+    oddFixHint: "3/5/7-channel streams are mis-decoded by the SDK (one extra phantom channel). Enable the patch to correct display & playback; disable to compare with the raw behavior",
+    oddFixOff: "Odd-channel fix off — back to the raw (mis-decoded) SDK behavior",
   },
 };
 const m = computed(() => messages[locale.value]);
@@ -602,15 +612,17 @@ async function subscribe() {
   remoteChannelCount.value = (track as any).channelCount || 0;
 
   // 奇数声道流修正补丁（不改 SDK 文件，见 src/oddChannelFix.ts 与
-  // Test/odd_channels_interop_test_20261012.md §5）：检测「末两声道恒等」的幻影签名，
-  // 命中后修正音量显示声道数、channelCount 与播放输出
-  void patchOddChannelStream(track, (r) => {
-    notification.warning({
-      title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels),
-      duration: 5000,
+  // Test/odd_channels_interop_test_20261012.md §5/§6）：检测「末两声道恒等」的幻影签名，
+  // 命中后修正音量显示声道数、channelCount 与播放输出；开关关闭时跳过（用于对比验证）
+  if (oddFixEnabled.value) {
+    void patchOddChannelStream(track, (r) => {
+      notification.warning({
+        title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels),
+        duration: 5000,
+      });
+      remoteChannelCount.value = r.trueChannels;
     });
-    remoteChannelCount.value = r.trueChannels;
-  });
+  }
 
   // 每 300ms 取一次各声道音量；数组长度 = 声道数，是判定多声道的主信号。
   // channelCount 在 subscribe resolve 时可能尚未就绪，随音量轮询一并刷新。
@@ -636,6 +648,26 @@ async function subscribe() {
     void detectCodec();
   }, 800);
 }
+
+// 补丁开关实时切换：订阅中关掉 → 立即撤销补丁（恢复 SDK 原始行为用于对比）；
+// 订阅中打开 → 重新跑检测，命中即修正。未订阅时只影响下一次订阅。
+watch(oddFixEnabled, (on) => {
+  if (!subscribed.value || !remoteAudioTrack) return;
+  if (!on) {
+    if (unpatchOddChannelStream(remoteAudioTrack)) {
+      remoteChannelCount.value = (remoteAudioTrack as any).channelCount || 0;
+      notification.info({ title: m.value.oddFixOff, duration: 3000 });
+    }
+  } else if (!(remoteAudioTrack as any).__oddFix) {
+    void patchOddChannelStream(remoteAudioTrack, (r) => {
+      notification.warning({
+        title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels),
+        duration: 5000,
+      });
+      remoteChannelCount.value = r.trueChannels;
+    });
+  }
+});
 
 // 声道选择：对远端多声道音轨选择任意声道组合，按 surround/stereo/mono 渲染。
 // stereo：所选声道里 0,2,4,6… 入左、1,3,5,7… 入右；mono：全部混为单声道（立体声容器）。
@@ -795,6 +827,14 @@ onBeforeUnmount(() => {
     .operation {
       margin: 8px;
       padding: 8px;
+      .odd-fix-toggle {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-secondary, #5a6069);
+      }
     }
 
     .content {

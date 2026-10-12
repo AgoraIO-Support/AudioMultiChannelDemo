@@ -15,6 +15,12 @@
 // 对 Channel ID 系列逐声道可辨素材不会误判。补丁只对当次订阅生效，unpublish 后随 track 销毁。
 
 import type { IRemoteAudioTrack } from "agora-rtc-sdk-ng";
+import { ref, watch } from "vue";
+
+// ---------------- 补丁开关（三个 Live Demo 共用，localStorage 持久化） ----------------
+// 默认开启；关闭后恢复 SDK 原始（误）行为，便于集成方做对比验证。
+export const oddFixEnabled = ref(localStorage.getItem("oddFixEnabled") !== "0");
+watch(oddFixEnabled, (v) => localStorage.setItem("oddFixEnabled", v ? "1" : "0"));
 
 export interface OddFixResult {
   /** 是否检测到并修正了奇数声道流 */
@@ -94,7 +100,7 @@ export function patchOddChannelStream(
       const decodedChannels = tr.channelCount;
       const trueChannels = decodedChannels - 1;
 
-      // ① 显示修正：去掉幻影末声道
+      // ① 显示修正：去掉幻影末声道（原函数留在 track.__oddFix 供撤销）
       const origGetVolumeLevels = track.getVolumeLevels.bind(track);
       (track as unknown as { getVolumeLevels: (channels?: number[]) => number[] }).getVolumeLevels =
         (channels?: number[]) => {
@@ -110,9 +116,34 @@ export function patchOddChannelStream(
         /* 老链路无 transformer 时忽略 */
       }
 
+      // 记录撤销所需的原始状态（供开关关闭时恢复 SDK 原始行为）
+      (track as unknown as { __oddFix?: unknown }).__oddFix = {
+        origGetVolumeLevels,
+        decodedChannels,
+      };
+
       const r = { fixed: true, trueChannels, decodedChannels };
       onFixed?.(r);
       resolve(r);
     }, 100);
   });
+}
+
+/** 撤销补丁（开关关闭时调用）：恢复 SDK 原始（误）行为，便于对比验证。返回是否确有撤销。 */
+export function unpatchOddChannelStream(track: IRemoteAudioTrack): boolean {
+  const st = (track as unknown as { __oddFix?: {
+    origGetVolumeLevels: (channels?: number[]) => number[];
+    decodedChannels: number;
+  } }).__oddFix;
+  if (!st) return false;
+  track.getVolumeLevels = st.origGetVolumeLevels;
+  (track as unknown as TrackInternals).channelCount = st.decodedChannels;
+  try {
+    // 恢复播放全部解码声道（含幻影末声道，即 SDK 原始行为）
+    track.selectChannels(Array.from({ length: st.decodedChannels }, (_, i) => i), "surround");
+  } catch {
+    /* 忽略 */
+  }
+  delete (track as unknown as { __oddFix?: unknown }).__oddFix;
+  return true;
 }
