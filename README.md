@@ -14,7 +14,7 @@
 ## 声道数支持说明
 
 - Linux SDK（Native 同）：支持 3/4/5/6/7/8 声道收发；3/5/7 需额外设置私参 `che.audio.custom_channel_num`（本仓库 demo 已按声道数自动处理）。
-- Web 验证端：仅支持 4/6/8 偶数声道解码。Linux 发送的 3/5/7 声道流 Web 端无法解码（解码器未实现奇数声道的 Opus 多流配置），`selectChannels` 等声道选择能力也随之不可用。
+- Web 验证端：仅支持 4/6/8 偶数声道解码。3/5/7 奇数声道流在 Web 端**不报错但会被误解码**：按 N+1 偶数声道配置解码（mono 子流当 stereo 解，末声道内容复制出幻影声道），音量条全有量且误判「多声道 ✓」，结果不可信（2026-10-12 实测，见 `Test/odd_channels_interop_test_20261012.md` §5）；`selectChannels` 等声道选择能力对奇数声道流同样不可用。
 - 实际互通验证：Web↔Native、Web↔Linux 覆盖 4/6/8 声道；3/5/7 奇数声道已于 2026-10-12 在 Native↔Linux 全链路实测通过（Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux，逐声道内容正确且同序号，见 `Test/odd_channels_interop_test_20261012.md`）。
 - 若 3/5/7 声道内容需要触达 Web 端，建议发送端补一路静音声道凑成偶数声道（3→4、5→6、7→8）后发送，Web 端忽略该静音声道即可。
 - 逐声道收听验证端：Web 用 `Demo/web/`（仅偶数声道）；Native/macOS 用 `Demo/macOS/` 接收 app（基于私参 `che.audio.neteq.adjust_decoded_volume` 逐声道开关与音量，Native 自适应解码，含 3/5/7）。

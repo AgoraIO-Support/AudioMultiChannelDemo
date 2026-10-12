@@ -50,8 +50,11 @@ created has no effect).
   (a workaround for Chrome WebAudio bug 1116042).
 - **Safari / Firefox are not supported**: joining a multi-channel channel has undefined behavior
   (possibly silence or stereo only).
-- **Even channel counts only**: the Web side decodes 4/6/8 channels (3/5/7 do not apply; 16 or
-  more channels are not supported).
+- **Even channel counts only**: the Web side decodes 4/6/8 channels. A 3/5/7-channel stream raises no
+  error but is **mis-decoded** as the next even channel count (the odd mono substream is read as stereo,
+  duplicating the last channel into a phantom one, and the demo even misjudges it as multi-channel ✓) —
+  results are untrustworthy (verified 2026-10-12, see `Test/odd_channels_interop_test_20261012.md` §5);
+  16 or more channels are not supported.
 - Node.js 18+ (for local development).
 
 ## Install and Run

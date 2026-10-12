@@ -2,7 +2,8 @@
 
 > 日期：2026-10-12
 > 结论：**3/5/7 奇数声道在 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四条链路全部互通，
-> 逐声道内容正确且与源素材同序号对应（12/12 通过）**。Web 端不参与（Web 仅支持 4/6/8 偶数声道解码）。
+> 逐声道内容正确且与源素材同序号对应（12/12 通过）**。Web 端不能作为奇数声道的验证端——实测不报错、
+> 但会按 N+1 偶数声道配置误解码，内容失真且界面误判为多声道（详见 §5 反向验证）。
 
 ## 1. 测试范围
 
@@ -56,7 +57,32 @@ ffmpeg -y -i 8_Channel_ID_signed_16_bit_pcm.wav -af "channelmap=map=0|1|2|3|4|5|
    包括混合方向（mac 发 linux 收、linux 发 mac 收）。
 2. 奇数声道的必要条件不变：发送端须设置 `che.audio.custom_channel_num`（本仓库 demo 自动处理）；
    接收端免私参自适应解码；Linux 接收 sample 的 `--numOfChannels` 须与发送端一致。
-3. Web 端仍仅限 4/6/8 偶数声道（不参与本轮）。
+3. Web 端不能用于奇数声道验证：实测表现不是报错，而是按 N+1 偶数声道误解码且内容失真（§5）。
+
+## 5. 反向验证：Web 端接收奇数声道流的实际表现（2026-10-12）
+
+方法：macOS sender 4.7.0 分别以 3/5/7 声道（内置 `odd_{3,5,7}ch.wav`，payload 123/124/125 +
+`custom_channel_num`）发布，Web demo（Chrome，agora-rtc-sdk-ng 4.20.1-200 + `ENABLE_MULTIOPUS_CODEC`）
+订阅并采样 `getVolumeLevels()` 15 s。
+
+| 发送 | 订阅 | codec 判定 | 信令 channelCount | `getVolumeLevels()` 15 s 峰值 | demo 界面判定 |
+| --- | --- | --- | --- | --- | --- |
+| 3ch（源 CH0-2 有内容） | 成功 | multiopus | **4** | [83, 78, 79, 79]（4 路全有内容） | 「4 声道 → 多声道 ✓」（误判） |
+| 5ch（源 CH0-4 有内容） | 成功 | multiopus | **6** | [78, 78, 79, 85, 76, 76]（6 路全有内容） | 「6 声道 → 多声道 ✓」（误判） |
+| 7ch（源 CH0-6 有内容） | 成功 | multiopus | **8** | [79, 74, 77, 84, 78, 78, 76, 76]（8 路全有内容） | 「8 声道 → 多声道 ✓」（误判） |
+
+**报错情况**：控制台无任何订阅/解码错误——`subscribe success`、远端音轨创建、audio element 正常进入
+playing；仅有的日志为 `user-published` 提示与备用 WebSocket 竞速关闭等无害信息。截图：
+`Test/web_recv_odd7ch_from_macos_20261012.png`。
+
+**机制分析（与证据吻合）**：Web 解码器只实现了偶数声道 Opus 多流配置，按 payload type 的默认偶数
+声道数去解（123→4、124→6、125→8）。奇数声道 OPUSMC 的最后一个 mono 子流被当作 coupled stereo 解，
+其内容被复制到两个输出声道——3ch 时间线中 CH2/CH3 在同一秒同步出现等量内容（75%/75%），与
+「mono 当 stereo 解」一致；源素材中不存在的第 N+1 个声道因此也出现内容级音量。
+
+**结论修订**：旧文档表述「Web 端无法解码奇数声道」不够准确。实测为：**不报错、按 N+1 偶数声道
+解码、内容失真（末声道被复制出幻影声道）、音量条全部有量、demo 误判为多声道 ✓**——结果完全不可信，
+奇数声道流切勿用 Web 端验证。这一表现比"直接报错"更危险，务必注意。
 
 ## 6. 复现
 
