@@ -1,3 +1,0 @@
-# v4.4.30.130_verified0805目录下，即/agora_rtc_sdk/example/multiopus/ 这个子目录下，有多声道的相关测试代码
-# 0715_v4.2.32 目录下，即/example/multiopus/ 这个子目录下，有多声道的相关测试代码。
-# 同级目录下，sample_send_opus8.cpp 这个文件，相关的音频测试文件，是8ch_2.opus
