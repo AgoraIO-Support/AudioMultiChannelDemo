@@ -32,7 +32,10 @@
   `che.audio.custom_payload_type` / `custom_channel_num` / `custom_sample_rate`）。
 - 接收验证端（二者可同频道并行）：
   - Web 验证 demo（`Demo/web`，agora-rtc-sdk-ng 4.20.1-200，`ENABLE_MULTIOPUS_CODEC` 开启），
-    Chrome 订阅后读 `getVolumeLevels()` 逐声道音量 + getStats codec；
+    Chrome 订阅后读 `getVolumeLevels()` 逐声道音量 + getStats codec。**仅适用于 4/6/8 偶数声道流**——
+    奇数声道流在 Web 端不报错但被误解码为 N+1 声道（SDK 的 multiopus 声道表写死为偶数
+    `4 + 2 * t`，SDP fmtp 与拆声道数同源于该表；浏览器解码器本身无问题），结果不可信
+    （见 `Test/odd_channels_interop_test_20261012.md` §5）。本文所有版本回归均为偶数声道，不受影响；
   - macOS 接收端 `Demo/macOS/MultiChannelAudioReceiver`（观众角色，开 `che.audio.frame_dump`
     落盘解码后 PCM，供离线逐声道核对）。
 - 凭证：App ID `43f818097c124394821bd44598b7ca9d`（无证书，token 留空）；
@@ -151,7 +154,9 @@ dump 文件 `~/Library/Logs/audio_dump_playback_before_mixed_0_2026_10_12_112900
 即 §4 的原生互通验证：接收、解码、逐声道私参下发与 dump 全链路通过，dump 八声道齐全且
 声道顺序 1:1。4.5.3 / 4.6.0 / 4.6.2 未单独回归 Native 接收（发送回归中 Web 端解码均正常）。
 另：3/5/7 奇数声道互通（含 macOS 收发两侧）已于同日下午实测通过，见
-`Test/odd_channels_interop_test_20261012.md`。
+`Test/odd_channels_interop_test_20261012.md`；其 §5 同时记录了 Web 端接收奇数声道流的误解码行为
+与代码级根因（Web SDK 的 multiopus 声道表写死为偶数 `4 + 2 * t`，SDP fmtp 与拆声道数同源于该表，
+非浏览器问题）。
 
 ## 6. 4.5.2 发送侧问题回顾（已闭环）
 

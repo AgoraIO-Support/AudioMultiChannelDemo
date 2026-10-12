@@ -7,8 +7,8 @@
     data-title-zh="Web SDK 音频多声道（multiopus）文档"
     data-title-en="Web SDK Audio Multi-Channel (multiopus) Docs"
   >Web SDK 音频多声道（multiopus）文档</title>
-  <link rel="stylesheet" href="assets/style.css?v=2e9f377">
-  <meta name="build-id" content="2e9f377">
+  <link rel="stylesheet" href="assets/style.css?v=f676866">
+  <meta name="build-id" content="f676866">
   </head>
 <body>
   <header class="site-header">
@@ -88,6 +88,9 @@
         反映信令协商的声道数（4/6/8）。仅支持偶数声道解码；3/5/7 奇数声道流不报错但会按
         N+1 偶数声道误解码（末声道复制出幻影声道、音量条误判多声道 ✓），结果不可信
         （2026-10-12 实测，见仓库 <code>Test/odd_channels_interop_test_20261012.md</code> §5）。
+        代码级根因：SDK 的 multiopus 声道表写死为偶数（<code>4 + 2 * t</code>），
+        SDP fmtp 与拆声道数量都查该表——浏览器（Chrome 内置 multi-channel opus 解码器）只是按
+        错误声明忠实解码。修复需 SDK 按流的真实配置生成/使用 fmtp，而非查偶数表。
       </p>
 
       <h3>1.4 selectChannels 声道选择（三种模式）</h3>
@@ -314,6 +317,10 @@ await client.publish(track);</code></pre>
         <li><code>encodingParameters</code> 为协商的声道数（4/6/8）。</li>
         <li><code>coupled_streams</code> 表示“两个声道编码为一条流”的流数量；<code>num_streams</code> 为总流数；总声道数 = <code>coupled_streams</code> + <code>num_streams</code>。</li>
         <li><code>channel_mapping</code> 为编码声道到输出声道的映射；当前 3~8 声道均为顺序映射 <code>0,1,2,…</code>。</li>
+        <li><strong>已知限制（2026-10-12 源码确认）</strong>：SDK 的 multiopus 声道表只含偶数声道
+          （<code>4 + 2 * t</code> → 4/6/8），fmtp 的 <code>coupled_streams</code>/<code>num_streams</code> 均按该表生成。
+          收到 3/5/7 奇数声道流时 SDP 声明与实际流不符，浏览器按错误配置解码，末声道被复制出幻影声道
+          （详见 <code>Test/odd_channels_interop_test_20261012.md</code> §5）。</li>
         <li>
           声道选择没有使用 WebAudio，而是基于 Insertable Streams（<code>MediaStreamTrackProcessor / MediaStreamTrackGenerator</code>）实现，
           以绕开 Chrome WebAudio 在多声道输出上的缺陷（<a href="https://bugs.chromium.org/p/chromium/issues/detail?id=1116042" target="_blank" rel="noopener">chromium issue 1116042</a>）。
@@ -391,6 +398,11 @@ await client.publish(track);</code></pre>
         stream raises no error but is mis-decoded as the next even channel count (the last channel is
         duplicated into a phantom one and the volume bars misjudge it as multi-channel ✓) — results are
         untrustworthy (verified 2026-10-12, see <code>Test/odd_channels_interop_test_20261012.md</code> §5 in the repo).
+        Root cause at code level: the SDK's multiopus channel table is hardcoded to even counts
+        (<code>4 + 2 * t</code>), and both the SDP fmtp and the frame-splitting count are derived from it —
+        the browser (Chrome's built-in multi-channel opus decoder) simply decodes faithfully per the
+        wrong declaration. The fix belongs to the SDK: use the stream's real configuration instead of
+        the even-count table.
       </p>
 
       <h3>1.4 selectChannels (three modes)</h3>
@@ -628,6 +640,12 @@ await client.publish(track);</code></pre>
         <li><code>encodingParameters</code> is the negotiated channel count (4/6/8).</li>
         <li><code>coupled_streams</code> is the number of streams that encode two channels together; <code>num_streams</code> is the total stream count. Total channels = <code>coupled_streams</code> + <code>num_streams</code>.</li>
         <li><code>channel_mapping</code> maps encoded channels to output channels; for current 3–8 channel configurations it is the sequential mapping <code>0,1,2,…</code>.</li>
+        <li><strong>Known limitation (confirmed from source code, 2026-10-12)</strong>: the SDK's multiopus
+          channel table contains only even counts (<code>4 + 2 * t</code> → 4/6/8), and the fmtp
+          <code>coupled_streams</code>/<code>num_streams</code> are generated from that table. For 3/5/7-channel
+          streams the SDP declaration mismatches the actual stream; the browser decodes per the wrong
+          configuration and the last channel gets duplicated into a phantom one (see
+          <code>Test/odd_channels_interop_test_20261012.md</code> §5).</li>
         <li>
           Channel selection is not implemented with WebAudio, but with Insertable Streams
           (<code>MediaStreamTrackProcessor / MediaStreamTrackGenerator</code>) to work around a Chrome
@@ -644,6 +662,6 @@ await client.publish(track);</code></pre>
     </div>
   </footer>
 
-  <script src="assets/i18n.js?v=2e9f377"></script>
+  <script src="assets/i18n.js?v=f676866"></script>
 </body>
 </html>
