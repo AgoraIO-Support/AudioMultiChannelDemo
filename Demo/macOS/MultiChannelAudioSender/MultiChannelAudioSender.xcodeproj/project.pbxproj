@@ -7,52 +7,56 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		03E2FAECF3BE03906454398B /* Pods_MultiChannelAudioSender.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EDCA4D2E0FA12D2B62156BC /* Pods_MultiChannelAudioSender.framework */; };
+		0C02F32C123840FE0B34B16C /* odd_7ch.wav in Resources */ = {isa = PBXBuildFile; fileRef = 26030A7024AE618835856C61 /* odd_7ch.wav */; };
+		0F2992E2266C1068D50C03F3 /* odd_5ch.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0ACA0ADC4C8ADD8459E280D3 /* odd_5ch.wav */; };
 		2C67688DF3FBB30AA08B138A /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84D20B19FFE1BFAD24353A7F /* L10n.swift */; };
 		38E0A0822CEB9C973017B7DD /* 4_Channel_ID_48k.wav in Resources */ = {isa = PBXBuildFile; fileRef = BB91C152F0250B1B53D5348C /* 4_Channel_ID_48k.wav */; };
+		3F003856D4314ABE93460FE7 /* odd_3ch.wav in Resources */ = {isa = PBXBuildFile; fileRef = CFA81043C34F5FAF0B4C47E9 /* odd_3ch.wav */; };
 		71BABBC56CA97B74A71655F9 /* MultiChannelAudioSenderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECF92965F83263EDBFD518E /* MultiChannelAudioSenderApp.swift */; };
 		7F15D94DE4BC6F9ED0316C73 /* AgoraSenderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9A98E22CE9952ADFBBB487 /* AgoraSenderManager.swift */; };
 		8BEB4E2A12A6A790B6982AB6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86C16E7DDF69C3DAC8FB79DF /* ContentView.swift */; };
 		8EE4D1AE72E5372329CA1DA7 /* WavReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2764CA15FCF8E8EB930C1D3 /* WavReader.swift */; };
 		A430194996E6EC1F37873E43 /* 6_Channel_ID_48k.wav in Resources */ = {isa = PBXBuildFile; fileRef = 26652E99FB4E32ABBA4D506D /* 6_Channel_ID_48k.wav */; };
+		E9914EDDDB04847C41CC6ED0 /* Pods_MultiChannelAudioSender.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 96DECB36A4F7F4F89BA38B63 /* Pods_MultiChannelAudioSender.framework */; };
 		F7241D7D4FB10930D72F42D2 /* 8_Channel_ID_signed_16_bit_pcm.wav in Resources */ = {isa = PBXBuildFile; fileRef = BC34E0AFE2C451B1F38D407E /* 8_Channel_ID_signed_16_bit_pcm.wav */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0ACA0ADC4C8ADD8459E280D3 /* odd_5ch.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = odd_5ch.wav; sourceTree = "<group>"; };
+		26030A7024AE618835856C61 /* odd_7ch.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = odd_7ch.wav; sourceTree = "<group>"; };
 		26652E99FB4E32ABBA4D506D /* 6_Channel_ID_48k.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 6_Channel_ID_48k.wav; sourceTree = "<group>"; };
-		7C6D9DEE71D26EC2FB5A5D59 /* Pods-MultiChannelAudioSender.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MultiChannelAudioSender.debug.xcconfig"; path = "Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender.debug.xcconfig"; sourceTree = "<group>"; };
-		7EDCA4D2E0FA12D2B62156BC /* Pods_MultiChannelAudioSender.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_MultiChannelAudioSender.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		815183802B36113C98956C24 /* Pods-MultiChannelAudioSender.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MultiChannelAudioSender.release.xcconfig"; path = "Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender.release.xcconfig"; sourceTree = "<group>"; };
 		84D20B19FFE1BFAD24353A7F /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
 		86C16E7DDF69C3DAC8FB79DF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		B40FBF307D649D0F56A83436 /* Pods-MultiChannelAudioSender.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MultiChannelAudioSender.release.xcconfig"; path = "Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender.release.xcconfig"; sourceTree = "<group>"; };
+		96DECB36A4F7F4F89BA38B63 /* Pods_MultiChannelAudioSender.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_MultiChannelAudioSender.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		99D8184E21DAAC60C590DB8C /* Pods-MultiChannelAudioSender.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MultiChannelAudioSender.debug.xcconfig"; path = "Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender.debug.xcconfig"; sourceTree = "<group>"; };
 		BB91C152F0250B1B53D5348C /* 4_Channel_ID_48k.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 4_Channel_ID_48k.wav; sourceTree = "<group>"; };
 		BC34E0AFE2C451B1F38D407E /* 8_Channel_ID_signed_16_bit_pcm.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 8_Channel_ID_signed_16_bit_pcm.wav; sourceTree = "<group>"; };
 		CECF92965F83263EDBFD518E /* MultiChannelAudioSenderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiChannelAudioSenderApp.swift; sourceTree = "<group>"; };
+		CFA81043C34F5FAF0B4C47E9 /* odd_3ch.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = odd_3ch.wav; sourceTree = "<group>"; };
 		D1535BC4C50E06BF8F3930EF /* MultiChannelAudioSender.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MultiChannelAudioSender.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DF9A98E22CE9952ADFBBB487 /* AgoraSenderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgoraSenderManager.swift; sourceTree = "<group>"; };
 		E2764CA15FCF8E8EB930C1D3 /* WavReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WavReader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		98340EFEE3B3D1D2D86E8CF4 /* Frameworks */ = {
+		0665D8A35495CA906FBC0DCD /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				03E2FAECF3BE03906454398B /* Pods_MultiChannelAudioSender.framework in Frameworks */,
+				E9914EDDDB04847C41CC6ED0 /* Pods_MultiChannelAudioSender.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		34166D0EFB2778837AD5787D /* Pods */ = {
+		3EBF3FE83A16EB53D72C8560 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				7C6D9DEE71D26EC2FB5A5D59 /* Pods-MultiChannelAudioSender.debug.xcconfig */,
-				B40FBF307D649D0F56A83436 /* Pods-MultiChannelAudioSender.release.xcconfig */,
+				96DECB36A4F7F4F89BA38B63 /* Pods_MultiChannelAudioSender.framework */,
 			);
-			name = Pods;
-			path = Pods;
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		8C2CB3559162AA0100A6463D /* Resources */ = {
@@ -61,6 +65,9 @@
 				BB91C152F0250B1B53D5348C /* 4_Channel_ID_48k.wav */,
 				26652E99FB4E32ABBA4D506D /* 6_Channel_ID_48k.wav */,
 				BC34E0AFE2C451B1F38D407E /* 8_Channel_ID_signed_16_bit_pcm.wav */,
+				CFA81043C34F5FAF0B4C47E9 /* odd_3ch.wav */,
+				0ACA0ADC4C8ADD8459E280D3 /* odd_5ch.wav */,
+				26030A7024AE618835856C61 /* odd_7ch.wav */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -77,14 +84,6 @@
 			path = MultiChannelAudioSender;
 			sourceTree = "<group>";
 		};
-		999B2A3F1D4D48839C8D8AE4 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				7EDCA4D2E0FA12D2B62156BC /* Pods_MultiChannelAudioSender.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		AF542B12BB829E205158A385 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -93,14 +92,24 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		D1CD5430B81B6AF2EAA019DA /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				99D8184E21DAAC60C590DB8C /* Pods-MultiChannelAudioSender.debug.xcconfig */,
+				815183802B36113C98956C24 /* Pods-MultiChannelAudioSender.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		E39C1FA2F6F9E2490B8249F2 = {
 			isa = PBXGroup;
 			children = (
 				91C1DC9D726A07C525378C7B /* MultiChannelAudioSender */,
 				8C2CB3559162AA0100A6463D /* Resources */,
 				AF542B12BB829E205158A385 /* Products */,
-				34166D0EFB2778837AD5787D /* Pods */,
-				999B2A3F1D4D48839C8D8AE4 /* Frameworks */,
+				D1CD5430B81B6AF2EAA019DA /* Pods */,
+				3EBF3FE83A16EB53D72C8560 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -111,11 +120,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = AD0AE99461CE4A61576D6A76 /* Build configuration list for PBXNativeTarget "MultiChannelAudioSender" */;
 			buildPhases = (
-				EC53547239A7DBDA3341B749 /* [CP] Check Pods Manifest.lock */,
+				4A2586F578ED58B772C7AE40 /* [CP] Check Pods Manifest.lock */,
 				CE2DC4E30E3F92BE47664819 /* Sources */,
 				D714230C4D715C36B749E80C /* Resources */,
-				98340EFEE3B3D1D2D86E8CF4 /* Frameworks */,
-				78DA24935030DD30A2B240B5 /* [CP] Embed Pods Frameworks */,
+				0665D8A35495CA906FBC0DCD /* Frameworks */,
+				8C661E098AFA0FA1E1DFBD74 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -164,30 +173,16 @@
 				38E0A0822CEB9C973017B7DD /* 4_Channel_ID_48k.wav in Resources */,
 				A430194996E6EC1F37873E43 /* 6_Channel_ID_48k.wav in Resources */,
 				F7241D7D4FB10930D72F42D2 /* 8_Channel_ID_signed_16_bit_pcm.wav in Resources */,
+				3F003856D4314ABE93460FE7 /* odd_3ch.wav in Resources */,
+				0F2992E2266C1068D50C03F3 /* odd_5ch.wav in Resources */,
+				0C02F32C123840FE0B34B16C /* odd_7ch.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		78DA24935030DD30A2B240B5 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		EC53547239A7DBDA3341B749 /* [CP] Check Pods Manifest.lock */ = {
+		4A2586F578ED58B772C7AE40 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -207,6 +202,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		8C661E098AFA0FA1E1DFBD74 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-MultiChannelAudioSender/Pods-MultiChannelAudioSender-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -291,7 +303,7 @@
 		};
 		1993286F4A2562E58012926B /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7C6D9DEE71D26EC2FB5A5D59 /* Pods-MultiChannelAudioSender.debug.xcconfig */;
+			baseConfigurationReference = 99D8184E21DAAC60C590DB8C /* Pods-MultiChannelAudioSender.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;
@@ -314,7 +326,7 @@
 		};
 		AEE512E21723176C5F1716EF /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B40FBF307D649D0F56A83436 /* Pods-MultiChannelAudioSender.release.xcconfig */;
+			baseConfigurationReference = 815183802B36113C98956C24 /* Pods-MultiChannelAudioSender.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;

@@ -15,10 +15,12 @@
 
 - **主播发布**：`.liveBroadcasting` + broadcaster 角色加入，`disableVideo()`，不发布麦克风/摄像头，
   通过 `publishCustomAudioTrack` 发布自定义音轨。
-- **内置素材**：`Resources/` 内置三个 Channel ID 素材（各声道内容可区分，来自 `Demo/linux/public/`）：
+- **内置素材**：`Resources/` 内置六个素材（各声道内容可区分，来自 `Demo/linux/public/`）：
   - `8_Channel_ID_signed_16_bit_pcm.wav`（8ch，payload 125）
   - `6_Channel_ID_48k.wav`（6ch，payload 124）
   - `4_Channel_ID_48k.wav`（4ch，payload 123）
+  - `odd_3ch.wav` / `odd_5ch.wav` / `odd_7ch.wav`（3/5/7 奇数声道，payload 123/124/125 + `custom_channel_num`，
+    由 8ch 素材经 ffmpeg channelmap 截取生成）
 - **WAV 解析**：极简 RIFF 解析（`WavReader.swift`），支持 PCM（format=1）与
   WAVE_FORMAT_EXTENSIBLE（format=0xFFFE，读取 SubFormat GUID 判定 PCM）；仅接受 48 kHz / 16bit，
   其他格式在加载时报错（与 Linux WAV sender 同口径）。
@@ -65,7 +67,7 @@ xcodebuild -workspace MultiChannelAudioSender.xcworkspace \
     -autoJoin YES -autoPublish YES -autoQuitAfter 300
 ```
 
-- `autoWav`：素材下标（0=8ch, 1=6ch, 2=4ch）；`autoWavPath`：自定义 WAV 文件路径（优先于 autoWav，
+- `autoWav`：素材下标（0=8ch, 1=6ch, 2=4ch, 3=3ch, 4=5ch, 5=7ch）；`autoWavPath`：自定义 WAV 文件路径（优先于 autoWav，
   须 48 kHz / 16bit / 1~8 声道）；`autoJoin`/`autoPublish`：启动后自动加入并在 join 成功后自动发布；
   `autoQuitAfter`：秒数，>0 时到点自动退出。
 - `autoUid` 仅接受数字；非法值（非数字）静默回退为 0（自动分配 uid）。

@@ -23,6 +23,8 @@ English / 中文, defaults to English; switch via the Language picker at the top
   - `8_Channel_ID_signed_16_bit_pcm.wav` (8ch, payload 125)
   - `6_Channel_ID_48k.wav` (6ch, payload 124)
   - `4_Channel_ID_48k.wav` (4ch, payload 123)
+  - `odd_3ch.wav` / `odd_5ch.wav` / `odd_7ch.wav` (3/5/7 odd channels, payload 123/124/125
+    plus `custom_channel_num`; cut from the 8ch asset via ffmpeg channelmap)
 - **WAV parsing**: minimal RIFF parser (`WavReader.swift`) handling both PCM (format=1)
   and WAVE_FORMAT_EXTENSIBLE (0xFFFE, PCM decided by the SubFormat GUID); only
   48 kHz / 16-bit accepted, anything else is rejected at load time.
@@ -73,7 +75,7 @@ mirrored to stdout unbuffered:
     -autoJoin YES -autoPublish YES -autoQuitAfter 300
 ```
 
-- `autoWav`: asset index (0=8ch, 1=6ch, 2=4ch); `autoWavPath`: custom WAV file path (takes
+- `autoWav`: asset index (0=8ch, 1=6ch, 2=4ch, 3=3ch, 4=5ch, 5=7ch); `autoWavPath`: custom WAV file path (takes
   precedence over autoWav; must be 48 kHz / 16-bit / 1~8 channels); `autoJoin`/`autoPublish`: join on launch
   and start publishing once joined; `autoQuitAfter`: seconds until self-termination (> 0).
 - `autoUid` accepts digits only; an invalid (non-numeric) value silently falls back to 0
