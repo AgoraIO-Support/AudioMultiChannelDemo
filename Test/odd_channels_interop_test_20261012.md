@@ -68,9 +68,29 @@ ffmpeg -y -i 8_Channel_ID_signed_16_bit_pcm.wav -af "channelmap=map=0|1|2|3|4|5|
 playing；仅有的日志为 `user-published` 提示与备用 WebSocket 竞速关闭等无害信息。截图：
 `Test/web_recv_odd7ch_from_macos_20261012.png`。
 
-**机制分析（与证据吻合）**：Web 解码器只实现了偶数声道 Opus 多流配置，按 payload type 的默认偶数
-声道数去解（123→4、124→6、125→8）。奇数声道 OPUSMC 的最后一个 mono 子流被当作 coupled stereo 解，
-其内容被复制到两个输出声道。证据链：
+**机制分析（2026-10-12 阅读 `agora-rtc-sdk-ng@4.20.1-200` 源码定位到代码级根因）**：
+
+**这是 Agora Web SDK 的实现缺陷，不是浏览器 bug。**
+
+1. SDK 的 multiopus 声道数是写死的偶数表：`initCustomPayloads`/`toChannelCount` 按
+   `4 + 2 * t` 给 payload type 分配声道数——只有 4/6/8，没有 3/5/7。
+2. SDP 生成照该表写 fmtp（`createMultiopusPayload`：`coupled_streams=floor(N/2)`、
+   `num_streams=ceil(N/2)`、`channel_mapping=0..N-1`）——pt123 恒写 4ch 配置
+   （coupled=2/streams=2），即便线上实际是 3ch（coupled=1/streams=2）。
+3. 订阅后 SDK 从 codec stats 把这个（自己写进 SDP 的）声道数读回，经
+   `processMultiopusStats` → `onMultiopusCodecReceived` → `updateChannelCount(n)`
+   用 Insertable Streams 把解码帧拆成 n 路——音量条数与信令 channelCount 同源同错。
+4. 实际解码由 Chrome/WebRTC 内置的 `AudioDecoderMultiChannelOpus` 完成（multiopus 是
+   libwebrtc 多年维护的非标准扩展，能力完整、默认不宣告，见
+   `References/chromium_webrtc_multi_channel_audio_references.md`）——浏览器只是按 SDP 的
+   错误配置忠实解码：stereo 子流正常，mono 子流被 stereo 配置解成左右复制（双单声道），
+   于是末两声道恒等。
+
+即：Chrome 具备完整的多声道解码能力；**SDK 把声道配置写死成偶数表，使 SDP 声明与实际流不符**，
+浏览器按错误配置解码才产生幻影声道。修复方向也明确：SDK 侧按流的真实 fmtp（或信令里的真实
+声道数）生成/使用配置，而非查偶数表。
+
+证据链（实测观测与上述代码路径吻合）：
 
 1. **线上流确实是奇数声道**：同一 3ch 流的 macOS receiver dump 文件头为 48 kHz / **3ch** / 16bit
    （5ch/7ch 同理），Native 端按真实声道数正确解码——排除「发送端编码成 4ch」的可能；
