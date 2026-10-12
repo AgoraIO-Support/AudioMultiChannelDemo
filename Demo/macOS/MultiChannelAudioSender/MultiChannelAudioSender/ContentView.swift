@@ -46,9 +46,10 @@ struct ContentView: View {
         ("8 ch — 8_Channel_ID_signed_16_bit_pcm.wav", "8_Channel_ID_signed_16_bit_pcm"),
         ("6 ch — 6_Channel_ID_48k.wav", "6_Channel_ID_48k"),
         ("4 ch — 4_Channel_ID_48k.wav", "4_Channel_ID_48k"),
-        ("3 ch — odd_3ch.wav", "odd_3ch"),
-        ("5 ch — odd_5ch.wav", "odd_5ch"),
-        ("7 ch — odd_7ch.wav", "odd_7ch"),
+        // 奇数声道素材：Web 端无法解码，仅 Native/Linux 端可验证（选中后界面有警示条）
+        ("3 ch ⚠ — odd_3ch.wav", "odd_3ch"),
+        ("5 ch ⚠ — odd_5ch.wav", "odd_5ch"),
+        ("7 ch ⚠ — odd_7ch.wav", "odd_7ch"),
     ]
     @State private var selectedWav = 0
     @State private var wav: WavFile?
@@ -217,6 +218,18 @@ struct ContentView: View {
                             wav.durationSeconds, AgoraSenderManager.payloadType(forChannels: wav.channels)))
                         .font(.callout)
                         .foregroundColor(.secondary)
+                }
+
+                // 奇数声道（3/5/7）素材警示：Web SDK 无法解码，仅 Native/Linux 端可接收验证
+                if let wav = wav, wav.channels > 2, wav.channels % 2 == 1 {
+                    Text(tr("send.oddChannelWarning"))
+                        .font(.callout)
+                        .foregroundColor(.orange)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(6)
+                        .background(Color.orange.opacity(0.12))
+                        .cornerRadius(6)
                 }
 
                 HStack(spacing: 12) {
