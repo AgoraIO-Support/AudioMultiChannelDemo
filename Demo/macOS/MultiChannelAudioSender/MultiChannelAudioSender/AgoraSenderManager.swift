@@ -47,7 +47,8 @@ class AgoraSenderManager: NSObject, ObservableObject {
         AgoraRtcEngineKit.destroy()
     }
 
-    /// payload type 与声道数映射（spec 场景4.1）：123 → 3/4，124 → 5/6，125 → 7/8
+    /// payload type 与声道数映射（spec 场景4.1）：≤4 → 123，5/6 → 124，7/8 → 125
+    ///（实现为整档比较：1~2 声道同样落入 123 + custom_channel_num=1/2，该组合未纳入版本实测矩阵）
     static func payloadType(forChannels channels: Int) -> Int {
         if channels <= 4 { return 123 }
         if channels <= 6 { return 124 }
@@ -100,15 +101,27 @@ class AgoraSenderManager: NSObject, ObservableObject {
             return
         }
 
-        // 多声道私参：join 之前设置
+        // 多声道私参：join 之前设置；任一失败则中止 join（继续 join 会按错误协商）
         let payload = AgoraSenderManager.payloadType(forChannels: wav.channels)
-        kit.setParameters("{\"che.audio.custom_payload_type\":\(payload)}")
-        kit.setParameters("{\"che.audio.custom_channel_num\":\(wav.channels)}")
-        kit.setParameters("{\"che.audio.custom_sample_rate\":\(wav.sampleRate)}")
+        let paramRets = [
+            kit.setParameters("{\"che.audio.custom_payload_type\":\(payload)}"),
+            kit.setParameters("{\"che.audio.custom_channel_num\":\(wav.channels)}"),
+            kit.setParameters("{\"che.audio.custom_sample_rate\":\(wav.sampleRate)}")
+        ]
+        if let failed = paramRets.first(where: { $0 != 0 }) {
+            log(L10n.t("log.privateParams", in: L10n.current(), payload, wav.channels, wav.sampleRate)
+                + L10n.t("log.setParamsRet", in: L10n.current(), Int(failed)))
+            return
+        }
         log(L10n.t("log.privateParams", in: L10n.current(), payload, wav.channels, wav.sampleRate))
 
         // 自定义音轨：MIXABLE（与官方 API-Examples CustomAudioSource 一致）。
         // enableAudioProcessing 保持默认 false，不经过 3A。
+        if trackId >= 0 {
+            // 防御：上一次 join 创建的音轨未销毁时先销毁，避免孤儿音轨累积
+            kit.destroyCustomAudioTrack(trackId)
+            trackId = -1
+        }
         let trackConfig = AgoraAudioTrackConfig()
         trackConfig.enableLocalPlayback = false
         trackId = Int(kit.createCustomAudioTrack(.mixable, config: trackConfig))
@@ -138,6 +151,10 @@ class AgoraSenderManager: NSObject, ObservableObject {
     func leaveChannel() {
         stopPublishing()
         agoraKit?.leaveChannel(nil)
+        if trackId >= 0 {
+            agoraKit?.destroyCustomAudioTrack(trackId)
+            trackId = -1
+        }
     }
 
     // MARK: - 发布（10ms pacer 推送 WAV PCM）
@@ -165,6 +182,9 @@ class AgoraSenderManager: NSObject, ObservableObject {
             var offset = 0
             var frames = 0
             var nextPush = Date()
+            // 推流失败日志节流：失败罕见，但每 10ms 一条会迅速冲掉 1000 行 UI 日志
+            var pushErrorCount = 0
+            var lastPushErrorLog = Date.distantPast
             while let self = self, self.isCurrentGeneration(gen) {
                 if offset + bytesPerFrame > pcm.count {
                     offset = 0   // 循环发送
@@ -182,7 +202,16 @@ class AgoraSenderManager: NSObject, ObservableObject {
                         channels: channels, trackId: tid, timestamp: 0)
                 }
                 if ret != 0 {
-                    self.log(L10n.t("log.pushError", in: L10n.current(), Int(ret)))
+                    pushErrorCount += 1
+                    let now = Date()
+                    if pushErrorCount == 1 || now.timeIntervalSince(lastPushErrorLog) >= 1.0 {
+                        lastPushErrorLog = now
+                        let key = pushErrorCount == 1 ? "log.pushError" : "log.pushErrorThrottled"
+                        self.log(L10n.t(key, in: L10n.current(), Int(ret), pushErrorCount))
+                    }
+                } else if pushErrorCount > 0 {
+                    self.log(L10n.t("log.pushRecovered", in: L10n.current(), pushErrorCount))
+                    pushErrorCount = 0
                 }
                 frames += 1
                 offset += bytesPerFrame

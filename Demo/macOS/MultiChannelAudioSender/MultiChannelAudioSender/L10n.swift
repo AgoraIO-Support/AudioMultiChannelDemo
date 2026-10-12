@@ -80,6 +80,8 @@ enum L10n {
         "log.publishStart": [.en: "Publishing: %ld ch @ %ld Hz, 10 ms/frame, loop", .zhHans: "开始发布: %ld 声道 @ %ld Hz，10 ms/帧，循环"],
         "log.publishStop": [.en: "Publishing stopped", .zhHans: "已停止发布"],
         "log.pushError": [.en: "pushExternalAudioFrameRawData returned %ld", .zhHans: "pushExternalAudioFrameRawData 返回 %ld"],
+        "log.pushErrorThrottled": [.en: "pushExternalAudioFrameRawData returned %ld (still failing, %ld consecutive failures)", .zhHans: "pushExternalAudioFrameRawData 返回 %ld（仍在失败，已连续失败 %ld 次）"],
+        "log.pushRecovered": [.en: "pushExternalAudioFrameRawData recovered after %ld consecutive failures", .zhHans: "pushExternalAudioFrameRawData 已连续失败 %ld 次后恢复"],
         "log.frameDump": [.en: "Frame dump: %@", .zhHans: "音频帧 Dump: %@"],
         "log.on": [.en: "on", .zhHans: "开启"],
         "log.off": [.en: "off", .zhHans: "关闭"],

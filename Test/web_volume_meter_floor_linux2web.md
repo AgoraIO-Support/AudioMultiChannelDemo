@@ -223,6 +223,7 @@ Effect→Amplify +60dB 才能看到）。
 | --- | --- |
 | `live_demo_2_8_audio_streaming_audio_volume_ui_linux2web_20261008a.png` | 问题截图（修复前 Live Demo 2 裸进度条 + 静音声道不归零） |
 | `live_demo_2_volume_ui_fixed_20261008.png` | 音量条 UI 修复后（CH 标签 + 百分比），订阅 Linux 8 声道流的实测渲染 |
+| `live_demo_2_volume_ui_fixed_20261009.png` | 同上，2026-10-09 更新版（现行版本） |
 
 ## 7. 后续行动
 

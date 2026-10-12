@@ -38,6 +38,7 @@
 #define DEFAULT_NUM_OF_CHANNELS (2)  // 混音输出恒为 2 声道（spec 需求点7）
 #define DEFAULT_AUDIO_FILE "received_mixed_audio.pcm"
 #define DEFAULT_FILE_LIMIT (100 * 1024 * 1024)  // 100 MB 切换新文件
+#define DEFAULT_CONNECT_TIMEOUT_MS (3000)
 
 struct SampleOptions {
   std::string appId;
@@ -205,7 +206,10 @@ int main(int argc, char* argv[]) {
 
   // Subscribe audio from all remote users
   AG_LOG(INFO, "Subscribe audio from all remote users");
-  connection->getLocalUser()->subscribeAllAudio();
+  if (connection->getLocalUser()->subscribeAllAudio()) {
+    AG_LOG(ERROR, "Failed to subscribe audio from all remote users!");
+    return -1;
+  }
 
   // Register connection observer to monitor connection event
   auto connObserver = std::make_shared<SampleConnectionObserver>();
@@ -234,13 +238,19 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  // Start receiving incoming media data
-  AG_LOG(INFO, "Start receiving mixed audio data (channels=%d, sampleRate=%d) ...",
-         options.audio.numOfChannels, options.audio.sampleRate);
+  // Wait until connected before entering the receive loop；
+  // 连接超时/失败则不进入接收循环，走下方清理后退出
+  if (connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
+    AG_LOG(ERROR, "Wait for connection timeout or failure!");
+  } else {
+    // Start receiving incoming media data
+    AG_LOG(INFO, "Start receiving mixed audio data (channels=%d, sampleRate=%d) ...",
+           options.audio.numOfChannels, options.audio.sampleRate);
 
-  // Periodically check exit flag
-  while (!exitFlag) {
-    usleep(10000);
+    // Periodically check exit flag
+    while (!exitFlag) {
+      usleep(10000);
+    }
   }
 
   // Unregister audio frame observer

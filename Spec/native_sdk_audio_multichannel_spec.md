@@ -1,4 +1,4 @@
-# Native SDK 音频多声道收发 产品需求文档（PRD 初稿）
+# Native SDK 音频多声道收发 产品需求文档（PRD）
 
 ## Native SDK（macOS）音频多声道接收验证与发送验证需求
 
@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 待补充（多声道项目背景单见 Linux 侧 spec） |
-| 需求版本 | v1.8 |
+| 需求版本 | v1.9 |
 
 ---
 
@@ -78,7 +78,7 @@
 | 内容项 | 描述 | 备注 |
 | --- | --- | --- |
 | API 接口（描述性语言） | 引擎创建与频道加入（`AgoraRtcEngineKit`、`joinChannel`，观众角色、liveBroadcasting）；远端音频状态回调（`remoteAudioStateChangedOfUid`）；逐声道解码音量私参（`che.audio.neteq.adjust_decoded_volume`）；音频帧 dump 私参（`che.audio.frame_dump`）；远端音频统计回调（`remoteAudioStats`） | 私参均无公开文档 |
-| 功能点概述 | 接收侧：① 观众角色纯接收加入频道（不发布麦克风/摄像头、自动订阅音频与视频）；② 多声道/立体声/单声道流接收播放（自适应解码，接收端免私参）；③ 远端 host 列表（按音频或视频发布状态收录，观众不入列；覆盖 音频+视频 / 仅音频 / 仅视频 三种 host）；④ 逐声道选择收听与音量调节（1-based 声道序号、0~100%，仅对有音频的 host 下发）；⑤ 音频帧 dump 开关；⑥ 声道数显示选择（纯 UI 行数控制，对齐发送端声道数）；⑦ 远端视频显示（host 发布视频时渲染所选 uid 画面）+ 音/视频接收码率走势图；⑧ 中/英文 UI（默认英文）。发送侧：⑨ 主播角色多声道 WAV 循环发布（内置 4/6/8 声道 Channel ID 素材与 3/5/7 奇数声道素材（选中后 UI 显示「Web 误解码」警示条），payload 123/124/125 私参协商，10ms pacer；4.5.2 曾输入钳制为 2 声道，4.5.3 起解除，见需求点7） | |
+| 功能点概述 | 接收侧：① 观众角色纯接收加入频道（不发布麦克风/摄像头、自动订阅音频与视频）；② 多声道/立体声/单声道流接收播放（自适应解码，接收端免私参）；③ 远端 host 列表（按音频或视频发布状态收录，观众不入列；覆盖 音频+视频 / 仅音频 / 仅视频 三种 host）；④ 逐声道选择收听与音量调节（1-based 声道序号、0~100%，仅对有音频的 host 下发）；⑤ 音频帧 dump 开关；⑥ 声道数显示选择（纯 UI 行数控制，对齐发送端声道数）；⑦ 远端视频显示（host 发布视频时渲染所选 uid 画面）+ 音/视频接收码率走势图；⑧ 中/英文 UI（默认英文）。发送侧：⑨ 主播角色多声道 WAV 循环发布（内置 4/6/8 声道 Channel ID 素材与 3/5/7 奇数声道素材（选中后 UI 显示「Web 误解码」警示条——警示口径为 Web SDK 原生行为；2026-10-12 起 `Demo/web` 内置 `oddChannelFix.ts` 运行时补丁，可修正 demo 层的判定与播放，开关默认开，但 SDK 层面奇数声道仍不支持，Native 侧「以 Native/Linux 验证奇数声道」的结论不变，见 `Test/odd_channels_interop_test_20261012.md` §6），payload 123/124/125 私参协商，10ms pacer；4.5.2 曾输入钳制为 2 声道，4.5.3 起解除，见需求点7） | |
 | 客户使用逻辑概述 | 接收验证：启动发送端（Linux sample / macOS sender / Web publisher）→ receiver app 填 App ID/频道名以观众加入 → 选择远端 host uid → 逐声道开关/音量试听核对 → 需要时开启 dump 落盘核对。发送验证：sender app 选择内置 WAV → 主播加入 → Publish 循环发布 → 用 receiver/Web 端订阅核对 | |
 
 ### 6.2 体验性需求
@@ -381,3 +381,4 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | v1.6 | 2026-10-12 | 遗留项补测：① **4.5.3 实测 8 声道全通**（峰值 [79,79,74,83,77,78,78,75]），发送侧修复点由 4.6.0 修正为 **4.5.3**（修复点为 4.5.2→4.5.3，已用 Podfile.lock 与 framework 版本号双重核实）；② 4.7.0 补测 4ch（payload 123，峰值 [78,78,79,84]）与 6ch（payload 124，峰值 [76,77,76,84,78,80]）素材，全声道内容送达；③ 同日上午已完成 sender+receiver 双端 4.7.0 升级与原生互通回归（receiver 命令行自动化 + dump NCC 声道 1:1 核对）。全部"4.6.0 起"表述修正为"4.5.3 起"；待确认问题1 残留项清零 | Kimi Code |
 | v1.7 | 2026-10-12 | 奇数声道端到端闭环：3/5/7 声道（payload 123/124/125 + custom_channel_num）在 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部互通，接收端落盘与源素材逐声道 NCC 0.46~1.00、跨声道 ≈0、同序号对应（12/12 通过），素材为 ffmpeg channelmap 截取的 `Demo/linux/public/odd_{3,5,7}ch.wav`；待确认问题5 关闭。sender 自动化新增 `-autoWavPath` 支持外部素材。详见 `Test/odd_channels_interop_test_20261012.md` | Kimi Code |
 | v1.8 | 2026-10-12 | 复审修订：sender 素材枚举由「4/6/8」扩为「4/6/8 + 3/5/7 奇数声道（UI 带 Web 误解码警示条）」（6.1⑨、6.3、场景7.1、8.1 表）；自检#4 澄清「客户曾在用 4.5.2 / Demo 当前集成 4.7.0」。sender UI 新增奇数声道警示条（L10n `send.oddChannelWarning`，文案按 Web 误解码实测口径） | Kimi Code |
+| v1.9 | 2026-10-13 | 6.1⑨ 警示条补边界说明：2026-10-12 起 Demo/web 内置 `oddChannelFix.ts` 运行时补丁，可修正 demo 层的判定与播放（开关默认开），但 SDK 层面奇数声道仍不支持，Native 侧以 Native/Linux 验证奇数声道的结论不变（引 `Test/odd_channels_interop_test_20261012.md` §6）；标题去「初稿」 | Kimi Code |

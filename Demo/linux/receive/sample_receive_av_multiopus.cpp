@@ -41,6 +41,7 @@
 #define DEFAULT_AUDIO_FILE "received_av_multiopus.pcm"
 #define DEFAULT_VIDEO_FILE "received_video.yuv"
 #define DEFAULT_FILE_LIMIT (100 * 1024 * 1024)  // 100 MB 切换新文件
+#define DEFAULT_CONNECT_TIMEOUT_MS (3000)
 
 struct SampleOptions {
   std::string appId;
@@ -298,11 +299,24 @@ int main(int argc, char* argv[]) {
   agora::rtc::VideoSubscriptionOptions subscriptionOptions;  // 默认大流、解码后帧
   if (options.remoteUserId.empty()) {
     AG_LOG(INFO, "Subscribe audio & video from all remote users");
-    connection->getLocalUser()->subscribeAllAudio();
-    connection->getLocalUser()->subscribeAllVideo(subscriptionOptions);
+    if (connection->getLocalUser()->subscribeAllAudio()) {
+      AG_LOG(ERROR, "Failed to subscribe audio from all remote users!");
+      return -1;
+    }
+    if (connection->getLocalUser()->subscribeAllVideo(subscriptionOptions)) {
+      AG_LOG(ERROR, "Failed to subscribe video from all remote users!");
+      return -1;
+    }
   } else {
-    connection->getLocalUser()->subscribeAudio(options.remoteUserId.c_str());
-    connection->getLocalUser()->subscribeVideo(options.remoteUserId.c_str(), subscriptionOptions);
+    if (connection->getLocalUser()->subscribeAudio(options.remoteUserId.c_str())) {
+      AG_LOG(ERROR, "Failed to subscribe audio from user %s!", options.remoteUserId.c_str());
+      return -1;
+    }
+    if (connection->getLocalUser()->subscribeVideo(options.remoteUserId.c_str(),
+                                                   subscriptionOptions)) {
+      AG_LOG(ERROR, "Failed to subscribe video from user %s!", options.remoteUserId.c_str());
+      return -1;
+    }
   }
 
   // Register connection observer to monitor connection event
@@ -335,14 +349,20 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  // Start receiving incoming media data
-  AG_LOG(INFO,
-         "Start receiving multi-channel audio (channels=%d, sampleRate=%d) & video data ...",
-         options.audio.numOfChannels, options.audio.sampleRate);
+  // Wait until connected before entering the receive loop；
+  // 连接超时/失败则不进入接收循环，走下方清理后退出
+  if (connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
+    AG_LOG(ERROR, "Wait for connection timeout or failure!");
+  } else {
+    // Start receiving incoming media data
+    AG_LOG(INFO,
+           "Start receiving multi-channel audio (channels=%d, sampleRate=%d) & video data ...",
+           options.audio.numOfChannels, options.audio.sampleRate);
 
-  // Periodically check exit flag
-  while (!exitFlag) {
-    usleep(10000);
+    // Periodically check exit flag
+    while (!exitFlag) {
+      usleep(10000);
+    }
   }
 
   // Unregister audio & video frame observers

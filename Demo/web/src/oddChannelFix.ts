@@ -97,6 +97,13 @@ export function patchOddChannelStream(
         return;
       }
 
+      // 检测窗口（最长 8s）内用户可能已关闭补丁开关：此时不应用修正，保持 SDK 原始行为，
+      // 与开关状态一致（开关重新打开后，组件侧的 watch 会重新发起检测）
+      if (!oddFixEnabled.value) {
+        resolve({ fixed: false, trueChannels: tr.channelCount, decodedChannels: tr.channelCount });
+        return;
+      }
+
       const decodedChannels = tr.channelCount;
       const trueChannels = decodedChannels - 1;
 

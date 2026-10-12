@@ -474,6 +474,10 @@ let codecTimer = -1;
 
 let remoteAudioTrack: IRemoteAudioTrack | null = null;
 const remoteChannelCount = ref(0);
+// 补丁检测 generation：resetDetection（远端 unpublish/leave、离开频道等 teardown）时递增。
+// patchOddChannelStream 的检测窗口最长 8s，期间订阅可能已被拆掉，迟到的 onFixed 与发起时
+// 的计数比对，不一致即丢弃，避免把陈旧声道数写回结果面板、补弹过期通知。
+let oddFixGeneration = 0;
 
 const channelsInput = ref("0,1");
 
@@ -615,7 +619,10 @@ async function subscribe() {
   // Test/odd_channels_interop_test_20261012.md §5/§6）：检测「末两声道恒等」的幻影签名，
   // 命中后修正音量显示声道数、channelCount 与播放输出；开关关闭时跳过（用于对比验证）
   if (oddFixEnabled.value) {
+    const oddFixGen = oddFixGeneration;
     void patchOddChannelStream(track, (r) => {
+      // 检测窗口内订阅已被 teardown（远端 unpublish/leave 等）：丢弃迟到回调
+      if (oddFixGen !== oddFixGeneration) return;
       notification.warning({
         title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels),
         duration: 5000,
@@ -659,7 +666,10 @@ watch(oddFixEnabled, (on) => {
       notification.info({ title: m.value.oddFixOff, duration: 3000 });
     }
   } else if (!(remoteAudioTrack as any).__oddFix) {
+    const oddFixGen = oddFixGeneration;
     void patchOddChannelStream(remoteAudioTrack, (r) => {
+      // 检测窗口内订阅已被 teardown（远端 unpublish/leave 等）：丢弃迟到回调
+      if (oddFixGen !== oddFixGeneration) return;
       notification.warning({
         title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels),
         duration: 5000,
@@ -740,6 +750,8 @@ function resetDetection() {
   codec.value = "";
   codecChannels.value = 0;
   remoteChannelCount.value = 0;
+  // 使在飞的 patchOddChannelStream onFixed 回调失效（订阅上下文已 teardown）
+  oddFixGeneration++;
   window.clearInterval(volumeTimer);
   window.clearInterval(codecTimer);
   remoteAudioTrack = null;

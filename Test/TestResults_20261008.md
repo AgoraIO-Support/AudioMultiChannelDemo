@@ -86,3 +86,15 @@
 | `che.audio.bitrate_mode` / `dtx_mode` / `acm_ptime` 私参语义 | 暂停（需带符号表 SDK 包或研发确认） |
 | 服务器发送端容器 `multiopus-sender`（uid 8888） | 仍在运行，供后续复测；停止：`docker stop multiopus-sender` |
 | Web SDK 文档建议：注明 `getVolumeLevels()` 为 dB 刻度 | 可选反馈项 |
+
+> **2026-10-12 闭环批注**：上表为 2026-10-08 当日状态，单读时请以下列更新为准——
+> 1. **3/5/7 奇数声道端到端验证：已闭环**。Native（macOS）↔ Linux 四链路实测 12/12 通过
+>    （Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux，2026-10-12，见
+>    `Test/odd_channels_interop_test_20261012.md`）。表中"Web 仅偶数声道"的表述已修订：Web 端
+>    实测不是无法解码，而是按 N+1 偶数声道误解码且内容失真（末声道幻影复制），根因定位到
+>    SDK multiopus 声道表写死（4+2*t），demo 层已交付 `oddChannelFix.ts` 运行时补丁过渡
+>    （三个 Live Demo 可开关），根本修复需 SDK/VOS 侧。
+> 2. **macOS sender 发送侧 2 声道钳制：已闭环**。该问题 2026-10-10 发现（4.5.2 协商正常但
+>    仅前 2 声道有内容），2026-10-12 五版本回归定位修复点为 4.5.3（4.5.3~4.7.0 实测全通），
+>    见 `Test/macos_sender_2ch_clamp_issue_20261010.md` 与
+>    `Test/macos_sender_multi-channel_audio_test_result.md`。

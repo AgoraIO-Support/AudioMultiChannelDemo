@@ -204,11 +204,21 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
   }
 
   TrackDecodeCtx tracks[EXPECTED_AUDIO_TRACKS];
+  // 统一清理：关闭已创建的临时文件并释放解码/重采样上下文（函数末尾清理同款），
+  // 错误路径先调用它再 avformat_close_input，避免已打开轨的资源泄漏
+  auto cleanupTracks = [&]() {
+    for (int k = 0; k < EXPECTED_AUDIO_TRACKS; k++) {
+      if (tracks[k].out) fclose(tracks[k].out);
+      if (tracks[k].swr) swr_free(&tracks[k].swr);
+      if (tracks[k].dec) avcodec_free_context(&tracks[k].dec);
+    }
+  };
   for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) {
     AVCodecParameters* cp = fmt->streams[audioIdx[t]]->codecpar;
     const AVCodec* codec = avcodec_find_decoder(cp->codec_id);
     if (!codec) {
       AG_LOG(ERROR, "No decoder for audio track %d (codec id %d)", t, cp->codec_id);
+      cleanupTracks();
       avformat_close_input(&fmt);
       return false;
     }
@@ -217,6 +227,7 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
         avcodec_parameters_to_context(tracks[t].dec, cp) < 0 ||
         avcodec_open2(tracks[t].dec, codec, nullptr) < 0) {
       AG_LOG(ERROR, "Failed to open decoder for audio track %d", t);
+      cleanupTracks();
       avformat_close_input(&fmt);
       return false;
     }
@@ -233,11 +244,13 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
                             0, nullptr) < 0 ||
         !tracks[t].swr || swr_init(tracks[t].swr) < 0) {
       AG_LOG(ERROR, "Failed to init swresample for audio track %d", t);
+      cleanupTracks();
       avformat_close_input(&fmt);
       return false;
     }
     if (!(tracks[t].out = fopen(tmpFiles[t].c_str(), "wb"))) {
       AG_LOG(ERROR, "Failed to create temp pcm file %s", tmpFiles[t].c_str());
+      cleanupTracks();
       avformat_close_input(&fmt);
       return false;
     }
@@ -273,7 +286,12 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
       uint8_t* outBuf = nullptr;
       int outMax = swr_get_out_samples(tracks[t].swr, 0);
       if (outMax <= 0) break;
-      av_samples_alloc(&outBuf, nullptr, CHANNELS_PER_TRACK, outMax, AV_SAMPLE_FMT_S16, 0);
+      if (av_samples_alloc(&outBuf, nullptr, CHANNELS_PER_TRACK, outMax, AV_SAMPLE_FMT_S16,
+                           0) < 0) {
+        AG_LOG(ERROR, "Failed to alloc resample buffer");
+        ok = false;
+        break;
+      }
       got = swr_convert(tracks[t].swr, &outBuf, outMax, nullptr, 0);
       if (got > 0) {
         fwrite(outBuf, 1, (size_t)got * CHANNELS_PER_TRACK * sizeof(int16_t), tracks[t].out);
@@ -289,11 +307,7 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
 
   av_packet_free(&pkt);
   av_frame_free(&frame);
-  for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) {
-    if (tracks[t].out) fclose(tracks[t].out);
-    if (tracks[t].swr) swr_free(&tracks[t].swr);
-    if (tracks[t].dec) avcodec_free_context(&tracks[t].dec);
-  }
+  cleanupTracks();
   avformat_close_input(&fmt);
   return ok;
 }
@@ -339,7 +353,10 @@ static bool interleaveTo8Ch(const std::string tmpFiles[EXPECTED_AUDIO_TRACKS],
     for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) {
       // 短轨读不到的部分保持为 0（补零对齐）
       std::fill(trackBuf[t].begin(), trackBuf[t].begin() + n * CHANNELS_PER_TRACK, 0);
-      fread(trackBuf[t].data(), sizeof(int16_t), n * CHANNELS_PER_TRACK, in[t]);
+      size_t want = (size_t)n * CHANNELS_PER_TRACK;
+      if (fread(trackBuf[t].data(), sizeof(int16_t), want, in[t]) != want && ferror(in[t])) {
+        AG_LOG(WARNING, "Short read on track %d temp pcm file: %s", t, std::strerror(errno));
+      }
     }
     for (int i = 0; i < n; i++) {
       for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) {
@@ -738,12 +755,21 @@ int main(int argc, char* argv[]) {
 
   // Publish audio & video track
   customAudioTrack->setEnabled(true);
-  connection->getLocalUser()->publishAudio(customAudioTrack);
+  if (connection->getLocalUser()->publishAudio(customAudioTrack)) {
+    AG_LOG(ERROR, "Failed to publish audio track!");
+    return -1;
+  }
   customVideoTrack->setEnabled(true);
-  connection->getLocalUser()->publishVideo(customVideoTrack);
+  if (connection->getLocalUser()->publishVideo(customVideoTrack)) {
+    AG_LOG(ERROR, "Failed to publish video track!");
+    return -1;
+  }
 
   // Wait until connected before sending media stream
-  connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS);
+  if (connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
+    AG_LOG(ERROR, "Wait for connection timeout or failure!");
+    return -1;
+  }
 
   // Start sending media data（音频 10ms/帧 PacerInfo 节奏，视频按 PTS 节奏，各自独立循环）
   AG_LOG(INFO, "Start sending 8-channel audio (from %s) & video (%dx%d @ %.2f fps) ...",

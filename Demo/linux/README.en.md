@@ -59,6 +59,29 @@ Demo/linux/
 
 ## Build
 
+### Prerequisites: Extract the SDK Package (Required)
+
+The SDK under `LinuxSDKFolder/X86_64/` and `LinuxSDKFolder/Aarch64/` is kept as a compressed
+package (`Agora-RTC-<arch>-linux-gnu-*.tgz`, e.g.
+`Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz`; check the actual file
+name with `ls`). **You must extract it before building** to get the `agora_rtc_sdk/`
+directory (containing `agora_rtc_sdk/agora_sdk/libagora_rtc_sdk.so` and the
+`agora_rtc_sdk/agora_sdk/include/` headers); otherwise CMake configuration fails immediately
+with "libagora_rtc_sdk.so not found":
+
+```bash
+# x86_64 example; same for aarch64, using the package under LinuxSDKFolder/Aarch64/
+cd LinuxSDKFolder/X86_64
+tar -xzf Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
+```
+
+Extraction creates the `agora_rtc_sdk/agora_sdk/` layout under `LinuxSDKFolder/X86_64/`.
+Re-running it only overwrites/merges; it is safe to repeat.
+
+> Docker builds require this step too: the Dockerfile only COPYs `LinuxSDKFolder` from the
+> build context into the image and uses `agora_rtc_sdk/agora_sdk/` as-is — it does **not**
+> extract the package itself.
+
 ### Helper script (recommended)
 
 ```bash
@@ -325,8 +348,9 @@ The buffer repeats [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] for every sample
   files with relative paths by default.
 - **The MKV sender needs ffmpeg**: `sample_send_mkv_multiopus` is the only target that depends
   on ffmpeg (libavformat/libavcodec/libavutil/libswresample/libswscale). Local builds need
-  `pkg-config` and the matching `-dev` packages; the Dockerfile installs the dev packages in the
-  builder stage and the runtime libraries in the final stage. `public/VictoriaMulti.mkv`
+  `pkg-config` and the matching `-dev` packages; when they are missing, CMake prints a warning
+  and skips this target while the other 7 samples still build. The Dockerfile installs the dev
+  packages in the builder stage and the runtime libraries in the final stage. `public/VictoriaMulti.mkv`
   (~133 MB) is committed via Git LFS (the root `.gitignore` `*.mkv` rule has an exception
   `!Demo/linux/public/VictoriaMulti.mkv`) — if you see a pointer file under `public/` after
   cloning, run `git lfs pull` first; the Docker build packs it into the image.

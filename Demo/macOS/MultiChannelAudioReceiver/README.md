@@ -13,7 +13,8 @@
 ## 界面语言
 
 界面支持 **English / 中文** 双语，默认英文。通过主界面顶部的 Language 选择器即时切换
-（所有可见文案立即重新渲染），选择通过 `@AppStorage("uiLanguage")` 持久化，下次启动保持。
+（界面控件文案立即重新渲染；状态栏等按事件发生时的语言生成的文案，待下一次状态更新后刷新），
+选择通过 `@AppStorage("uiLanguage")` 持久化，下次启动保持。
 语言实现在 `MultiChannelAudioReceiver/L10n.swift`（查表 + String(format:) 插值），
 日志与状态文案按切换时的语言输出（已输出的历史日志行不回溯切换）。
 

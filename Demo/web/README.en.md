@@ -50,9 +50,10 @@ See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
 - **Chinese/English toggle**: a button in the top-right corner switches the UI language
   (defaults to the browser language; the choice is remembered in localStorage).
 
-Key prerequisite: `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` is set at the top of
-`src/Multiopus.vue`, before `createClient` (see the code comment; setting it after the client is
-created has no effect).
+Key prerequisite: `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` must be set before
+`createClient` (see the code comment; setting it after the client is created has no effect).
+Each of the three Live Demo components (`src/Multiopus.vue`, `src/MultiopusV2.vue`, and
+`src/MultiopusV3.vue`) sets it before its own `createClient` call.
 
 ## Requirements
 
@@ -240,6 +241,7 @@ Demo/web/
    ├─ Multiopus.vue        # Live Demo 1 (default): all logic and UI (publish/subscribe/channel selection/codec detection)
    ├─ MultiopusV2.vue      # Live Demo 2 (?demo=2): reproduces the original quick-demo-multiopus layout
    ├─ MultiopusV3.vue      # Live Demo 3 (?demo=3): simultaneous video + multi-channel audio subscribe (pairs with the Linux MKV demo)
+   ├─ oddChannelFix.ts     # odd-channel (3/5/7) mis-decode fix patch, shared by all three Live Demos
    ├─ style.css
    └─ vite-env.d.ts
 ```

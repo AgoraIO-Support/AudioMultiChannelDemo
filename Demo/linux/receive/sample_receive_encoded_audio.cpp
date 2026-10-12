@@ -33,6 +33,7 @@
 
 #define DEFAULT_AUDIO_FILE "received_audio_multiopus.opus"
 #define DEFAULT_FILE_LIMIT (100 * 1024 * 1024)  // 100 MB 切换新文件
+#define DEFAULT_CONNECT_TIMEOUT_MS (3000)
 
 struct SampleOptions {
   std::string appId;
@@ -44,7 +45,8 @@ struct SampleOptions {
 class EncodedAudioReceiver : public agora::rtc::IAudioEncodedFrameReceiver {
  public:
   EncodedAudioReceiver(const std::string& outputFilePath)
-      : outputFilePath_(outputFilePath), file_(nullptr), fileCount(0), fileSize_(0) {}
+      : outputFilePath_(outputFilePath), file_(nullptr), fileCount(0), fileSize_(0),
+        frameCount_(0) {}
 
   ~EncodedAudioReceiver() {
     if (file_) fclose(file_);
@@ -59,6 +61,7 @@ class EncodedAudioReceiver : public agora::rtc::IAudioEncodedFrameReceiver {
   FILE* file_;
   int fileCount;
   int fileSize_;
+  int frameCount_;  // 回调约 20ms/帧，用于日志节流
 };
 
 bool EncodedAudioReceiver::onEncodedAudioFrameReceived(
@@ -73,8 +76,11 @@ bool EncodedAudioReceiver::onEncodedAudioFrameReceived(
     AG_LOG(INFO, "Created file %s to save received encoded audio frames", fileName.c_str());
   }
 
-  AG_LOG(INFO, "Received encoded audio frame: length=%zu codec=%d sendTs=%llu", length,
-         info.codec, (unsigned long long)info.sendTs);
+  // 回调约 20ms/帧，逐帧打日志会刷屏：保留首帧，之后每 250 帧（约 5s）打一次
+  if (frameCount_++ % 250 == 0) {
+    AG_LOG(INFO, "Received encoded audio frame: length=%zu codec=%d sendTs=%llu (frame #%d)",
+           length, info.codec, (unsigned long long)info.sendTs, frameCount_);
+  }
 
   if (fwrite(packet, 1, length, file_) != length) {
     AG_LOG(ERROR, "Error writing encoded audio data: %s", std::strerror(errno));
@@ -145,7 +151,14 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  connection->getLocalUser()->subscribeAllAudio();
+  if (connection->getLocalUser()->subscribeAllAudio()) {
+    AG_LOG(ERROR, "Failed to subscribe audio from all remote users!");
+    return -1;
+  }
+
+  // Register connection observer to monitor connection event
+  auto connObserver = std::make_shared<SampleConnectionObserver>();
+  connection->registerObserver(connObserver.get());
 
   auto localUserObserver =
       std::make_shared<SampleLocalUserObserver>(connection->getLocalUser());
@@ -160,14 +173,24 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  // Start receiving incoming media data
-  AG_LOG(INFO, "Start receiving encoded audio frames ...");
+  // Wait until connected before entering the receive loop；
+  // 连接超时/失败则不进入接收循环，走下方清理后退出
+  if (connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
+    AG_LOG(ERROR, "Wait for connection timeout or failure!");
+  } else {
+    // Start receiving incoming media data
+    AG_LOG(INFO, "Start receiving encoded audio frames ...");
 
-  // Periodically check exit flag
-  while (!exitFlag) {
-    usleep(10000);
+    // Periodically check exit flag
+    while (!exitFlag) {
+      usleep(10000);
+    }
   }
 
+  // Unregister connection observer
+  connection->unregisterObserver(connObserver.get());
+
+  // Disconnect from Agora channel
   if (connection->disconnect()) {
     AG_LOG(ERROR, "Failed to disconnect from Agora channel!");
     return -1;

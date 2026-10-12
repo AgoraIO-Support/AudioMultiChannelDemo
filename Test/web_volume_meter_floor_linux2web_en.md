@@ -256,6 +256,7 @@ it — **the material-dither causal chain is proven end-to-end**.
 | --- | --- |
 | `live_demo_2_8_audio_streaming_audio_volume_ui_linux2web_20261008a.png` | Symptom screenshot (pre-fix Live Demo 2 bare progress bars + silent channels not reading zero) |
 | `live_demo_2_volume_ui_fixed_20261008.png` | After the volume-bar UI fix (CH labels + percentages), live render while subscribed to the Linux 8-channel stream |
+| `live_demo_2_volume_ui_fixed_20261009.png` | Same as above, 2026-10-09 update (current version) |
 
 ## 7. Follow-ups
 

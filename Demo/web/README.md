@@ -17,7 +17,7 @@
 - **多 Live Demo 布局**：默认（`?demo=1`）为本工程布局；`?demo=2` 为参考 quick-demo-multiopus 原版的布局（自由文本音频地址、确定(环绕声/双声道/单声道)按钮、简洁音量条）；`?demo=3` 为视频 + 多声道音频同时订阅布局。各 demo 头部有快捷链接互相切换。
 - **中英文切换**：右上角按钮切换界面语言（默认跟随浏览器语言，选择记忆在 localStorage）。
 
-关键前提：`AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` 已在 `src/Multiopus.vue` 顶部、`createClient` 之前设置（代码内有注释说明，创建 client 后再设置不生效）。
+关键前提：`AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` 需在 `createClient` 之前设置（代码内有注释说明，创建 client 后再设置不生效）。三个 Live Demo 组件（`src/Multiopus.vue` / `src/MultiopusV2.vue` / `src/MultiopusV3.vue`）各自在其 `createClient` 调用之前设置。
 
 ## 环境要求
 
@@ -145,6 +145,7 @@ Demo/web/
    ├─ Multiopus.vue        # Live Demo 1（默认）：全部逻辑与 UI（发布/订阅/声道选择/codec 判定）
    ├─ MultiopusV2.vue      # Live Demo 2（?demo=2）：参考 quick-demo-multiopus 原版布局
    ├─ MultiopusV3.vue      # Live Demo 3（?demo=3）：视频 + 多声道音频同时订阅（配合 Linux MKV demo）
+   ├─ oddChannelFix.ts     # 奇数声道（3/5/7）误解码修正补丁，三个 Live Demo 共用
    ├─ style.css
    └─ vite-env.d.ts
 ```

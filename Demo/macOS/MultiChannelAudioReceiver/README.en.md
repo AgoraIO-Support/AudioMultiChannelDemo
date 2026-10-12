@@ -16,7 +16,8 @@ baseline.
 ## UI Language
 
 The UI is bilingual (**English / 中文**) and defaults to English. Switch it with the
-Language picker at the top of the main view — all visible text re-renders immediately —
+Language picker at the top of the main view — control labels re-render immediately, while
+status-bar text generated at event time refreshes on the next status update —
 and the choice is persisted via `@AppStorage("uiLanguage")` across launches. The strings
 live in `MultiChannelAudioReceiver/L10n.swift` (lookup table + String(format:)
 interpolation); log and status lines are emitted in the language active at the time

@@ -240,10 +240,16 @@ int main(int argc, char* argv[]) {
   }
 
   // Publish audio track
-  connection->getLocalUser()->publishAudio(customAudioTrack);
+  if (connection->getLocalUser()->publishAudio(customAudioTrack)) {
+    AG_LOG(ERROR, "Failed to publish audio track!");
+    return -1;
+  }
 
   // Wait until connected before sending media stream
-  connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS);
+  if (connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
+    AG_LOG(ERROR, "Wait for connection timeout or failure!");
+    return -1;
+  }
 
   // Start sending media data
   AG_LOG(INFO, "Start sending 8-channel pre-encoded Opus data ...");

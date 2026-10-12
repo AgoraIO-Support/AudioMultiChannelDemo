@@ -51,6 +51,27 @@ Demo/linux/
 
 ## 构建方法
 
+### 前置条件：解压 SDK 包（必做）
+
+`LinuxSDKFolder/X86_64/` 与 `LinuxSDKFolder/Aarch64/` 下的 SDK 以压缩包（
+`Agora-RTC-<arch>-linux-gnu-*.tgz`，如 `Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz`，
+文件名以目录下实际为准，可 `ls` 确认）形式入库。**构建前必须先解压**，得到
+`agora_rtc_sdk/` 目录（内含 `agora_rtc_sdk/agora_sdk/libagora_rtc_sdk.so` 与
+`agora_rtc_sdk/agora_sdk/include/` 头文件），否则 CMake 配置会因找不到
+`libagora_rtc_sdk.so` 直接失败：
+
+```bash
+# x86_64 为例；aarch64 同理，用 LinuxSDKFolder/Aarch64/ 下的压缩包
+cd LinuxSDKFolder/X86_64
+tar -xzf Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
+```
+
+解压即在 `LinuxSDKFolder/X86_64/` 下形成 `agora_rtc_sdk/agora_sdk/` 目录结构；
+重复解压只会覆盖合并，无害。
+
+> Docker 构建同样需要先完成本步骤：Dockerfile 只是把构建上下文中的 `LinuxSDKFolder`
+> 原样 COPY 进镜像并直接使用其中的 `agora_rtc_sdk/agora_sdk/`，**不会**自行解压压缩包。
+
 ### 便捷脚本（推荐）
 
 ```bash
@@ -291,7 +312,8 @@ ffplay -f s16le -ar 48000 -ch_layout stereo received_mixed.pcm
 - **素材位置**：构建后 `build.sh` 会把 `public/` 拷贝到 `out/` 下，sample 默认相对路径读取。
 - **MKV 发送 sample 依赖 ffmpeg**：`sample_send_mkv_multiopus` 是本工程唯一依赖
   ffmpeg（libavformat/libavcodec/libavutil/libswresample/libswscale）的 target，本机构建需
-  `pkg-config` 与对应 `-dev` 包；Dockerfile 已在 builder/runtime 两阶段分别装好开发包与运行库。
+  `pkg-config` 与对应 `-dev` 包；缺少时 CMake 会打印告警并跳过该 target，其余 7 个 sample
+  不受影响。Dockerfile 已在 builder/runtime 两阶段分别装好开发包与运行库。
   `public/VictoriaMulti.mkv`（约 133MB）已通过 Git LFS 入库（根 `.gitignore` 的 `*.mkv` 规则有
   例外 `!Demo/linux/public/VictoriaMulti.mkv`）；克隆后若 `public/` 下为指针文件，先 `git lfs pull`。
   Docker 构建会把它打进镜像。

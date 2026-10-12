@@ -240,7 +240,8 @@ const DEFAULT_APP_ID = "43f818097c124394821bd44598b7ca9d";
 
 const urlParams = new URLSearchParams(location.search);
 
-// 素材地址默认取本站 public/ 下的 8 声道 Channel ID 文件（带 base 前缀，兼容子路径部署）。
+// 素材地址默认取本站 public/ 下的 8 声道 Channel ID 文件（带 base 前缀，兼容子路径部署）；
+// 追加 __BUILD_ID__ 用于前端缓存管理（与 Live Demo 1 的 wavUrl 一致）。
 const wavBase = import.meta.env.BASE_URL;
 
 const channel = ref(
@@ -251,7 +252,7 @@ const token = ref(urlParams.get("token") || localStorage.getItem("token") || "")
 const appId = ref(urlParams.get("appId") || localStorage.getItem("appId") || DEFAULT_APP_ID);
 const channelCount = ref<number>(8);
 const selectedChannels = ref("0,1,2,3,4,5");
-const audioURL = ref(`${wavBase}8_Channel_ID.wav`);
+const audioURL = ref(`${wavBase}8_Channel_ID.wav?v=${__BUILD_ID__}`);
 
 watch(channel, (v) => localStorage.setItem("channelName", v));
 watch(myUid, (v) => localStorage.setItem("myUid", v));
@@ -283,6 +284,10 @@ const leaving = ref(false);
 let localAudioTrack: ILocalAudioTrack | null = null;
 let remoteAudioTrack: IRemoteAudioTrack | null = null;
 let audioContext: AudioContext | null = null;
+// 补丁检测 generation：cancelSubscribe（远端 unpublish/left、取消订阅、离开频道）时递增。
+// patchOddChannelStream 的检测窗口最长 8s，期间订阅可能已被拆掉，迟到的 onFixed 与发起时
+// 的计数比对，不一致即丢弃，避免补弹过期通知。
+let oddFixGeneration = 0;
 
 const volumes = ref<number[]>([]);
 let volumeTimer = -1;
@@ -348,6 +353,9 @@ async function joinChannel() {
     hasRemote.value = (client?.remoteUsers.some((u) => u.hasAudio)) ?? false;
     if (subscribed.value && subscribedUser?.uid === user.uid) cancelSubscribe();
   });
+  // 远端可能在本端加入前就已在发布：SDK 对这类远端不补发 user-published，
+  // 这里从 client.remoteUsers 直接同步一次，避免「订阅音频」按钮永远禁用。
+  hasRemote.value = (client?.remoteUsers.some((u) => u.hasAudio)) ?? false;
 }
 
 async function leaveChannel() {
@@ -467,7 +475,10 @@ async function subscribe() {
 
   // 奇数声道误解码修正补丁（开关关闭时跳过，用于对比验证；见 oddChannelFix.ts）
   if (oddFixEnabled.value) {
+    const oddFixGen = oddFixGeneration;
     void patchOddChannelStream(track, (r) => {
+      // 检测窗口内订阅已被 teardown（远端 unpublish/leave 等）：丢弃迟到回调
+      if (oddFixGen !== oddFixGeneration) return;
       notification.warning({ title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels), duration: 5000 });
     });
   }
@@ -486,7 +497,10 @@ watch(oddFixEnabled, (on) => {
       notification.info({ title: m.value.oddFixOff, duration: 3000 });
     }
   } else if (!(remoteAudioTrack as any).__oddFix) {
+    const oddFixGen = oddFixGeneration;
     void patchOddChannelStream(remoteAudioTrack, (r) => {
+      // 检测窗口内订阅已被 teardown（远端 unpublish/leave 等）：丢弃迟到回调
+      if (oddFixGen !== oddFixGeneration) return;
       notification.warning({ title: m.value.oddFixApplied(r.trueChannels, r.decodedChannels), duration: 5000 });
     });
   }
@@ -504,6 +518,8 @@ async function cancelSubscribe() {
   subscribed.value = false;
   volumes.value = [];
   selection.value = null;
+  // 使在飞的 patchOddChannelStream onFixed 回调失效（订阅上下文已 teardown）
+  oddFixGeneration++;
   window.clearInterval(volumeTimer);
 }
 
