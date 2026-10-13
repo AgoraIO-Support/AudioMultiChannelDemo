@@ -11,3 +11,7 @@ Demo/linux/out/
 Demo/macOS/**/Pods/
 Demo/macOS/**/*.xcworkspace
 Demo/macOS/**/build/
+Demo/iOS/**/Pods/
+Demo/iOS/**/*.xcworkspace
+Demo/iOS/**/*.xcodeproj
+Demo/iOS/**/build/

@@ -1,0 +1,44 @@
+platform :ios, '14.0'
+
+target 'MultiChannelAudioSenderApp' do
+  use_frameworks!
+  pod 'AgoraRtcEngine_iOS', '4.7.0'
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+    end
+  end
+end
+
+# 免签名构建（CODE_SIGNING_ALLOWED=NO）时 CocoaPods 不签名内嵌 frameworks；Apple Silicon 的
+# iOS 模拟器要求所有被加载代码带签名（至少 ad-hoc），否则 weak-linked 框架加载失败——表现为
+# AgoraRtcEngineKit 类绑定为 0、sharedEngine 静默返回 nil 且 SDK 无任何日志。
+# 在 app target 构建阶段末尾（[CP] Embed Pods Frameworks 之后）追加 ad-hoc 签名脚本。
+# 真机构建不受影响（真机本身要求完整签名，请用 Xcode 配置开发证书）。
+post_integrate do |installer|
+  require 'xcodeproj'
+  app_project_path = File.expand_path('MultiChannelAudioSenderApp.xcodeproj', __dir__)
+  project = Xcodeproj::Project.open(app_project_path)
+  target = project.targets.find { |t| t.name == 'MultiChannelAudioSenderApp' }
+  phase_name = 'Ad-hoc Sign Embedded Frameworks (unsigned simulator builds)'
+  already = target.build_phases.any? { |p| p.respond_to?(:name) && p.name == phase_name }
+  unless already
+    phase = project.new(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
+    phase.name = phase_name
+    phase.shell_script = <<~SH
+      if [ "$CODE_SIGNING_ALLOWED" = "NO" ] && [ "$PLATFORM_NAME" = "iphonesimulator" ]; then
+        for f in "${TARGET_BUILD_DIR}/${FULL_PRODUCT_NAME}/Frameworks"/*.framework; do
+          [ -e "$f" ] || continue
+          /usr/bin/codesign --force --sign - --timestamp=none "$f"
+        done
+      fi
+    SH
+    phase.show_env_vars_in_log = '0'
+    phase.always_out_of_date = '1'   # 每次构建都运行（消除 run-during-every-build 警告）
+    target.build_phases << phase
+    project.save
+  end
+end

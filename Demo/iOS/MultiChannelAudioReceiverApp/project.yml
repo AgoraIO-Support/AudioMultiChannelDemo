@@ -1,0 +1,32 @@
+name: MultiChannelAudioReceiverApp
+options:
+  bundleIdPrefix: com.agora
+targets:
+  MultiChannelAudioReceiverApp:
+    type: application
+    platform: iOS
+    # 说明：规划值为 13.0，但 SwiftUI 生命周期（@main App）、@AppStorage、GroupBox、
+    # onChange(of:) 均要求 iOS 14+，故 app target 部署目标定为 14.0（Podfile 的
+    # platform 仍为 13.0，仅作为 Pods 的编译下限）。
+    deploymentTarget: "14.0"
+    sources:
+      - MultiChannelAudioReceiverApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.agora.demo.MultiChannelAudioReceiverApp
+        PRODUCT_NAME: MultiChannelAudioReceiverApp
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Info.plist
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        IPHONEOS_DEPLOYMENT_TARGET: "14.0"
+schemes:
+  MultiChannelAudioReceiverApp:
+    build:
+      targets:
+        MultiChannelAudioReceiverApp: all
+    run:
+      config: Debug

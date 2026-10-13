@@ -1,0 +1,26 @@
+platform :ios, '13.0'
+
+target 'MultiChannelAudioReceiverApp' do
+  use_frameworks!
+  pod 'AgoraRtcEngine_iOS', '4.7.0'
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    end
+  end
+
+  # Apple Silicon 的 iOS 模拟器要求 arm64 代码必须（至少 ad-hoc）签名，否则 dyld 拒绝加载。
+  # Agora 预置动态框架的模拟器切片出厂未签名，且 CODE_SIGNING_ALLOWED=NO 时
+  # [CP] Embed Pods Frameworks 不会代签；这些框架在链接时是 weak 引用，加载失败不崩溃，
+  # 运行时表现为 NSClassFromString("AgoraRtcEngineKit") == nil、sharedEngine 返回 nil。
+  # 这里对 Pods 内的 vendored 动态框架统一做 ad-hoc 签名（嵌入拷贝后签名保持有效；
+  # 真机用正式签名构建时 Embed 阶段会用开发者证书重签，不受影响）。
+  Dir.glob(File.join(__dir__, 'Pods', '**', '*.framework')).each do |fw|
+    binary = File.join(fw, File.basename(fw, '.framework'))
+    next unless File.exist?(binary)
+    system('/usr/bin/codesign', '--force', '--sign', '-', '--timestamp=none', fw)
+  end
+end

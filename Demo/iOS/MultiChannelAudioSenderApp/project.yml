@@ -1,0 +1,24 @@
+name: MultiChannelAudioSenderApp
+options:
+  bundleIdPrefix: com.agora.demo
+targets:
+  MultiChannelAudioSenderApp:
+    type: application
+    platform: iOS
+    # SwiftUI App 生命周期 / @AppStorage / onChange / ScrollViewReader 均要求 iOS 14+，
+    # 故最低部署版本为 14.0（macOS 版对应的 macOS 12.0 同为 SwiftUI App 起点）
+    deploymentTarget: "14.0"
+    sources:
+      - MultiChannelAudioSenderApp
+      - Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.agora.demo.MultiChannelAudioSenderApp
+        PRODUCT_NAME: MultiChannelAudioSenderApp
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Info.plist
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        IPHONEOS_DEPLOYMENT_TARGET: "14.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
