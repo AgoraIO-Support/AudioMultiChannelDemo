@@ -76,7 +76,7 @@ static int payloadTypeForChannels(int numOfChannels) {
   return 125;
 }
 
-// 需求点9（4×双声道音轨 -> 8 声道流布局映射）说明：
+// 需求点10（4×双声道音轨 -> 8 声道流布局映射）说明：
 // sendAudioPcmData 要求的输入是 N 声道逐样本交错（interleaved）PCM。
 // 源端 8 声道以 4 条 stereo 音轨、按 track 块序排列（[T1L,T1R]xN [T2L,T2R]xN ...），
 // 不能直接喂给本接口；需先重排为逐样本交错布局，声道顺序为

@@ -2,7 +2,7 @@
 
 A standalone C++ demo for multi-channel audio send/receive with the Agora Linux SDK
 (v4.4.30.149, x86_64 / aarch64), written against the requirements in
-`Spec/linux_sdk_audio_multichannel_spec.md`. It covers 3 send paths and 3 receive paths.
+`Spec/linux_sdk_audio_multichannel_spec.md`. It covers 4 send paths and 4 receive paths.
 Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) and
 **supports 48 kHz only**.
 
@@ -15,13 +15,13 @@ Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) 
 | `sample_send_pcm_multiopus` | Send | Req. 1 (PCM send), Req. 4 (private params & negotiation) | Raw PCM multi-channel send, 10 ms frames, 3~8 channels configurable |
 | `sample_send_wav_multiopus` | Send | Req. 2 (WAV send), Req. 4 | Multi-channel WAV send: RIFF parsing, 16-bit sent as-is, 24-bit converted to 16-bit, unsupported bit depth, channel count, and non-48 kHz rejected before connecting |
 | `sample_send_opus8` | Send | Req. 3 (pre-encoded Opus send) | 8-channel raw Opus stream (640 bytes per 20 ms frame), `AUDIO_CODEC_OPUSMC` + `MIX_DISABLED` |
-| `sample_send_mkv_multiopus` | Send | Req. 1/4/9 (MKV 4xstereo asset) | Decodes MKV with ffmpeg: 4 AC-3 stereo tracks resampled/reordered into 8-channel 48 kHz audio, plus mpeg4 video converted to I420 and sent on PTS cadence (the only sample that depends on ffmpeg) |
+| `sample_send_mkv_multiopus` | Send | Req. 1/4/10 (MKV 4xstereo asset) | Decodes MKV with ffmpeg: 4 AC-3 stereo tracks resampled/reordered into 8-channel 48 kHz audio, plus mpeg4 video converted to I420 and sent on PTS cadence (the only sample that depends on ffmpeg) |
 | `sample_receive_pcm_multiopus` | Receive | Req. 5 (decoded PCM callback) | Per-user multi-channel PCM via `onPlaybackAudioFrameBeforeMixing`, written to disk (new file every 100 MB) |
 | `sample_receive_encoded_audio` | Receive | Req. 6 (encoded frame callback) | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`, no decoding, no playback |
-| `sample_receive_mixed_audio` | Receive | Req. 7 (mixed-audio receive) | Mixed output via `onPlaybackAudioFrame` (always 2 channels, odd/even channels split), written to disk (new file every 100 MB) |
-| `sample_receive_av_multiopus` | Receive | Req. 5 + video receive | Multi-channel PCM dump plus I420 frames via `IVideoFrameObserver2` dumped to a YUV file, with periodic progress logs |
+| `sample_receive_mixed_audio` | Receive | Req. 7 (mixed-audio receive) | Mixed output via `onPlaybackAudioFrame` (the SDK always mixes to 2 channels, odd/even split; the demo `--numOfChannels` accepts 1 or 2, default 2), written to disk (new file every 100 MB) |
+| `sample_receive_av_multiopus` | Receive | Req. 5 + Req. 8 (AV receive) | Multi-channel PCM dump plus I420 frames via `IVideoFrameObserver2` dumped to a YUV file, with periodic progress logs |
 
-> Req. 9 (4×stereo → 8-channel layout mapping) is an integration-side convention;
+> Req. 10 (4×stereo → 8-channel layout mapping) is an integration-side convention;
 > see "4×Stereo Layout Mapping" below.
 
 ## Directory Layout
@@ -185,7 +185,7 @@ carries either a token or an appId (pass the appId when no certificate is enable
 ./sample_receive_encoded_audio --channelId <name> --token <token> --audioFile received.opus
 ```
 
-### 6. Receive mixed output (always 2 channels)
+### 6. Receive mixed output (SDK always mixes to 2 channels; demo can opt for mono)
 
 ```bash
 ./sample_receive_mixed_audio --channelId <name> --token <token> --audioFile received_mixed.pcm
@@ -297,15 +297,15 @@ decoding. The callback `info` carries only `codec` and `sendTs` (in SDK v4.4.30.
 
 ### Mixed audio dump (sample_receive_mixed_audio)
 
-Output is mixed 48 kHz / 2-channel / 16-bit little-endian interleaved PCM (multi-channel
-streams are always mixed down to 2 channels — odd channels to one side, even channels to the
-other):
+Output is mixed 48 kHz / 16-bit little-endian interleaved PCM, 2 channels by default
+(multi-channel streams are always mixed down to 2 channels — odd channels to one side, even
+channels to the other; `--numOfChannels 1` outputs mono):
 
 ```bash
 ffplay -f s16le -ar 48000 -ch_layout stereo received_mixed.pcm
 ```
 
-## 4×Stereo Layout Mapping (Req. 9)
+## 4×Stereo Layout Mapping (Req. 10)
 
 On the source side, 8 channels are carried as 4 stereo tracks in **track-block order**
 (`[T1L,T1R]×N [T2L,T2R]×N [T3L,T3R]×N [T4L,T4R]×N`). This buffer **cannot** be passed directly
@@ -357,6 +357,7 @@ The buffer repeats [T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R] for every sample
 - **Video sending is limited to the MKV sample**: the other sender samples handle audio only
   (the h264 part of the reference sample was removed). `sample_send_mkv_multiopus` runs audio
   and video on separate threads with independent loops and does not do strict AV sync.
-- The mixing/playback path always outputs 2 channels (odd channels mixed to one side, even
-  channels to the other). For per-channel data, use `sample_receive_pcm_multiopus` or
+- The SDK mixing/playback path always outputs 2 channels (odd channels mixed to one side, even
+  channels to the other; the mixed-audio sample's `--numOfChannels 1` outputs mono). For
+  per-channel data, use `sample_receive_pcm_multiopus` or
   `sample_receive_encoded_audio`.

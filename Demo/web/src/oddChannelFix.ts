@@ -40,7 +40,7 @@ interface TrackInternals {
   channelCount?: number;
 }
 
-/** 两个 Float32 平面是否逐样本一致（允许 1e-6 误差） */
+/** 两个 Float32 平面是否内容一致（按步长 8 抽样比对，允许 1e-6 误差） */
 function planesIdentical(a: Float32Array, b: Float32Array): boolean {
   if (a.length !== b.length || a.length === 0) return false;
   for (let i = 0; i < a.length; i += 8) {

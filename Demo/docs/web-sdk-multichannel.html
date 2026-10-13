@@ -7,8 +7,8 @@
     data-title-zh="Web SDK 音频多声道（multiopus）文档"
     data-title-en="Web SDK Audio Multi-Channel (multiopus) Docs"
   >Web SDK 音频多声道（multiopus）文档</title>
-  <link rel="stylesheet" href="assets/style.css?v=e1ff56d">
-  <meta name="build-id" content="e1ff56d">
+  <link rel="stylesheet" href="assets/style.css?v=90eb566">
+  <meta name="build-id" content="90eb566">
   </head>
 <body>
   <header class="site-header">
@@ -272,7 +272,7 @@ await client.publish(track);</code></pre>
         <li>
           <strong>在线 demo</strong>：<a href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">https://xiaoyingtao.convoai.club/multiopus/</a>（Chrome 96+）。
           支持双标签页自收发：一个标签页以 Publisher uid 发布多声道 WAV，另一个以 Subscriber uid
-          订阅检测；结果面板显示逐声道音量条与 codec 判定。
+          订阅检测；结果面板显示逐声道音量条与 codec 判定（默认 <code>?demo=1</code> 布局；<code>?demo=2</code> 原版布局无结果面板，自动订阅最新发布者或首个有音频的远端）。
         </li>
         <li>
           <strong>本仓库 demo</strong>：<code>Demo/web/</code>（Vue3 + Vite），
@@ -598,7 +598,9 @@ await client.publish(track);</code></pre>
           <strong>Online demo</strong>: <a href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">https://xiaoyingtao.convoai.club/multiopus/</a> (Chrome 96+).
           Supports two-tab self-verification: one tab publishes a multi-channel WAV with the Publisher
           uid, the other subscribes with the Subscriber uid; the result panel shows per-channel volume
-          bars and the codec verdict.
+          bars and the codec verdict (default <code>?demo=1</code> layout; the <code>?demo=2</code>
+          legacy layout has no result panel and auto-subscribes to the most recent publisher or the
+          first remote user with audio).
         </li>
         <li>
           <strong>Demo in this repo</strong>: <code>Demo/web/</code> (Vue3 + Vite). Run
@@ -669,6 +671,6 @@ await client.publish(track);</code></pre>
     </div>
   </footer>
 
-  <script src="assets/i18n.js?v=e1ff56d"></script>
+  <script src="assets/i18n.js?v=90eb566"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 背景单：CSD-74687（音画不同步）、CSD-76350（Multipath 音频延迟）、CSD-76354（Linux SDK 4.2.32 Crash）、ASS-2272（Linux SDK 特殊版申请，含 MultiPath）；需求 Jira 待补充 |
-| 需求版本 | v1.1 |
+| 需求版本 | v1.2 |
 
 ---
 
@@ -486,7 +486,7 @@
 
 | # | 检查项 | 状态 | 备注 |
 | --- | --- | --- | --- |
-| 1 | 功能点有明确的输入/输出/边界行为 | ✅ | 发送 3 路径 + 4×双声道布局映射、接收 4 路径、协商规则均有场景化描述 |
+| 1 | 功能点有明确的输入/输出/边界行为 | ✅ | 发送 4 路径（含 MKV 4×双声道音视频同发）+ 接收 4 路径、协商规则均有场景化描述 |
 | 2 | 平台差异已逐条说明 | ✅ | Linux 发送回退 vs Web 发送不回退；Web 仅偶数声道、Chrome 96+；奇数声道仅 Native/Linux |
 | 3 | 有可量化的验收标准（性能+体验） | [待澄清] | 帧节奏/声道数一致性可量化；码率/CPU/内存基线待性能报告 |
 | 4 | 客户在用版本和预期交付版本已明确 | ✅ | v4.2.32-20240827、v4.4.30.130-20250409、4.4.30.148/149 |
@@ -536,3 +536,4 @@
 | v0.9 | 2026-10-12 | 奇数声道互通实测：3/5/7 声道经 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部通过（逐声道 NCC 0.46~1.00、同序号对应）；素材 `Demo/linux/public/odd_{3,5,7}ch.wav`（ffmpeg channelmap 截取）；待确认问题4 更新为「解码能力已实证、客户用量待确认」。详见 `Test/odd_channels_interop_test_20261012.md` | Kimi Code |
 | v1.0 | 2026-10-12 | 复审修订：附录素材表 VictoriaMulti.mkv 来源更正（仓库现存 `References/VictoriaMulti.mkv` 与 `Demo/linux/public/VictoriaMulti.mkv`，Git LFS 同 md5；仅 `References/沟通记录/` 内拷贝被删除）；素材位置精确化（48 kHz 素材在 Demo/linux/public，44.1 kHz 与 24bit 素材在 Demo/web/public）；quick-demo-multiopus 残留引用补移除注解（2.1/2.2/8.2）；FAQ 示例改用仓库内 48 kHz 素材（旧示例 44.1 kHz 与场景2.3 强制校验冲突）；2.1 版本串日期与 QA 日期关系加注 | Kimi Code |
 | v1.1 | 2026-10-13 | 素材表 VictoriaMulti.mkv 存量描述更正：仅现存 `Demo/linux/public/VictoriaMulti.mkv`（Git LFS 指针，需 `git lfs pull`），「仓库现存 References/VictoriaMulti.mkv」系 v1.0 误记，以本条为准；新增需求点8（接收多声道音频与视频 AV 同收，覆盖第 4 条接收路径 `sample_receive_av_multiopus`），原需求点8/9 顺延为需求点9/10（全文场景编号与交叉引用同步调整），8.1 验收表补对应行，摘要/2.1/6.3/6.4/研发准入自检同步对齐「接收 4 路径」；标题去「初稿」 | Kimi Code |
+| v1.2 | 2026-10-13 | 全项目对齐复审：研发准入自检#1 遗漏修正——「发送 3 路径」更正为「发送 4 路径（含 MKV 4×双声道音视频同发）」（v1.1 仅对齐了「接收 4 路径」，:498 已是 4+4 口径）；Demo/linux README 与源码注释的需求点9→10 编号顺延同步已在仓库侧完成 | Kimi Code |

@@ -138,5 +138,5 @@ xcodebuild -workspace MultiChannelAudioReceiver.xcworkspace \
 - **声道数选择器只是 UI 行数控制**：切换它不下发任何 SDK 参数；SDK 对超出流实际声道数的
   `index` 设置不产生效果；切换远端 uid 时会把全部 8 行（含隐藏行）状态重新下发，保证行为确定。
 - **音量私参作用在解码后、播放前**：只影响本端听到的声音，不影响频道内其他用户。
-- macOS 4.5.2 SDK 无 `didOccurWarning` 回调，界面日志只上报 `didOccurError` 及连接状态变化。
+- macOS SDK 无 `didOccurWarning` 回调（4.5.2 与当前集成的 4.7.0 头文件均只有 `didOccurError`），界面日志只上报 `didOccurError` 及连接状态变化。
 - 本 app 无沙盒、无麦克风采集（观众角色不发布音频轨），因此不申请麦克风权限。

@@ -14,7 +14,7 @@
 - **奇数声道修正补丁（`src/oddChannelFix.ts`）**：订阅 3/5/7 奇数声道流时，SDK 会按 N+1 偶数声道误解码（末声道为幻影复制、误判多声道 ✓）；补丁在运行时检测「末两声道逐样本恒等」签名，命中后修正音量显示声道数、`channelCount` 与播放输出（丢弃幻影声道），并弹窗提示。**三个 Live Demo 操作区都有「奇数声道补丁」开关（默认开，三页共享并记忆）**：订阅中关掉会立即撤销补丁恢复 SDK 原始行为（音量条变回 N+1 路、末两声道恒等），打开则重新检测修正，便于对比验证。原理与限制见 `Test/odd_channels_interop_test_20261012.md` §5/§6。
 - **视频 + 多声道音频同时订阅（Live Demo 3）**：`?demo=3` 打开。输入频道 / 本端 uid(+token) / 目标 uid，一键同时订阅目标远端的多声道音频与视频：视频渲染到页面视频区，音频沿用 Live Demo 1 的逐声道音量条、codec 判定（音频 / 视频 codec 均显示）与声道选择播放；订阅期间对端补发视频或音频会自动补订。主要用于配合 Linux MKV demo（`sample_send_mkv_multiopus`，1 路视频 + 8 声道 OPUSMC 音频）做端到端验证，也可订阅 Live Demo 1/2 发布的纯音频流（此时视频区显示未发布）。
 - **双标签页角色控制**：通过 URL 参数 `channel` / `uid` / `subTo` 区分发布端与订阅端标签页。
-- **多 Live Demo 布局**：默认（`?demo=1`）为本工程布局；`?demo=2` 为参考 quick-demo-multiopus 原版的布局（自由文本音频地址、确定(环绕声/双声道/单声道)按钮、简洁音量条）；`?demo=3` 为视频 + 多声道音频同时订阅布局。各 demo 头部有快捷链接互相切换。
+- **多 Live Demo 布局**：默认（`?demo=1`）为本工程布局；`?demo=2` 为参考 quick-demo-multiopus 原版的布局（自由文本音频地址、确定(环绕声/双声道/单声道)按钮、简洁音量条；该布局无 codec 判定 / 结果面板，也无 subTo 输入——自动订阅最新发布者或首个有音频的远端）；`?demo=3` 为视频 + 多声道音频同时订阅布局。各 demo 头部有快捷链接互相切换。
 - **中英文切换**：右上角按钮切换界面语言（默认跟随浏览器语言，选择记忆在 localStorage）。
 
 关键前提：`AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` 需在 `createClient` 之前设置（代码内有注释说明，创建 client 后再设置不生效）。三个 Live Demo 组件（`src/Multiopus.vue` / `src/MultiopusV2.vue` / `src/MultiopusV3.vue`）各自在其 `createClient` 调用之前设置。
@@ -72,6 +72,7 @@ URL 参数一览（均优先于 localStorage 回填值）：
 | `uid` | 本标签页加入用的 uid（决定角色） |
 | `subTo` | 要订阅的目标 uid（订阅端使用） |
 | `token` | 本端 uid 对应的 token（也可在页面内填写） |
+| `appId` | 覆盖页面默认 / 已存（localStorage）的 App ID |
 
 ## 配合 Linux demo 做端到端验证
 

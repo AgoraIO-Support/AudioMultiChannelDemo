@@ -5,7 +5,7 @@
 //  针对 1 路视频 + 4 条立体声音轨的 MKV 素材（如 public/VictoriaMulti.mkv：
 //  mpeg4 1920x1080 + 4 x AC-3 44.1kHz stereo，共承载 8 声道内容）：
 //   - 启动时用 ffmpeg 一次性解码 4 条 AC-3 音轨，逐轨 swresample 到 48kHz stereo s16，
-//     再按需求点9 的 4xstereo 布局重排为逐样本交错 8 声道 PCM，写入临时文件
+//     再按需求点10 的 4xstereo 布局重排为逐样本交错 8 声道 PCM，写入临时文件
 //     （/tmp/<mkv名>_8ch48k.pcm，243s 素材约 187MB，避免全量驻留内存）；
 //     声道顺序 CH1=T1L, CH2=T1R, ..., CH8=T4R；各轨长度差异（~35ms 级）末尾补零对齐。
 //     临时文件若比 MKV 新则直接复用，跳过重复转码。
@@ -59,7 +59,7 @@ extern "C" {
 #define DEFAULT_CONNECT_TIMEOUT_MS (3000)
 #define DEFAULT_VIDEO_FILE "public/VictoriaMulti.mkv"
 
-// 4xstereo 布局决定的固定参数（spec 需求点9）
+// 4xstereo 布局决定的固定参数（spec 需求点10）
 #define EXPECTED_AUDIO_TRACKS (4)   // MKV 中必须恰好 4 条立体声音轨
 #define CHANNELS_PER_TRACK (2)
 #define TOTAL_CHANNELS (8)
@@ -312,7 +312,7 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
   return ok;
 }
 
-// 4 条 stereo 轨 -> 逐样本交错 8 声道（需求点9 布局：
+// 4 条 stereo 轨 -> 逐样本交错 8 声道（需求点10 布局：
 // CH1=T1L, CH2=T1R, ..., CH8=T4R）；各轨长度不一致时短轨末尾补零
 static bool interleaveTo8Ch(const std::string tmpFiles[EXPECTED_AUDIO_TRACKS],
                             const int64_t trackSamples[EXPECTED_AUDIO_TRACKS],

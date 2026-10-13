@@ -680,7 +680,7 @@ watch(oddFixEnabled, (on) => {
 });
 
 // 声道选择：对远端多声道音轨选择任意声道组合，按 surround/stereo/mono 渲染。
-// stereo：所选声道里 0,2,4,6… 入左、1,3,5,7… 入右；mono：全部混为单声道（立体声容器）。
+// stereo：按声道序号奇偶分路（偶数序号 0,2,4,6… 入左、奇数序号 1,3,5,7… 入右，与所选列表位置无关）；mono：全部混为单声道（立体声容器）。
 function selectChannels(mode: "surround" | "stereo" | "mono") {
   if (!remoteAudioTrack) return;
   // 严格解析：只接受纯数字序号并去重（"0,0,1"、"1abc"、"0.9" 不再被静默接受）

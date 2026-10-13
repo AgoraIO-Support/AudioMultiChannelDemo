@@ -172,7 +172,8 @@ mirrored to stdout unbuffered:
   ones) is re-applied so behavior stays deterministic.
 - **The volume parameter acts after decoding, before playout**: it only affects what this
   client hears, not what other participants in the channel hear.
-- The macOS 4.5.2 SDK has no `didOccurWarning` callback; the log area reports
+- The macOS SDK has no `didOccurWarning` callback (neither 4.5.2 nor the currently integrated
+  4.7.0 headers expose it — only `didOccurError`); the log area reports
   `didOccurError` plus connection state changes.
 - The app is unsandboxed and never captures the microphone (the audience role publishes
   no audio track), so it does not request microphone permission.

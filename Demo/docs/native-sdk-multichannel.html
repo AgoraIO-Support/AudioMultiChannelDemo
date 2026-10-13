@@ -7,8 +7,8 @@
     data-title-zh="Native SDK（macOS）音频多声道（multiopus）"
     data-title-en="Native SDK (macOS) Audio Multi-Channel (multiopus)"
   >Native SDK（macOS）音频多声道（multiopus）</title>
-  <link rel="stylesheet" href="assets/style.css?v=e1ff56d">
-    <meta name="build-id" content="e1ff56d">
+  <link rel="stylesheet" href="assets/style.css?v=90eb566">
+    <meta name="build-id" content="90eb566">
   </head>
 <body>
   <header class="site-header">
@@ -158,6 +158,7 @@ kit.setParameters("{\"che.audio.frame_dump\":true}")
         <li><code>Demo/macOS/MultiChannelAudioReceiver</code>：观众角色纯接收，逐声道开关/音量、远端视频显示、音/视频码率走势、音频帧 dump；同样支持命令行自动化：
           <pre><code>MultiChannelAudioReceiver -autoChannel &lt;频道&gt; -autoJoin YES -autoDump YES -autoQuitAfter 120</code></pre>
         </li>
+        <li><code>Demo/iOS/MultiChannelAudioSenderApp</code> / <code>Demo/iOS/MultiChannelAudioReceiverApp</code>：上述两个 app 的 iOS 移植版（SwiftUI + AgoraRtcEngine_iOS 4.7.0，iOS 14.0+，XcodeGen + CocoaPods；素材复用同一组 WAV，自动化参数一致）；模拟器构建与真频道 join/发布冒烟已通过（2026-10-13），多声道内容级实测以实测为准。</li>
         <li>配合 Web 验证端（<code>Demo/web</code>，<code>?channel=…&amp;uid=…&amp;subTo=…</code>）订阅后采样
           <code>getVolumeLevels()</code> 逐声道峰值，即可对任意 SDK 版本做多声道回归（单轮约 5 分钟）。</li>
       </ul>
@@ -166,7 +167,7 @@ kit.setParameters("{\"che.audio.frame_dump\":true}")
       <ul>
         <li><strong>仅 48 kHz</strong>：多声道编解码只支持 48 kHz，素材须先重采样。</li>
         <li><strong>payload type ↔ 声道数</strong>：123 → 3/4、124 → 5/6、125 → 7/8；默认 4/6/8，3/5/7 须显式设置 <code>che.audio.custom_channel_num</code>。</li>
-        <li><strong>声道数上限 8</strong>；Web 端仅支持 4/6/8 偶数声道解码——3/5/7 只能用 Native/Linux 端验证（Web 侧实测不报错但会按 N+1 偶数声道误解码、内容失真且误判多声道 ✓，见 <code>Test/odd_channels_interop_test_20261012.md</code> §5）；奇数声道 Native↔Linux 四链路互通已实测通过（12/12，见同文档 §4）。</li>
+        <li><strong>声道数上限 8</strong>；Web 端仅支持 4/6/8 偶数声道解码——3/5/7 只能用 Native/Linux 端验证（Web 侧实测不报错但会按 N+1 偶数声道误解码、内容失真且误判多声道 ✓，见 <code>Test/odd_channels_interop_test_20261012.md</code> §5；2026-10-12 起 <code>Demo/web</code> 内置 <code>oddChannelFix.ts</code> 运行时补丁，可修正 demo 层的判定与播放、开关默认开，但 SDK 层奇数声道仍不支持，见同文档 §6）；奇数声道 Native↔Linux 四链路互通已实测通过（12/12，见同文档 §4）。</li>
         <li><strong>不支持端回退</strong>：Linux 发送时不支持端加入会触发发送端回退普通 Opus（可用 <code>che.audio.codec_unfallback</code> 强制不回退）；频道内应保证所有端支持多声道。</li>
         <li><strong>版本残留事项</strong>：修复点定位为 4.5.2 → 4.5.3（4.5.3 补测 8 声道全通，二进制版本号已核实）；声道序号映射已闭环（2026-10-12：4.7.0 原生链路 dump 与源 WAV 包络互相关，dumpCHi ↔ srcCHi 同序号对应，NCC 0.67~0.78、跨声道 ≈ 0，无重排）；4/6 声道素材已于 4.7.0 补测通过（全声道内容送达）。</li>
         <li>接收端无法从回调获知实际协商声道数（SDK 无此回调）；逐声道私参为未文档化的私有参数。</li>
@@ -310,6 +311,7 @@ kit.setParameters("{\"che.audio.frame_dump\":true}")
         <li><code>Demo/macOS/MultiChannelAudioReceiver</code>: audience-only receiver with per-channel toggles/volume, remote video display, audio/video bitrate trend charts, and audio frame dump; it also supports command-line automation:
           <pre><code>MultiChannelAudioReceiver -autoChannel &lt;channel&gt; -autoJoin YES -autoDump YES -autoQuitAfter 120</code></pre>
         </li>
+        <li><code>Demo/iOS/MultiChannelAudioSenderApp</code> / <code>Demo/iOS/MultiChannelAudioReceiverApp</code>: iOS ports of the two apps above (SwiftUI + AgoraRtcEngine_iOS 4.7.0, iOS 14.0+, XcodeGen + CocoaPods; same WAV assets and automation flags); simulator builds and real-channel join/publish smoke tests passed (2026-10-13) — content-level multi-channel verification on iOS is subject to further measurement.</li>
         <li>Combined with the Web verification client (<code>Demo/web</code>, <code>?channel=…&amp;uid=…&amp;subTo=…</code>)
           sampling <code>getVolumeLevels()</code> per-channel peaks, any SDK version can be regression-tested for
           multi-channel support in about 5 minutes per round.</li>
@@ -319,7 +321,7 @@ kit.setParameters("{\"che.audio.frame_dump\":true}")
       <ul>
         <li><strong>48 kHz only</strong>: multi-channel encode/decode supports 48 kHz exclusively; resample other material first.</li>
         <li><strong>Payload type ↔ channel count</strong>: 123 → 3/4, 124 → 5/6, 125 → 7/8; defaults are 4/6/8, and 3/5/7 require an explicit <code>che.audio.custom_channel_num</code>.</li>
-        <li><strong>Maximum 8 channels</strong>; Web decodes even counts (4/6/8) only — 3/5/7 must be verified with Native/Linux endpoints (on Web they raise no error but are mis-decoded as the next even channel count, with distorted content and a false multi-channel ✓ verdict; see <code>Test/odd_channels_interop_test_20261012.md</code> §5). Odd-channel interop across all four Native↔Linux paths is verified (12/12 pass, §4 of the same document).</li>
+        <li><strong>Maximum 8 channels</strong>; Web decodes even counts (4/6/8) only — 3/5/7 must be verified with Native/Linux endpoints (on Web they raise no error but are mis-decoded as the next even channel count, with distorted content and a false multi-channel ✓ verdict; see <code>Test/odd_channels_interop_test_20261012.md</code> §5; since 2026-10-12 <code>Demo/web</code> ships an <code>oddChannelFix.ts</code> runtime patch that corrects the demo-layer verdict and playback — on by default — but the SDK itself still does not support odd channel counts, see §6 of the same document). Odd-channel interop across all four Native↔Linux paths is verified (12/12 pass, §4 of the same document).</li>
         <li><strong>Fallback with unsupported endpoints</strong>: when Linux is sending, an unsupported endpoint joining triggers sender fallback to plain Opus (<code>che.audio.codec_unfallback</code> can force no-fallback); ensure every participant supports multi-channel.</li>
         <li><strong>Residual items</strong>: the fix point is pinned to 4.5.2 → 4.5.3 (4.5.3 passes all 8 channels; binary version double-checked); the channel-index mapping is closed (2026-10-12: envelope cross-correlation between the 4.7.0 native-path dump and the source WAV shows dump channel i ↔ source channel i, NCC 0.67–0.78, cross-channel ≈ 0 — no reordering); the 4/6-channel materials were re-verified on 4.7.0 (all channels deliver content).</li>
         <li>The receiver cannot learn the negotiated channel count from any callback (the SDK exposes none); the per-channel private parameters are undocumented.</li>
@@ -329,11 +331,11 @@ kit.setParameters("{\"che.audio.frame_dump\":true}")
 
   <footer class="site-footer">
     <div class="container">
-      <span data-lang="zh">内容依据：<code>Spec/native_sdk_audio_multichannel_spec.md</code>（v1.8）、<code>Test/macos_sender_multi-channel_audio_test_result.md</code>、<code>Test/macos_sender_2ch_clamp_issue_20261010.md</code>、<code>Test/odd_channels_interop_test_20261012.md</code>；示例代码取自 <code>Demo/macOS/</code>（MultiChannelAudioSender / MultiChannelAudioReceiver）。</span>
-      <span data-lang="en">Sources: <code>Spec/native_sdk_audio_multichannel_spec.md</code> (v1.8), <code>Test/macos_sender_multi-channel_audio_test_result.md</code>, <code>Test/macos_sender_2ch_clamp_issue_20261010.md</code>, <code>Test/odd_channels_interop_test_20261012.md</code>; code samples are taken from <code>Demo/macOS/</code> (MultiChannelAudioSender / MultiChannelAudioReceiver).</span>
+      <span data-lang="zh">内容依据：<code>Spec/native_sdk_audio_multichannel_spec.md</code>（v1.11）、<code>Test/macos_sender_multi-channel_audio_test_result.md</code>、<code>Test/macos_sender_2ch_clamp_issue_20261010.md</code>、<code>Test/odd_channels_interop_test_20261012.md</code>；示例代码取自 <code>Demo/macOS/</code>（MultiChannelAudioSender / MultiChannelAudioReceiver）。</span>
+      <span data-lang="en">Sources: <code>Spec/native_sdk_audio_multichannel_spec.md</code> (v1.11), <code>Test/macos_sender_multi-channel_audio_test_result.md</code>, <code>Test/macos_sender_2ch_clamp_issue_20261010.md</code>, <code>Test/odd_channels_interop_test_20261012.md</code>; code samples are taken from <code>Demo/macOS/</code> (MultiChannelAudioSender / MultiChannelAudioReceiver).</span>
     </div>
   </footer>
 
-  <script src="assets/i18n.js?v=e1ff56d"></script>
+  <script src="assets/i18n.js?v=90eb566"></script>
 </body>
 </html>

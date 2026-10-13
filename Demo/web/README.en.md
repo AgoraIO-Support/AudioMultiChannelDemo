@@ -45,7 +45,9 @@ See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
   from the subscriber tab.
 - **Multiple live demos**: the default (`?demo=1`) is this project's layout; `?demo=2` reproduces
   the original quick-demo-multiopus layout (free-text audio URL, OK (surround/stereo/mono) buttons,
-  plain volume bars); `?demo=3` is the simultaneous video + multi-channel audio subscribe layout.
+  plain volume bars; this layout has no codec verdict / result panel and no subTo input — it
+  auto-subscribes to the most recent publisher, or the first remote user with audio); `?demo=3` is
+  the simultaneous video + multi-channel audio subscribe layout.
   Quick links in the header switch between the demos.
 - **Chinese/English toggle**: a button in the top-right corner switches the UI language
   (defaults to the browser language; the choice is remembered in localStorage).
@@ -126,6 +128,7 @@ URL parameters (each one overrides the localStorage value):
 | `uid` | The uid this tab joins with (decides the role) |
 | `subTo` | Target uid to subscribe to (subscriber tab) |
 | `token` | Token for this tab's uid (can also be entered in the page) |
+| `appId` | Overrides the default / stored (localStorage) App ID |
 
 ## End-to-End Verification with the Linux Demo
 

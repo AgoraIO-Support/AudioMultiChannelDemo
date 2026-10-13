@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 背景单：CSD-74687（音画不同步）、ASS-2272（Linux SDK 特殊版申请）；需求 Jira 待补充 |
-| 需求版本 | v0.5 |
+| 需求版本 | v0.6 |
 
 ---
 
@@ -22,7 +22,7 @@
 
 ### 2.1 客户原始需求
 
-客户的多声道链路中，Web 端承担订阅监听与验证角色：Linux 服务器端注入 8 声道音频流后，Web 端（Chrome）订阅该流、确认实际解码声道数、逐声道试听与查看音量；同时 Web SDK 本身也具备多声道发布能力（多声道 WAV 素材 → 自定义音轨 → 发布）。客户印度研发团队在联调中使用订阅端验证 Linux 发送的 4×双声道 → 8 声道布局映射正确性（背景见 Linux 侧 spec 需求点9）。
+客户的多声道链路中，Web 端承担订阅监听与验证角色：Linux 服务器端注入 8 声道音频流后，Web 端（Chrome）订阅该流、确认实际解码声道数、逐声道试听与查看音量；同时 Web SDK 本身也具备多声道发布能力（多声道 WAV 素材 → 自定义音轨 → 发布）。客户印度研发团队在联调中使用订阅端验证 Linux 发送的 4×双声道 → 8 声道布局映射正确性（背景见 Linux 侧 spec 需求点10）。
 
 | 内容项 | 详情 | 备注 |
 | --- | --- | --- |
@@ -95,7 +95,7 @@
 | 内容项 | 描述 | 备注 |
 | --- | --- | --- |
 | API 接口（描述性语言） | 逐声道音量（`getVolumeLevels`）、声道选择（`selectChannels`）、codec 与声道数判定（demo 内 getStats 轮询） | 现成能力 |
-| 体验指标概述 | 订阅后约 1 s 内可判定实际声道数（`getVolumeLevels` 数组长度路径，300 ms 周期刷新）；底层 codec 判定（getStats 轮询 800 ms×最多 6 次）最迟约 5 s；声道选择即时生效；各声道音量逐路可辨（注意 dB 刻度底噪，见场景5.1） | 阈值见第七章与 8.1 |
+| 体验指标概述 | 订阅后约 1 s 内可判定实际声道数（`getVolumeLevels` 数组长度路径，300 ms 周期刷新）；底层 codec 判定（getStats 800 ms 持续轮询，无次数上限，可观测订阅期间的协商回退）首次判定一般约 1~5 s；声道选择即时生效；各声道音量逐路可辨（注意 dB 刻度底噪，见场景5.1） | 阈值见第七章与 8.1 |
 | 性能指标概述 | 频道为多声道流时，不支持端加入不应影响已订阅端（Web 发送场景除外，见需求点7）；具体 CPU/内存指标待性能测试报告补充 | |
 
 ### 6.3 客户/用户场景技术拆解
@@ -131,9 +131,9 @@
 | `createCustomAudioTrack({ mediaStreamTrack, channelCount })` / `createMultiAudioTrack` | Web 设计文档"参考集成代码"；`Demo/web/src/Multiopus.vue:378-419`（发布链路：fetch WAV → `decodeAudioData` → `MediaStreamDestination`（显式 channelCount）→ `createCustomAudioTrack` → publish；quick-demo 已移除并继承） | 创建多声道本地音轨并发布 | `channelCount` 为创建时设定值，SDK 据其生成发布用的 `custom_payload_type` | 可复用 |
 | 远端音轨 `channelCount` 属性 | Web 设计文档 | 获取远端多声道音轨声道数 | 取值来自信令 `on_add_audio_stream` 的 pt 值，非从轨内解析 | 可复用 |
 | `selectChannels(channels, mode)`（本地/远端音轨均有） | Web 设计文档 | 设置输出声道列表与渲染模式 | mode ∈ `surround`（标准多声道协议）/ `stereo`（0,2,4,6… 声道入左、1,3,5,7… 入右）/ `mono`（全部混为单声道，输出为立体声容器）；基于 Insertable Streams 实现 | 可复用 |
-| `getVolumeLevels(channels?)` | Web 设计文档；`Demo/web/src/Multiopus.vue:632`（quick-demo 已移除并继承） | 返回各声道音量数组 | 不传参返回全部声道；demo 以返回数组长度作为实际声道数判据 | 可复用 |
+| `getVolumeLevels(channels?)` | Web 设计文档；`Demo/web/src/Multiopus.vue:639`（quick-demo 已移除并继承） | 返回各声道音量数组 | 不传参返回全部声道；demo 以返回数组长度作为实际声道数判据 | 可复用 |
 | ORTC multiopus 协商（payloadType 123、rtpMap multiopus/48000、fmtp channel_mapping/coupled_streams/num_streams、minptime、useinbandfec） | Web 设计文档"Multi-channel Technical Details" | 声明多声道解码能力 | 总声道数 = coupled_streams + num_streams；`encodingParameters` 可设为 8 以兼容 6/4/2 | 可复用 |
-| RTCPeerConnection getStats（demo 内 hook） | `Demo/web/src/Multiopus.vue:289-307,710-735`（quick-demo 已移除并继承；PC hook 定义处与 `detectCodec` 轮询使用处） | 判定实际收到的 codec（opus / multiopus） | demo 层手段，非 SDK 公开 API | 可复用（验证链路） |
+| RTCPeerConnection getStats（demo 内 hook） | `Demo/web/src/Multiopus.vue:289-310,720-745`（quick-demo 已移除并继承；PC hook 定义处与 `detectCodec` 轮询使用处） | 判定实际收到的 codec（opus / multiopus） | demo 层手段，非 SDK 公开 API | 可复用（验证链路） |
 | Linux SDK 多声道发送（对端来源） | `Spec/linux_sdk_audio_multichannel_spec.md` | 产生 OPUSMC 流 | payload 123/124/125，声道顺序按已确认映射 | 强依赖 |
 
 **API 间关系**：`ENABLE_MULTIOPUS_CODEC` 是订阅/发布多声道的前置总开关；发布路径由 `channelCount` 驱动 payload 协商；订阅路径由信令 pt 值驱动解码与 `channelCount` 展示；`selectChannels`/`getVolumeLevels` 作用于已建立的多声道音轨（本地或远端）。
@@ -175,7 +175,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 | ② `channelCount` 修正 | 音轨 `channelCount` 改为真实声道数 N |
 | ③ `selectChannels` 播放修正 | `selectChannels([0..N-1], "surround")` 让播放输出丢弃幻影声道，避免末声道内容重复响度 |
 
-**检测机制**：读取 transform 内部 `lastSplitAudioData`（拆分后的逐声道 PCM 平面）——解码声道数为 ≥4 的偶数时，若末两声道平面逐样本一致（容差 1e-6）、连续 ≥10 帧全部恒等且期间见过非零内容，即判为奇数声道流（真实声道数 = 解码声道数 − 1）。
+**检测机制**：读取 transform 内部 `lastSplitAudioData`（拆分后的逐声道 PCM 平面）——解码声道数为 ≥4 的偶数时，若末两声道平面内容一致（实现按步长 8 抽样比对、容差 1e-6）、检测窗口内 ≥10 帧全部恒等且期间见过非零内容，即判为奇数声道流（真实声道数 = 解码声道数 − 1）。
 
 **开关与撤销**：模块级开关 `oddFixEnabled`（ref + localStorage 持久化），三个 Live Demo 界面均有补丁开关、默认开启；关闭时对已修正音轨调用 `unpatchOddChannelStream` 恢复 SDK 原始行为（`getVolumeLevels`/`channelCount`/`selectChannels` 全部还原），便于集成方对比验证。补丁只对当次订阅生效，unpublish 后随 track 销毁。
 
@@ -247,7 +247,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 
 - 当：订阅建立后
 - 则：`getVolumeLevels()` 返回数组长度等于实际解码声道数（demo 以此作为多声道判定主信号）；通过 getStats 可读到底层 codec 为 `multiopus`（demo 以 hook RTCPeerConnection 方式实现，非 SDK 公开 API）
-- 且：codec 判定需容忍短暂延迟（demo 按 800 ms 轮询、最多 6 次）
+- 且：codec 判定需容忍短暂延迟（demo 按 800 ms 持续轮询、无次数上限，首次判定一般约 1~5 s；持续轮询同时用于观测订阅期间的协商回退，见场景7.1）
 
 ### 需求点4：声道选择播放
 
@@ -330,7 +330,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 
 - 当：订阅 Channel ID 类素材流
 - 则：通过 `selectChannels` 逐声道试听，各声道内容与发送端约定声道顺序一致、无串声道、无杂音
-- 且：该用例用于回归 Linux 发送侧 4×双声道 → 8 声道布局映射（Linux 侧 spec 场景9.4）
+- 且：该用例用于回归 Linux 发送侧 4×双声道 → 8 声道布局映射（Linux 侧 spec 场景10.4）
 
 ---
 
@@ -342,7 +342,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 多声道能力开启与协商 | `ENABLE_MULTIOPUS_CODEC` 开启后 ORTC multiopus 协商生效，未开启保持普通行为 | — | 开关在 createClient 前设置 | P0 | 已交付（4.20.1-100/200） | — | 不涉及 | |
 | Web 端多声道发布 | channelCount 4/6/8 自定义音轨发布，payload 自动生成 | — | 发布后远端可解出对应声道数 | P1 | 同上 | — | 不涉及 | demo 已含 WAV 发布路径 |
-| Web 端多声道订阅与播放 | 订阅 OPUSMC 流播放，`channelCount` 可读 | — | 声道数判定约 1 s（音量数组长度）；codec 判定最迟约 5 s | P0 | 同上 | — | 不涉及 | 仅偶数声道 |
+| Web 端多声道订阅与播放 | 订阅 OPUSMC 流播放，`channelCount` 可读 | — | 声道数判定约 1 s（音量数组长度）；codec 判定首次一般约 1~5 s（800 ms 持续轮询） | P0 | 同上 | — | 不涉及 | 仅偶数声道 |
 | 声道选择播放 | `selectChannels` 三模式（surround/stereo/mono）任意声道组合 | — | 选择即时生效 | P0 | 同上 | — | 不涉及 | Insertable Streams 实现 |
 | 逐声道音量获取 | `getVolumeLevels` 返回各声道音量数组 | — | 数组长度 = 实际声道数 | P0 | 同上 | — | 不涉及 | dB 刻度：静音声道在 dither 素材下读数 ~10%（非串声道，见场景5.1） |
 | 浏览器兼容性 | Chrome 96+ 可用、110+ 完全支持；Safari/Firefox 不支持 | — | 明确的不支持声明 | P0 | 同上 | — | 不涉及 | |
@@ -448,3 +448,4 @@ Linux 端发布 8ch OPUSMC (payload 125)
 | v0.3 | 2026-10-12 | 奇数声道 Web 行为实测更正：6.3 技术维度「声道数范围」更新——3/5/7 流在 Web 端不报错但按 N+1 偶数声道误解码（mono 子流当 stereo 解、末声道复制出幻影声道、界面误判多声道 ✓），结果不可信；依据 `Test/odd_channels_interop_test_20261012.md` §5 | Kimi Code |
 | v0.4 | 2026-10-12 | 复审修订：场景8.1 判定准则补奇数声道误判警示（3/5/7 流不得用 Web 验证）；待确认问题2 状态改为「规划待确认；当前行为已实测」；quick-demo-multiopus 残留引用统一补移除注解（摘要/2.1/8.1/8.2）；6.4 表中 Multiopus.vue 行号引用改指 `Demo/web/src/Multiopus.vue` 现行位置 | Kimi Code |
 | v0.5 | 2026-10-13 | 修复：6.4 表残留引用清理补齐（AlexGongs/USAGE.md → `Demo/web/src/Multiopus.vue` 现行位置，行号对齐 :283/:378-419/:632/:289-307,710-735）；:120/:298 补 demo 层 oddChannelFix 边界说明；新增 6.6「Demo 层奇数声道运行时补丁（oddChannelFix）」章节（含 `Demo/web/` 三个 Live Demo 版本差异与 `?demo=N` 切换）；标题去「初稿」；8.2/参考资料残留路径同步清理 | Kimi Code |
+| v0.6 | 2026-10-13 | 全项目对齐复审：6.4 行号引用对齐 HEAD（getVolumeLevels :632→:639；PC hook :289-307→:289-310；detectCodec :710-735→:720-745）；codec 轮询口径更正为「800 ms 持续轮询、无次数上限」（6.2/场景3.2/8.1，与 demo 代码及 README/docs 一致，旧「最多 6 次」表述作废）；6.6 检测机制补实现粒度（步长 8 抽样比对）；Linux 侧场景编号顺延修正（2.1 需求点9→需求点10、场景8.2 引用的场景9.4→场景10.4，因 Linux spec v1.1 新增需求点8 顺延所致） | Kimi Code |

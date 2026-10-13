@@ -1,7 +1,7 @@
 # Agora Linux SDK 音频多声道（multiopus）Demo
 
 本工程是 Agora Linux SDK（v4.4.30.149，x86_64 / aarch64）音频多声道收发的独立 C++ demo，
-依据需求规格 `Spec/linux_sdk_audio_multichannel_spec.md` 编写，覆盖发送 3 路径与接收 3 路径。
+依据需求规格 `Spec/linux_sdk_audio_multichannel_spec.md` 编写，覆盖发送 4 路径与接收 4 路径。
 多声道编码基于 Opus 多流（OPUSMC，payload type 123/124/125），**仅支持 48 kHz 采样率**。
 
 [English Documentation](README.en.md)
@@ -13,13 +13,13 @@
 | `sample_send_pcm_multiopus` | 发送 | 需求点1（PCM 发送）、需求点4（私参与协商） | raw PCM 多声道发送，10ms/帧，声道数可配 3~8 |
 | `sample_send_wav_multiopus` | 发送 | 需求点2（WAV 发送）、需求点4 | 多声道 WAV 发送：RIFF 解析，16bit 直发、24bit 转 16bit，非法位深、声道数与非 48kHz 在连接前报错 |
 | `sample_send_opus8` | 发送 | 需求点3（预编码 Opus 发送） | 8 声道 Opus 裸流（640 字节/20ms 帧），`AUDIO_CODEC_OPUSMC` + `MIX_DISABLED` |
-| `sample_send_mkv_multiopus` | 发送 | 需求点1/4/9（MKV 4xstereo 素材） | ffmpeg 解 MKV：4 条 AC-3 stereo 轨重采样重排为 8 声道 48kHz 发送 + mpeg4 视频转 I420 按 PTS 发送（仅该 sample 依赖 ffmpeg 库） |
+| `sample_send_mkv_multiopus` | 发送 | 需求点1/4/10（MKV 4xstereo 素材） | ffmpeg 解 MKV：4 条 AC-3 stereo 轨重采样重排为 8 声道 48kHz 发送 + mpeg4 视频转 I420 按 PTS 发送（仅该 sample 依赖 ffmpeg 库） |
 | `sample_receive_pcm_multiopus` | 接收 | 需求点5（解码 PCM 回调） | `onPlaybackAudioFrameBeforeMixing` 按用户回调多声道 PCM 并落盘（100MB 切换文件） |
 | `sample_receive_encoded_audio` | 接收 | 需求点6（编码帧回调） | `audioRecvEncodedFrame=true` + `onEncodedAudioFrameReceived`，不解码不播放 |
-| `sample_receive_mixed_audio` | 接收 | 需求点7（混音接收） | `onPlaybackAudioFrame` 混音输出（恒 2 声道，奇/偶声道分路）并落盘（100MB 切换文件） |
-| `sample_receive_av_multiopus` | 接收 | 需求点5 + 视频接收 | 多声道 PCM 落盘 + `IVideoFrameObserver2` 回调 I420 帧落盘 YUV，固定间隔打日志 |
+| `sample_receive_mixed_audio` | 接收 | 需求点7（混音接收） | `onPlaybackAudioFrame` 混音输出（SDK 混音恒为 2 声道，奇/偶声道分路；demo `--numOfChannels` 支持 1/2，默认 2）并落盘（100MB 切换文件） |
+| `sample_receive_av_multiopus` | 接收 | 需求点5 + 需求点8（AV 同收） | 多声道 PCM 落盘 + `IVideoFrameObserver2` 回调 I420 帧落盘 YUV，固定间隔打日志 |
 
-> 需求点9（4×stereo → 8 声道布局映射）为集成侧约定，见下文「4×stereo 布局映射」。
+> 需求点10（4×stereo → 8 声道布局映射）为集成侧约定，见下文「4×stereo 布局映射」。
 
 ## 目录结构
 
@@ -173,7 +173,7 @@ docker run --rm -it --network host agora-multichannel-linux \
 ./sample_receive_encoded_audio --channelId <name> --token <token> --audioFile received.opus
 ```
 
-### 6. 接收混音输出（恒 2 声道）
+### 6. 接收混音输出（SDK 混音恒 2 声道；demo 可选 mono）
 
 ```bash
 ./sample_receive_mixed_audio --channelId <name> --token <token> --audioFile received_mixed.pcm
@@ -272,14 +272,14 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例
 
 ### 混音落盘（sample_receive_mixed_audio）
 
-输出为混音后的 48 kHz / 2 声道 / 16bit 小端交错裸 PCM（多声道流混音恒为 2 声道，
-奇数声道混一路、偶数声道混一路）：
+输出为混音后的 48 kHz / 16bit 小端交错裸 PCM，默认 2 声道（多声道流混音恒为
+2 声道，奇数声道混一路、偶数声道混一路；`--numOfChannels 1` 时输出 mono）：
 
 ```bash
 ffplay -f s16le -ar 48000 -ch_layout stereo received_mixed.pcm
 ```
 
-## 4×stereo 布局映射（需求点9）
+## 4×stereo 布局映射（需求点10）
 
 源端 8 声道以 4 条双声道（stereo）音轨承载，按 **track 块序** 排列
 （`[T1L,T1R]×N [T2L,T2R]×N [T3L,T3R]×N [T4L,T4R]×N`），**不能直接** 喂给
@@ -319,5 +319,6 @@ ffplay -f s16le -ar 48000 -ch_layout stereo received_mixed.pcm
   Docker 构建会把它打进镜像。
 - **视频发送仅限 MKV sample**：其余发送 sample 只做音频多声道（参考 sample 名中的 h264 已移除）；
   `sample_send_mkv_multiopus` 音/视频各一个线程、各自独立循环，不做严格 AV 同步。
-- 混音/播放路径输出恒为 2 声道（奇数声道混一路、偶数声道混一路）；需逐声道数据请用
+- 混音/播放路径 SDK 输出恒为 2 声道（奇数声道混一路、偶数声道混一路；混音 sample 的
+  `--numOfChannels 1` 可输出 mono）；需逐声道数据请用
   `sample_receive_pcm_multiopus` 或 `sample_receive_encoded_audio`。

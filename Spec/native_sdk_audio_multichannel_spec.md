@@ -2,7 +2,7 @@
 
 ## Native SDK（macOS）音频多声道接收验证与发送验证需求
 
-> 摘要：Native SDK（macOS）需要支持多声道音频的接收与发送验证。**接收侧**：以观众（audience）角色加入频道，接收远端主播的 OPUSMC 多声道流（payload type 123/124/125，48 kHz，3~8 声道）或普通立体声/单声道流，通过私参逐声道选择收听与调节音量（`che.audio.neteq.adjust_decoded_volume`），支持远端视频显示、音/视频接收码率走势与音频帧 dump（`che.audio.frame_dump`）。**发送侧**：以主播（broadcaster）角色将多声道 WAV 经自定义音轨循环发布（`createCustomAudioTrack` + `pushExternalAudioFrameRawData` + 多声道私参）；公开版 4.5.2 曾存在自定义音轨输入钳制为 2 声道的限制，**4.5.3 起已解除**（2026-10-12 多版本回归实测，见需求点7 与待确认问题1）。Native SDK 与 Linux SDK 多声道实现同源，接收端在 123/124/125 协商机制下自适应解码（含 3/5/7 奇数声道），无需任何多声道私参。配套验证 app 为本仓库 `Demo/macOS/`（`MultiChannelAudioReceiver` 接收 + `MultiChannelAudioSender` 发送，SwiftUI + AgoraRtcEngine_macOS，CocoaPods 集成，当前集成 4.7.0，中/英文 UI 默认英文），本文档将其能力事实、行为边界与验收口径收敛为需求基线。
+> 摘要：Native SDK（macOS）需要支持多声道音频的接收与发送验证。**接收侧**：以观众（audience）角色加入频道，接收远端主播的 OPUSMC 多声道流（payload type 123/124/125，48 kHz，3~8 声道）或普通立体声/单声道流，通过私参逐声道选择收听与调节音量（`che.audio.neteq.adjust_decoded_volume`），支持远端视频显示、音/视频接收码率走势与音频帧 dump（`che.audio.frame_dump`）。**发送侧**：以主播（broadcaster）角色将多声道 WAV 经自定义音轨循环发布（`createCustomAudioTrack` + `pushExternalAudioFrameRawData` + 多声道私参）；公开版 4.5.2 曾存在自定义音轨输入钳制为 2 声道的限制，**4.5.3 起已解除**（2026-10-12 多版本回归实测，见需求点7 与待确认问题1）。Native SDK 与 Linux SDK 多声道实现同源，接收端在 123/124/125 协商机制下自适应解码（含 3/5/7 奇数声道），无需任何多声道私参。配套验证 app 为本仓库 `Demo/macOS/`（`MultiChannelAudioReceiver` 接收 + `MultiChannelAudioSender` 发送，SwiftUI + AgoraRtcEngine_macOS，CocoaPods 集成，当前集成 4.7.0，中/英文 UI 默认英文）；iOS 移植版见 `Demo/iOS/`（`MultiChannelAudioReceiverApp` 接收 + `MultiChannelAudioSenderApp` 发送，AgoraRtcEngine_iOS 4.7.0，iOS 14.0+，模拟器构建与 join/发布冒烟通过，多声道内容级实测待做），本文档将其能力事实、行为边界与验收口径收敛为需求基线。
 
 ---
 
@@ -14,7 +14,7 @@
 | TO | 待补充 |
 | PMO | 待补充 |
 | 需求 Jira | 待补充（多声道项目背景单见 Linux 侧 spec） |
-| 需求版本 | v1.9 |
+| 需求版本 | v1.11 |
 
 ---
 
@@ -133,7 +133,7 @@
 
 **API 间关系**：频道加入是所有能力的前置；逐声道音量与 dump 私参在引擎创建后即可设置（建议在加入频道前后均可，demo 在加入成功后按 uid 下发）；host 列表驱动 UI 的声道控制对象选择；发送侧私参与自定义音轨必须在 join 之前设置/创建，`publishCustomAudioTrackId` 把音轨挂进发布。
 
-**能力差距**：多声道能力完全依赖私有参数，无公开 API 与文档化；接收端无法获知实际协商声道数（无回调，无 getStats 声道字段暴露到界面）；dump 文件位置/命名随 SDK 内部约定（macOS 4.5.2 实测见 FAQ）；macOS 4.5.2 无 `didOccurWarning` 回调（仅 `didOccurError`）；公开版 4.5.2 发送侧自定义音轨输入曾钳制为 2 声道，**4.5.3 起已解除**（2026-10-12 多版本回归实测，见需求点7/待确认问题1）。
+**能力差距**：多声道能力完全依赖私有参数，无公开 API 与文档化；接收端无法获知实际协商声道数（无回调，无 getStats 声道字段暴露到界面）；dump 文件位置/命名随 SDK 内部约定（macOS 4.5.2 实测见 FAQ）；macOS SDK 无 `didOccurWarning` 回调（4.5.2 与 4.7.0 头文件均仅 `didOccurError`）；公开版 4.5.2 发送侧自定义音轨输入曾钳制为 2 声道，**4.5.3 起已解除**（2026-10-12 多版本回归实测，见需求点7/待确认问题1）。
 
 ### 6.5 流程图（Optional）
 
@@ -285,14 +285,14 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 
 | 产出物 | 产出物描述 | Jira（可选） | 是否必须 | 交付时间 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| Demo | macOS 验证 app 两个（Demo/macOS 下 `MultiChannelAudioReceiver` 接收 + `MultiChannelAudioSender` 发送，SwiftUI + AgoraRtcEngine_macOS，CocoaPods，当前集成 4.7.0） | — | 必须 | 已交付 | 均构建验证通过；receiver 真频道收听验证已完成（2026-10-10，见变更记录 v0.2）；sender 真频道发布验证已完成（同日，含 2 声道钳制结论，见变更记录 v1.2）；sender 发送侧 4.5.2/4.5.3/4.6.0/4.6.2/4.7.0 版本回归 + 4ch/6ch 素材与双端 4.7.0 原生互通均完成（2026-10-12，见变更记录 v1.5/v1.6） |
+| Demo | macOS 验证 app 两个（Demo/macOS 下 `MultiChannelAudioReceiver` 接收 + `MultiChannelAudioSender` 发送，SwiftUI + AgoraRtcEngine_macOS，CocoaPods，当前集成 4.7.0）；iOS 移植版两个（Demo/iOS 下 `MultiChannelAudioReceiverApp` + `MultiChannelAudioSenderApp`，AgoraRtcEngine_iOS 4.7.0，iOS 14.0+） | — | 必须 | 已交付 | macOS 双端均构建验证通过；receiver 真频道收听验证已完成（2026-10-10，见变更记录 v0.2）；sender 真频道发布验证已完成（同日，含 2 声道钳制结论，见变更记录 v1.2）；sender 发送侧 4.5.2/4.5.3/4.6.0/4.6.2/4.7.0 版本回归 + 4ch/6ch 素材与双端 4.7.0 原生互通均完成（2026-10-12，见变更记录 v1.5/v1.6）；iOS 双端模拟器构建 + join/发布冒烟通过（2026-10-13，见变更记录 v1.11），内容级实测待做 |
 | API 文档 | 两个私参的用法说明（Demo/macOS README） | 待补充 | 必须 | 已交付（README 形式） | 未官方文档化 |
 
 ### 8.3 平台/语言/框架支持需求
 
 | 大项 | 子项 | 是否需要 |
 | --- | --- | --- |
-| 平台 | iOS | 否（设计同源，理论可复用，未验证） |
+| 平台 | iOS | 部分是（设计同源；已有 `Demo/iOS/` 验证 app 双端——SwiftUI + AgoraRtcEngine_iOS 4.7.0，iOS 14.0+，模拟器构建与 join/发布冒烟通过；多声道内容级实测待做，行为以实测为准） |
 | 平台 | Android | 否（同上） |
 | 平台 | Windows | 否（同上） |
 | 平台 | Mac | 是（macOS 12.0+，SwiftUI，CocoaPods） |
@@ -355,6 +355,7 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 ### 参考资料
 
 - `Demo/macOS/`（两个自包含 app 工程：`MultiChannelAudioReceiver/` 接收验证 app、`MultiChannelAudioSender/` 发送验证 app；各自含 Podfile、xcodeproj、源码与 README）
+- `Demo/iOS/`（两个自包含 iOS app 工程：`MultiChannelAudioReceiverApp/` 接收、`MultiChannelAudioSenderApp/` 发送，由 macOS 双 app 移植；各自含 Podfile、project.yml（XcodeGen）、源码与 README；素材复用 macOS sender 的 6 个 WAV）
 - Agora API-Examples macOS `JoinChannelAudio` 示例（两个私参用法来源）
 - 设计文档：`References/Docs/ExT-1485178709-100726-0959-56_en.md`（Native/Linux 多声道同源实现）、`References/Docs/ExT-1485178492-100726-1000-58_en.md`（Web SDK 多声道）
 - Linux 侧规格：`Spec/linux_sdk_audio_multichannel_spec.md`（发送、协商、布局映射）；Web 侧规格：`Spec/web_sdk_audio_multichannel_spec.md`
@@ -382,3 +383,5 @@ Linux 发送端 OPUSMC(125, 8ch) → SD-RTN
 | v1.7 | 2026-10-12 | 奇数声道端到端闭环：3/5/7 声道（payload 123/124/125 + custom_channel_num）在 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部互通，接收端落盘与源素材逐声道 NCC 0.46~1.00、跨声道 ≈0、同序号对应（12/12 通过），素材为 ffmpeg channelmap 截取的 `Demo/linux/public/odd_{3,5,7}ch.wav`；待确认问题5 关闭。sender 自动化新增 `-autoWavPath` 支持外部素材。详见 `Test/odd_channels_interop_test_20261012.md` | Kimi Code |
 | v1.8 | 2026-10-12 | 复审修订：sender 素材枚举由「4/6/8」扩为「4/6/8 + 3/5/7 奇数声道（UI 带 Web 误解码警示条）」（6.1⑨、6.3、场景7.1、8.1 表）；自检#4 澄清「客户曾在用 4.5.2 / Demo 当前集成 4.7.0」。sender UI 新增奇数声道警示条（L10n `send.oddChannelWarning`，文案按 Web 误解码实测口径） | Kimi Code |
 | v1.9 | 2026-10-13 | 6.1⑨ 警示条补边界说明：2026-10-12 起 Demo/web 内置 `oddChannelFix.ts` 运行时补丁，可修正 demo 层的判定与播放（开关默认开），但 SDK 层面奇数声道仍不支持，Native 侧以 Native/Linux 验证奇数声道的结论不变（引 `Test/odd_channels_interop_test_20261012.md` §6）；标题去「初稿」 | Kimi Code |
+| v1.10 | 2026-10-13 | 全项目对齐复审：6.4 能力差距的 `didOccurWarning` 条目由「macOS 4.5.2 无该回调」更正为「macOS SDK 均无该回调」——已核对当前集成的 4.7.0 SDK 头文件（`AgoraRtcEngineDelegate.h` 仅暴露 `didOccurError`），4.5.2 的局限并非版本特有 | Kimi Code |
+| v1.11 | 2026-10-13 | 新增 iOS 验证 app：`Demo/iOS/MultiChannelAudioReceiverApp`（接收）与 `Demo/iOS/MultiChannelAudioSenderApp`（发送），由 macOS 双 app 逐项移植（SwiftUI + AgoraRtcEngine_iOS 4.7.0，XcodeGen + CocoaPods，iOS 14.0+——SwiftUI 生命周期/@AppStorage/onChange 要求 14 起）；sender 素材复用 macOS 版 6 个 WAV（4/6/8ch Channel ID + 3/5/7 奇数声道）。iOS 模拟器（iPhone 16 Pro）验证：双端构建 0 错误 0 警告；receiver 真频道 join + frame_dump 冒烟通过；sender 8ch(125)/6ch(124)/3ch(123) 真频道发布冒烟通过。iOS 特有修复：免签名模拟器构建下 Agora 预置框架需 ad-hoc 签名否则 `sharedEngine` 静默返回 nil（见各 app README）。8.3 平台表 iOS 行由「否」改为「部分是」；多声道内容级实测（含奇数声道互通、2ch 钳制是否存在于 iOS）待做，以实测为准 | Kimi Code |
