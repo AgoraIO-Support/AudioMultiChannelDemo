@@ -2,7 +2,7 @@
 
 本目录包含两个自包含的 iOS 验证 app（SwiftUI + AgoraRtcEngine_iOS 4.7.0，CocoaPods 集成，
 iOS 14.0+，中/英文 UI 默认英文），由 `Demo/macOS/` 两个 app 移植而来，需求基线见
-`Spec/native_sdk_audio_multichannel_spec.md`：
+`Docs/audio_multichannel_spec.md`：
 
 | App | 角色 | 用途 |
 | --- | --- | --- |

@@ -1,7 +1,7 @@
 # Agora Linux SDK 音频多声道（multiopus）Demo
 
 本工程是 Agora Linux SDK（v4.4.30.149，x86_64 / aarch64）音频多声道收发的独立 C++ demo，
-依据需求规格 `Spec/linux_sdk_audio_multichannel_spec.md` 编写，覆盖发送 4 路径与接收 4 路径。
+依据需求规格 `Docs/audio_multichannel_spec.md` 编写，覆盖发送 4 路径与接收 4 路径。
 多声道编码基于 Opus 多流（OPUSMC，payload type 123/124/125），**仅支持 48 kHz 采样率**。
 
 [English Documentation](README.en.md)

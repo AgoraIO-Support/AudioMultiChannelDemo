@@ -1,7 +1,7 @@
 # macOS 多声道验证 App（Demo/macOS）
 
 本目录包含两个自包含的 macOS 验证 app（SwiftUI + AgoraRtcEngine_macOS，CocoaPods 集成，
-macOS 12.0+，中/英文 UI 默认英文），需求基线见 `Spec/native_sdk_audio_multichannel_spec.md`：
+macOS 12.0+，中/英文 UI 默认英文），需求基线见 `Docs/audio_multichannel_spec.md`：
 
 | App | 角色 | 用途 |
 | --- | --- | --- |

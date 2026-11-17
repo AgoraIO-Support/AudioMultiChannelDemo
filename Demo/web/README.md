@@ -1,6 +1,6 @@
 # Web 音频多声道（multiopus）验证 Demo
 
-基于 Agora Web SDK（`agora-rtc-sdk-ng@4.24.10`，主线版本）的音频多声道收发验证工程，技术栈 Vue3 + Vite + Naive UI。需求背景见 `Spec/web_sdk_audio_multichannel_spec.md`。
+基于 Agora Web SDK（`agora-rtc-sdk-ng@4.24.10`，主线版本）的音频多声道收发验证工程，技术栈 Vue3 + Vite + Naive UI。需求背景见 `Docs/audio_multichannel_spec.md`。
 
 [English Documentation](README.en.md)
 
@@ -76,7 +76,7 @@ URL 参数一览（均优先于 localStorage 回填值）：
 
 ## 配合 Linux demo 做端到端验证
 
-1. Linux 端（见 `Demo/linux/` 与 `Spec/linux_sdk_audio_multichannel_spec.md`）以 8 声道 OPUSMC 向频道发布音频，记下其 uid。
+1. Linux 端（见 `Demo/linux/` 与 `Docs/audio_multichannel_spec.md`）以 8 声道 OPUSMC 向频道发布音频，记下其 uid。
 2. 本 demo 以订阅端角色打开：`?channel=<同一频道>&uid=<web端uid>&subTo=<Linux端uid>`，填入 token 后加入频道、订阅检测。
 3. 预期：音量条出现 **8 路**，codec 判定为 **multiopus**，远端音轨 channelCount（信令）显示 8。
 4. 用「声道选择」逐路试听（如 `0`、`1` … `7`），核对 Channel ID 内容与 Linux 端声道布局映射（T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）一致、无串声道、无杂音。

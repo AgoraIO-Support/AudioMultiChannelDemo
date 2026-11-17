@@ -2,7 +2,7 @@
 
 A standalone C++ demo for multi-channel audio send/receive with the Agora Linux SDK
 (v4.4.30.149, x86_64 / aarch64), written against the requirements in
-`Spec/linux_sdk_audio_multichannel_spec.md`. It covers 4 send paths and 4 receive paths.
+`Docs/audio_multichannel_spec.md`. It covers 4 send paths and 4 receive paths.
 Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) and
 **supports 48 kHz only**.
 

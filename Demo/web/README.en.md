@@ -2,7 +2,7 @@
 
 A multi-channel audio send/receive verification app based on the Agora Web SDK
 (`agora-rtc-sdk-ng@4.24.10`, the mainline build). Tech stack: Vue3 + Vite + Naive UI.
-See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
+See `Docs/audio_multichannel_spec.md` for the requirements background.
 
 [中文文档](README.md)
 
@@ -130,7 +130,7 @@ URL parameters (each one overrides the localStorage value):
 
 ## End-to-End Verification with the Linux Demo
 
-1. On the Linux side (see `Demo/linux/` and `Spec/linux_sdk_audio_multichannel_spec.md`),
+1. On the Linux side (see `Demo/linux/` and `Docs/audio_multichannel_spec.md`),
    publish 8-channel OPUSMC audio into the channel and note its uid.
 2. Open this demo as a subscriber: `?channel=<same channel>&uid=<web uid>&subTo=<linux uid>`,
    enter the token, join the channel, and run "Subscribe & Detect".

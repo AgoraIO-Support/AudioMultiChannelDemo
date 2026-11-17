@@ -2,7 +2,7 @@
 
 This directory contains two self-contained macOS verification apps (SwiftUI +
 AgoraRtcEngine_macOS via CocoaPods, macOS 12.0+, bilingual English/Chinese UI with
-English as default). Requirements baseline: `Spec/native_sdk_audio_multichannel_spec.md`.
+English as default). Requirements baseline: `Docs/audio_multichannel_spec.md`.
 
 | App | Role | Purpose |
 | --- | --- | --- |

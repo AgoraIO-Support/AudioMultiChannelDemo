@@ -592,8 +592,8 @@ Web Audio、WebCodecs 三条互不相干的路径上，且没有任何一条覆�
      PT 125 配置为 4 条 coupled 流 = 4 个解码实例），移动端 CPU 与发热压力高于
      桌面；多声道高码率（默认 ~32 kbps/声道）在蜂窝弱网下更敏感。
   5. **蓝牙路由**：A2DP / SCO 只有单/双声道，接蓝牙耳机时没有多声道外放可言。
-- **官方立场**：本仓库 spec（`Spec/web_sdk_audio_multichannel_spec.md` §8.3）声明平台
-  范围只有 Web（Chrome 96+），移动端不在支持范围内——Android Chrome 上"能跑"属于
+- **官方立场**：本仓库集成规格（`Docs/audio_multichannel_spec.md` §2、§5.6）声明 Web
+  支持范围为 Chrome 96+，移动端不在支持范围内——Android Chrome 上"能跑"属于
   引擎继承行为，未经官方验证，对客户不应承诺。
 
 ### 12.2 iOS Chrome：WebKit 套壳，任何版本都不支持
@@ -603,8 +603,8 @@ Web Audio、WebCodecs 三条互不相干的路径上，且没有任何一条覆�
   就能用"的说法**。
 - WebRTC 基础能力本身可用（iOS 14.3+ 经 WKWebView 获得 getUserMedia），普通 Opus
   单/双声道通话没问题，但多声道协商不会发生。
-- iOS 上的可行路径只有 Native SDK（本仓库 `Spec/native_sdk_audio_multichannel_spec.md`
-  注明 iOS "设计同源、理论可复用、未验证"）或改用桌面 Chrome。
+- iOS 上的可行路径只有 `Docs/audio_multichannel_spec.md` §2、§6.3 所述的 Native SDK
+  集成路径（需按对应平台要求验证）或改用桌面 Chrome。
 
 ### 12.3 速查表
 

@@ -699,8 +699,8 @@ and none of them covers "multi-channel Opus inside an RTC stream".
      weak networks.
   5. **Bluetooth routing**: A2DP / SCO are mono/stereo only — no multi-channel output
      over Bluetooth headsets.
-- **Official stance**: this repo's spec (`Spec/web_sdk_audio_multichannel_spec.md`
-  §8.3) scopes platform support to Web (Chrome 96+) only — mobile is out of scope, so
+- **Official stance**: this repo's integration spec (`Docs/audio_multichannel_spec.md`
+  §2 and §5.6) scopes Web support to Chrome 96+ only — mobile is out of scope, so
   "it works on Android Chrome" is an engine-inheritance behavior that has not been
   officially verified and should not be promised to customers.
 
@@ -711,9 +711,9 @@ and none of them covers "multi-channel Opus inside an RTC stream".
   **no multiopus, and there is no "install version X and it works" story**.
 - Basic WebRTC itself works (getUserMedia via WKWebView since iOS 14.3); ordinary Opus
   mono/stereo calls are fine, but multi-channel negotiation never happens.
-- The only viable paths on iOS are the Native SDK (this repo's
-  `Spec/native_sdk_audio_multichannel_spec.md` marks iOS as "same design lineage,
-  theoretically reusable, unverified") or switching to desktop Chrome.
+- The only viable paths on iOS are the Native SDK integration path documented in
+  `Docs/audio_multichannel_spec.md` §2 and §6.3 (with its own validation requirements)
+  or switching to desktop Chrome.
 
 ### 12.3 Quick-reference table
 

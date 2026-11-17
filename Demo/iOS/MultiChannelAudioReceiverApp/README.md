@@ -4,7 +4,7 @@
 **纯接收端** 验证 app：以观众（audience）角色加入频道，接收远端主播的多声道
 （OPUSMC，payload type 123/124/125，48 kHz，3~8 声道）或普通立体声/单声道音频流，
 并通过 Native SDK 私参 **逐声道选择收听、逐声道调节音量**。需求背景与验收基线见
-`Spec/native_sdk_audio_multichannel_spec.md`。
+`Docs/audio_multichannel_spec.md`。
 
 本 app 自 macOS 版（`Demo/macOS/MultiChannelAudioReceiver`）移植，功能逐项对齐；
 界面按 iPhone 竖屏调整为**上下分区**（macOS 版为「控制 | 监控」左右双栏，详见「与 macOS 版的差异」）。
