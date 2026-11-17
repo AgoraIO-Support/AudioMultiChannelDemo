@@ -55,6 +55,12 @@ void SampleConnectionObserver::onConnectionLost(const agora::rtc::TConnectionInf
 		   connectionInfo.channelId.get()->c_str(), connectionInfo.localUserId.get()->c_str());
 }
 
+void SampleConnectionObserver::onTransportStats(const agora::rtc::RtcStats &stats)
+{
+	AG_LOG(INFO, "RTC_TRANSPORT_STATS duration=%u txBytes=%u txAudioBytes=%u txAudioKBitRate=%u userCount=%u",
+		   stats.duration, stats.txBytes, stats.txAudioBytes, stats.txAudioKBitRate, stats.userCount);
+}
+
 void SampleConnectionObserver::onUplinkNetworkInfoUpdated(const agora::rtc::UplinkNetworkInfo &info)
 {
 	AG_LOG(INFO, "onBandwidthEstimationUpdated: video_encoder_target_bitrate_bps %d\n",

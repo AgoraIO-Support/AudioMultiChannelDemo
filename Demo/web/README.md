@@ -1,6 +1,6 @@
 # Web 音频多声道（multiopus）验证 Demo
 
-基于 Agora Web SDK（`agora-rtc-sdk-ng@4.24.9`，多声道定制版）的音频多声道收发验证工程，技术栈 Vue3 + Vite + Naive UI。需求背景见 `Spec/web_sdk_audio_multichannel_spec.md`。
+基于 Agora Web SDK（`agora-rtc-sdk-ng@4.24.10`，主线版本）的音频多声道收发验证工程，技术栈 Vue3 + Vite + Naive UI。需求背景见 `Spec/web_sdk_audio_multichannel_spec.md`。
 
 [English Documentation](README.en.md)
 
@@ -36,7 +36,7 @@ npm run dev   # 默认 http://localhost:5173/
 
 其他脚本：`npm run build`（vue-tsc 类型检查 + 构建到 `dist/`）、`npm run preview`。
 
-> 当前使用研发提供的 `agora-rtc-sdk-ng@4.24.9` 多声道定制版本地包。`package.json` 通过 `"agora-rtc-sdk-ng": "file:../../Temp/agora-rtc-sdk-ng-4.24.9.tgz"` 引入，重新安装依赖前请确保该文件存在。
+> 自 `agora-rtc-sdk-ng@4.24.10` 起，音频多声道功能已合并进入 Web SDK 主线版本。`package.json` 固定使用 `4.24.10`，执行 `npm install` 即可从 npm registry 安装，无需再准备多声道定制版本地 tgz 包。
 
 ## Docker 部署
 
@@ -148,7 +148,7 @@ demo 结果面板按「音量数组长度为 4/6/8，或 codec = multiopus」给
 ```
 Demo/web/
 ├─ index.html
-├─ package.json            # agora-rtc-sdk-ng 固定 4.24.9
+├─ package.json            # agora-rtc-sdk-ng 固定 4.24.10
 ├─ vite.config.ts
 ├─ tsconfig.json / tsconfig.app.json / tsconfig.node.json
 ├─ public/                 # 4/6/8_Channel_ID.wav 素材

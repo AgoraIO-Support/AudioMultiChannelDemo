@@ -28,12 +28,17 @@
     <!-- ==================== 中文 ==================== -->
     <div data-lang="zh">
       <h1>Web SDK 音频多声道（multiopus）</h1>
-      <p class="subtitle">适用版本：agora-rtc-sdk-ng 4.20.1-100 / 4.20.1-200（多声道版本），Chrome 96+</p>
+      <p class="subtitle">适用版本：agora-rtc-sdk-ng 4.24.10+（音频多声道已并入主线）；4.20.1-100 / 4.20.1-200 为早期多声道验证版本，Chrome 96+</p>
 
       <h2>〇、SDK 版本与下载</h2>
       <ul>
         <li>
-          本仓库 Demo/web 使用 <code>agora-rtc-sdk-ng@4.20.1-200</code>；设计文档对应版本为
+          <strong>主线合并（自 4.24.10 起）</strong>：自 <code>agora-rtc-sdk-ng@4.24.10</code> 开始，
+          音频多声道功能已合并进入 Web SDK 主线版本，可直接使用官方主线包，无需再依赖单独的多声道定制构建。
+          本文保留的 4.20.1 / 4.24.9 等定制版内容仅作为早期验证环境和历史行为记录。
+        </li>
+        <li>
+          本仓库 Demo/web 使用 <code>agora-rtc-sdk-ng@4.24.10</code>（主线版本）；早期设计文档对应版本为
           <code>agora-rtc-sdk-ng@4.20.1-100</code>。
         </li>
         <li>
@@ -41,7 +46,7 @@
           <code>@agora-js/media</code>、<code>@agora-js/report</code>、<code>@agora-js/shared</code>。
         </li>
         <li>
-          CDN / 完整包：
+          CDN / 完整包（<strong>早期音频多声道特殊版本</strong>，仅用于历史验证，非 4.24.10+ 主线包）：
           <a href="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.1-100.js" target="_blank" rel="noopener">AgoraRTC_N-4.20.1-100.js</a>、
           <a href="https://download.agora.io/sdk/release/Agora_Web_SDK_v4_20_1-100_FULL.zip" target="_blank" rel="noopener">Agora_Web_SDK_v4_20_1-100_FULL.zip</a>。
         </li>
@@ -91,6 +96,45 @@
         注：部分早期设计文档示例使用 <code>createMultiAudioTrack</code>，在本版多声道 SDK 中对应
         <code>AgoraRTC.createCustomAudioTrack({ mediaStreamTrack, channelCount })</code>。
       </p>
+
+      <h3>1.2.1 上行容量：按频道和发送端计数</h3>
+      <p>
+        在未开启 50 人、128 人 hosts 扩容功能的默认配置下，<strong>同一频道最多 17 名主播同时发送音视频流；
+        纯音频场景最多 32 名主播同时发流</strong>。该限制按频道计算，不是整个 App ID 合计 17 或 32 人。
+        仅作为观众加入频道不占用同时发流名额，不会因为已有 17 名主播发流而触发该限制。
+      </p>
+      <ul>
+        <li>
+          <strong>第 18 名主播也发送音视频时</strong>：不能保证所有流正常可见。官方示例中，18 位主播同时发视频时，
+          每位用户可能随机看不到某一路视频；不保证第 18 人 join/publish 失败，也不保证返回固定错误码。
+          不能把 <code>ERR_TOO_MANY_BROADCASTERS</code> 理解为“默认第 18 人必报”。需要超过 17 人同时发视频时，
+          应提前申请扩容，不要依赖 SDK 报错控制上麦人数。
+        </li>
+        <li>
+          <strong>纯音频第 18 路</strong>：仍处于默认 32 路上限内，不能套用音视频场景的 17 路限制而误判为失败。
+        </li>
+        <li>
+          <strong>多声道音频流</strong>：一路 4 / 6 / 8 声道 OPUSMC 发布仍按一个音频发送端的一路音频流计数，
+          不是按 4 / 6 / 8 个发送端计数；声道数不会倍数放大 host 名额占用。
+        </li>
+      </ul>
+      <div class="note">
+        <p>
+          <strong>2026-11-17 混合端实测（全部 4 声道）</strong>：31 个 Podman Linux sender + 1 个 Web sender
+          共 32 路纯音频同时上行，31 个 Linux 的 <code>txAudioBytes</code> 均持续增长，Web 的
+          <code>bytesSent/packetsSent</code> 均持续增长；receiver 抽查首、中、末 Linux UID 和 Web UID，
+          均为真实 <code>4ch multiopus</code>。随后增加的第 33 个 Web sender 虽然 join/publish 均为
+          <code>onSuccess</code>，本端 RTP 字节数和包数也持续增长，但 receiver 等待 25 秒仍无有效远端 track。
+          停止一个 Linux sender 释放名额后，同一 Web sender 重新发布即恢复为真实 4 声道媒体。
+        </p>
+        <p>
+          该结果说明：<strong>多声道不会改变纯音频 32 路的容量计数方式，第 33 路也可能不返回明确容量错误码</strong>。
+          业务侧应提前限制发流人数并按需申请扩容；验收时必须由 receiver 验证真实媒体，同时复查既有发送端，
+          不能只看 join/publish 成功日志或本端 outbound stats。完整证据见
+          <code>Test1112/multi-web-sender-one_web-receiver.md</code> §5.2（runId：
+          <code>full-1794902759472</code>）。此实测为 Linux + Web 混合端验证，不代表 32 个 Web 客户端并发场景。
+        </p>
+      </div>
 
       <h3>1.3 订阅与 channelCount</h3>
       <p>
@@ -366,12 +410,19 @@ await client.publish(track);</code></pre>
     <!-- ==================== English ==================== -->
     <div data-lang="en">
       <h1>Web SDK Audio Multi-Channel (multiopus)</h1>
-      <p class="subtitle">Applies to: agora-rtc-sdk-ng 4.20.1-100 / 4.20.1-200 (multi-channel builds), Chrome 96+</p>
+      <p class="subtitle">Applies to: agora-rtc-sdk-ng 4.24.10+ (audio multi-channel is merged into the mainline); 4.20.1-100 / 4.20.1-200 are earlier multi-channel verification builds, Chrome 96+</p>
 
       <h2>0. SDK Version and Download</h2>
       <ul>
         <li>
-          This repo's <code>Demo/web</code> uses <code>agora-rtc-sdk-ng@4.20.1-200</code>; the design doc version is
+          <strong>Mainline availability since 4.24.10</strong>: starting with
+          <code>agora-rtc-sdk-ng@4.24.10</code>, audio multi-channel support is merged into the mainline
+          Web SDK. You can use the official mainline package directly; a separate multi-channel custom build
+          is no longer required. The 4.20.1 / 4.24.9 custom-build content in this document is retained only
+          as historical verification context and behavior notes.
+        </li>
+        <li>
+          This repo's <code>Demo/web</code> uses <code>agora-rtc-sdk-ng@4.24.10</code> (mainline build); the early design doc version is
           <code>agora-rtc-sdk-ng@4.20.1-100</code>.
         </li>
         <li>
@@ -379,7 +430,7 @@ await client.publish(track);</code></pre>
           <code>@agora-js/media</code>, <code>@agora-js/report</code>, and <code>@agora-js/shared</code>.
         </li>
         <li>
-          CDN / full package:
+          CDN / full package (<strong>early special audio multi-channel build</strong>, for historical verification only; not a 4.24.10+ mainline package):
           <a href="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.1-100.js" target="_blank" rel="noopener">AgoraRTC_N-4.20.1-100.js</a>,
           <a href="https://download.agora.io/sdk/release/Agora_Web_SDK_v4_20_1-100_FULL.zip" target="_blank" rel="noopener">Agora_Web_SDK_v4_20_1-100_FULL.zip</a>.
         </li>
@@ -434,6 +485,56 @@ await client.publish(track);</code></pre>
         multi-channel SDK version the corresponding API is
         <code>AgoraRTC.createCustomAudioTrack({ mediaStreamTrack, channelCount })</code>.
       </p>
+
+      <h3>1.2.1 Upstream capacity: counted per channel and publisher</h3>
+      <p>
+        Without the 50-host or 128-host expansion feature, the default limit is <strong>up to 17 hosts
+        publishing audio/video streams simultaneously in the same channel, or up to 32 hosts in audio-only
+        scenarios</strong>. The limit applies per channel; it is not a total of 17 or 32 hosts across the entire
+        App ID. A user who joins only as an audience member does not consume a publishing slot and is not
+        rejected merely because 17 hosts are already publishing.
+      </p>
+      <ul>
+        <li>
+          <strong>When an 18th host also publishes audio/video</strong>, not every stream is guaranteed to be
+          visible. In the official example with 18 hosts publishing video, each user may randomly fail to see
+          one of the video streams. The 18th host is not guaranteed to fail join/publish or to receive a fixed
+          error code. Do not interpret <code>ERR_TOO_MANY_BROADCASTERS</code> as an error that must occur for
+          the default 18th host. Apply for expansion before exceeding 17 video publishers, and do not rely on
+          SDK errors to enforce your publishing limit.
+        </li>
+        <li>
+          <strong>The 18th audio-only stream</strong> is still within the default audio-only limit of 32; do not
+          misapply the 17-stream audio/video limit and report it as a failure.
+        </li>
+        <li>
+          <strong>Multi-channel audio</strong>: one 4-, 6-, or 8-channel OPUSMC publication still counts as one
+          audio stream from one audio publisher, not as 4, 6, or 8 publishers. Channel count does not multiply
+          the host slots consumed.
+        </li>
+      </ul>
+      <div class="note">
+        <p>
+          <strong>Mixed-platform verification on 2026-11-17 (all streams were 4-channel)</strong>: 31 Podman
+          Linux senders plus one Web sender produced 32 simultaneous audio-only upstreams. Every Linux sender's
+          <code>txAudioBytes</code> increased continuously, as did the Web sender's
+          <code>bytesSent/packetsSent</code>. The receiver checked the first, middle, and last Linux UIDs plus
+          the Web UID and verified real <code>4ch multiopus</code> media in each case. A subsequent 33rd Web
+          sender returned <code>onSuccess</code> for both join and publish, and its local RTP byte and packet
+          counts kept increasing, but the receiver still had no valid remote track after 25 seconds. After one
+          Linux sender was stopped to release a slot, the same Web sender republished successfully with real
+          4-channel media.
+        </p>
+        <p>
+          This shows that <strong>multi-channel audio does not change the audio-only 32-publisher counting model,
+          and the 33rd publisher may not receive an explicit capacity error</strong>. Applications should enforce
+          publishing limits and request expansion in advance. Verification must use actual remote media and
+          recheck existing publishers; join/publish success logs and local outbound stats alone are insufficient.
+          Full evidence: <code>Test1112/multi-web-sender-one_web-receiver.md</code> §5.2 (runId:
+          <code>full-1794902759472</code>). This was a mixed Linux + Web test, not a test of 32 concurrent Web
+          clients.
+        </p>
+      </div>
 
       <h3>1.3 Subscribing and channelCount</h3>
       <p>

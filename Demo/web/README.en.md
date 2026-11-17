@@ -1,7 +1,7 @@
 # Web Multi-Channel Audio (multiopus) Demo
 
 A multi-channel audio send/receive verification app based on the Agora Web SDK
-(`agora-rtc-sdk-ng@4.24.9`, the multi-channel custom build). Tech stack: Vue3 + Vite + Naive UI.
+(`agora-rtc-sdk-ng@4.24.10`, the mainline build). Tech stack: Vue3 + Vite + Naive UI.
 See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
 
 [中文文档](README.md)
@@ -79,10 +79,9 @@ npm run dev   # default http://localhost:5173/
 
 Other scripts: `npm run build` (vue-tsc type check + build to `dist/`), `npm run preview`.
 
-> This project uses the local `agora-rtc-sdk-ng@4.24.9` multi-channel custom build supplied by
-> Agora. `package.json` references it as
-> `"agora-rtc-sdk-ng": "file:../../Temp/agora-rtc-sdk-ng-4.24.9.tgz"`; keep that file in place
-> when reinstalling dependencies.
+> Starting with `agora-rtc-sdk-ng@4.24.10`, audio multi-channel support is merged into the mainline
+> Web SDK. `package.json` pins version `4.24.10`; run `npm install` to install it directly from the
+> npm registry. A local multi-channel custom tgz package is no longer required.
 
 ## Docker
 
@@ -254,7 +253,7 @@ To listen to one channel: enter a single index (e.g. `3`) and choose mono, or en
 ```
 Demo/web/
 ├─ index.html
-├─ package.json            # agora-rtc-sdk-ng pinned to 4.24.9
+├─ package.json            # agora-rtc-sdk-ng pinned to 4.24.10
 ├─ vite.config.ts
 ├─ tsconfig.json / tsconfig.app.json / tsconfig.node.json
 ├─ public/                 # 4/6/8_Channel_ID.wav assets

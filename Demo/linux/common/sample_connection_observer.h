@@ -40,9 +40,7 @@ public: // IRtcConnectionObserver
 	}
 	void onUserJoined(agora::user_id_t userId) override;
 	void onUserLeft(agora::user_id_t userId, agora::rtc::USER_OFFLINE_REASON_TYPE reason) override;
-	void onTransportStats(const agora::rtc::RtcStats &stats) override
-	{
-	}
+	void onTransportStats(const agora::rtc::RtcStats &stats) override;
 	void onLastmileProbeResult(const agora::rtc::LastmileProbeResult &result) override
 	{
 	}
