@@ -30,7 +30,7 @@
 - **音频帧 Dump**：`che.audio.frame_dump` 开关（加入频道时应用）。
 - **奇数声道警示**：选中 3/5/7 声道素材（下标 3/4/5，条目带 ⚠）时发送面板显示橙色警示条——
   奇数声道流仅 Native/Linux 端可验证，Web SDK 会误解码（按 N+1 声道、末声道复制幻影、界面误判
-  多声道 ✓），结果不可信。截图：`Test/macos_sender_odd_channel_warning_{zh,en}_20261012.png`。
+  多声道 ✓），结果不可信。实测与补丁边界见 `Docs/audio_multichannel_test_summary.md` §4.2。
 
 ## 环境要求与构建
 
@@ -92,12 +92,11 @@ xcodebuild -workspace MultiChannelAudioSender.xcworkspace \
 | 4.6.2 | multiopus 8ch 正常 | 8 声道均出现内容级峰值（75~85%），底噪 ~10% | ✓ 已修复 |
 | 4.7.0 | multiopus 8ch 正常 | 8 声道均出现内容级峰值（71~83%），底噪 ~10%；4ch/6ch 素材同验全通 | ✓ 已修复 |
 
-证据截图：`Test/web_recv_8ch_from_macos_{452_control,453,460,462,470}_20261012.png`、
-`Test/web_recv_{4,6}ch_from_macos_470_20261012.png`。
+各版本实测数据与声道 1:1 证据见 `Docs/audio_multichannel_test_summary.md` §4.6。
 注：macOS 版 SDK 不存在 4.6.7（CocoaPods 与发版说明中 4.6.2 之后为 4.7.0；iOS 侧另有 4.6.4）。
 4.5.3 起的峰值按序出现在不同声道，与素材逐声道轮播一致；声道序号与素材声道的逐一对应
 关系已于 2026-10-12 闭环（4.7.0↔4.7.0 原生链路 dump 与源 WAV 包络互相关，同序号 NCC 0.67~0.78、
-跨声道 ≈0，无重排）。完整测试汇总见 `Test/macos_sender_multi-channel_audio_test_result.md`。
+跨声道 ≈0，无重排）。完整测试汇总见 `Docs/audio_multichannel_test_summary.md`。
 
 **4.5.2 的历史结论（2026-10-10 实测）**：公开发送侧自定义音轨输入最高按 2 声道读取——
 私参协商正常生效（对端解出对应声道数的 multiopus 流，8ch/6ch/4ch 均验证通过），但只有

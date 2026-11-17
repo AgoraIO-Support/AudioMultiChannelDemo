@@ -37,8 +37,8 @@ English / 中文, defaults to English; switch via the Language picker at the top
 - **Odd-channel warning**: selecting a 3/5/7-channel asset (indices 3/4/5, entries marked with ⚠)
   shows an orange banner — odd-channel streams are verifiable only with Native/Linux receivers;
   the Web SDK mis-decodes them (as N+1 channels with a duplicated phantom channel and a false
-  multi-channel ✓ verdict), so results are untrustworthy. Screenshots:
-  `Test/macos_sender_odd_channel_warning_{en,zh}_20261012.png`.
+  multi-channel ✓ verdict), so results are untrustworthy. See
+  `Docs/audio_multichannel_test_summary.md` §4.2 for the verified behavior and patch boundary.
 
 ## Prerequisites & Build
 
@@ -106,14 +106,14 @@ of the 16-bit asset's silent sections (a normal silence reading), 0% is digital 
 | 4.6.2 | multiopus 8ch OK | all 8 channels peak at 75~85%, floor ~10% | ✓ fixed |
 | 4.7.0 | multiopus 8ch OK | all 8 channels peak at 71~83%, floor ~10%; 4ch/6ch assets also pass | ✓ fixed |
 
-Evidence screenshots: `Test/web_recv_8ch_from_macos_{452_control,453,460,462,470}_20261012.png`
-and `Test/web_recv_{4,6}ch_from_macos_470_20261012.png`.
+Version-specific results and the 1:1 channel-order evidence are consolidated in
+`Docs/audio_multichannel_test_summary.md` §4.6.
 Note: there is no macOS SDK 4.6.7 (4.6.2 is followed by 4.7.0; iOS has a separate 4.6.4).
 On 4.5.3+ the peaks appear on different channels in sequence, matching the asset's
 rotating-channel structure; a 4.7.0 → 4.7.0 native interop run additionally proved via
 receiver-side PCM dump that dump channel i corresponds to source channel i (envelope NCC
 0.67~0.78, cross-channel ≈ 0 — no reordering). The full summary lives in
-`Test/macos_sender_multi-channel_audio_test_result.md`.
+`Docs/audio_multichannel_test_summary.md`.
 
 **Historical finding on 4.5.2 (verified 2026-10-10)**: the public 4.5.2 reads at most 2
 channels from a custom-track push input — negotiation works (the remote side decodes a

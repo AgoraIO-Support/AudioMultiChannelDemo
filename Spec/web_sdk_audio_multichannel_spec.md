@@ -117,7 +117,7 @@
 | # | 技术维度 | 问题 | 答案 | 确认人 |
 | --- | --- | --- | --- | --- |
 | 1 | 浏览器兼容 | 支持哪些浏览器/版本？ | Chrome 96 起正式支持（94/95 可手动开启但默认关闭；96~109 取消订阅后的重协商差异已兼容；110+ 完全支持）；Safari/Firefox 不推荐，加入多声道频道行为未定义（可能无声或仅立体声） | 设计文档 QA 测试结论 |
-| 2 | 声道数范围 | Web 端支持哪些声道数？ | 4/6/8；最多 8 声道；16 声道及以上不支持；仅支持偶数声道解码（3/5/7 不适用——2026-10-12 实测：不报错但按 N+1 偶数声道误解码、末声道复制出幻影声道、界面误判多声道 ✓，结果不可信，见 `Test/odd_channels_interop_test_20261012.md` §5）。demo 层注：自 2026-10-12 起 `Demo/web/` 内置 `oddChannelFix.ts` 运行时补丁（三个 Live Demo 均可开关，默认开，见 6.6），可检测并修正该误解码的显示与播放——但补丁仅修正 demo 的判定与播放体验，不改变 SDK 不支持奇数声道的事实；奇数声道内容的正确性验证仍应以 Native/Linux 为准 | 设计文档 + 实测 |
+| 2 | 声道数范围 | Web 端支持哪些声道数？ | 4/6/8；最多 8 声道；16 声道及以上不支持；仅支持偶数声道解码（3/5/7 不适用——2026-10-12 实测：不报错但按 N+1 偶数声道误解码、末声道复制出幻影声道、界面误判多声道 ✓，结果不可信，见 `Docs/audio_multichannel_test_summary.md` §4.2）。demo 层注：自 2026-10-12 起 `Demo/web/` 内置 `oddChannelFix.ts` 运行时补丁（三个 Live Demo 均可开关，默认开，见 6.6），可检测并修正该误解码的显示与播放——但补丁仅修正 demo 的判定与播放体验，不改变 SDK 不支持奇数声道的事实；奇数声道内容的正确性验证仍应以 Native/Linux 为准 | 设计文档 + 实测 |
 | 3 | 声道选择实现 | 为什么不用 WebAudio 做声道选择？ | Chrome bug（chromium issue 1116042），改用 Insertable Streams（MediaStreamTrackProcessor/Generator）实现 | 设计文档 |
 | 4 | 解码协商 | 订阅端如何获知声道数？ | 远端音轨 `channelCount` 来自 `on_add_audio_stream` 信令中的 pt 值；ORTC fmtp 含 channel_mapping/coupled_streams/num_streams，`encodingParameters` 可直接设为最大值 8 以兼容 6/4/2 声道 | 设计文档 |
 | 5 | 能力开关 | 不开启 `ENABLE_MULTIOPUS_CODEC` 会怎样？ | 订阅端按普通单/双声道处理，无法解出多声道；开关必须在创建 client 之前设置 | demo 代码注释 |
@@ -165,7 +165,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 
 > 2026-10-12 落地。补丁不改 SDK 文件，仅修正 demo 的判定显示与播放体验；SDK 层"不支持奇数声道"的事实不变（见 6.3#2、需求点8），奇数声道内容的正确性验证仍应以 Native/Linux 为准。
 
-**问题根因**：Web SDK（agora-rtc-sdk-ng 4.20.1-200）的 multiopus 声道表写死为偶数（4+2*t → 4/6/8），SDP fmtp 与解码后拆声道数量均查该表；收到 3/5/7 奇数声道流时按错误的 N+1 偶数声道配置解码——stereo 子流正常，最后的 mono 子流被当 stereo 解成左右复制，解码输出末两声道逐样本恒等（"幻影声道"），内容本身不丢。实测与源码依据见 `Test/odd_channels_interop_test_20261012.md` §5。
+**问题根因**：Web SDK（agora-rtc-sdk-ng 4.20.1-200）的 multiopus 声道表写死为偶数（4+2*t → 4/6/8），SDP fmtp 与解码后拆声道数量均查该表；收到 3/5/7 奇数声道流时按错误的 N+1 偶数声道配置解码——stereo 子流正常，最后的 mono 子流被当 stereo 解成左右复制，解码输出末两声道逐样本恒等（"幻影声道"），内容本身不丢。实测与源码依据见 `Docs/audio_multichannel_test_summary.md` §4.2。
 
 **补丁修正（`Demo/web/src/oddChannelFix.ts`，`patchOddChannelStream`）**：订阅拿到远端音轨后采样检测（默认最长 8 s 窗口），命中"幻影签名"后对音轨做三处修正：
 
@@ -185,7 +185,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 - codec 判定（getStats/SDP）仍显示协商的偶数声道数，补丁不改 SDP 与底层解码；
 - 根本修复需 SDK/VOS 侧支持奇数声道声道表与 fmtp 声明。
 
-补丁设计、SDP 实测边界与 3/5/7 修正效果实测见 `Test/odd_channels_interop_test_20261012.md` §6。
+补丁设计、SDP 实测边界与 3/5/7 修正效果实测见 `Docs/audio_multichannel_test_summary.md` §4.2。
 
 **附：`Demo/web/` 三个 Live Demo 版本**：`src/App.vue` 按 URL 参数 `?demo=N` 切换——`src/Multiopus.vue`（默认，`?demo=1` 或其他）全功能判定版；`src/MultiopusV2.vue`（`?demo=2`）原版布局参考（quick-demo-multiopus 风格）；`src/MultiopusV3.vue`（`?demo=3`）视频 + 多声道音频同订版。三个版本均接入 oddChannelFix 补丁开关（默认开）。
 
@@ -280,7 +280,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 - 且：demo 以 300 ms 周期刷新并渲染逐声道音量条，作为声道数与内容正确性的可视化判据
 - 且：音量为 dB 宽量程刻度（`(dBFS_RMS + 100) / 100`）——16bit 素材静音段因 dither 读数约 10%，
   仅精确数字零显示 0%；判定时须区分「底噪读数」与「内容」，勿把静音声道的 ~10% 误判为串声道
-  （实测分析见 `Test/web_volume_meter_floor_linux2web.md`）
+  （实测分析见 `Docs/audio_multichannel_test_summary.md`）
 
 ### 需求点6：浏览器兼容性边界
 
@@ -323,7 +323,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 
 - 前置条件：Web 验证 demo（`Demo/web/`，quick-demo-multiopus 已于 2026-10 移除并继承）运行（Vite dev server）；两个标签页分别以 Publisher/Subscriber uid 与对应 token 加入同一频道（URL 参数 `channel`/`uid`/`subTo` 控制角色与订阅目标）
 - 当：Publisher 发布多声道音频，Subscriber 订阅
-- 则：Subscriber 面板显示 codec（multiopus）与逐声道音量条；仅当 codec 为 `multiopus`，或 `getVolumeLevels()` 返回 4/6/8 个声道时，判定为多声道。普通单/双声道不得判定为多声道。**注意：对 3/5/7 奇数声道流，该判据会被误判（Web 按 N+1 偶数声道误解码，末声道为幻影复制，界面会显示「多声道 ✓」）——奇数声道不得用 Web 端验证**（见 6.3#2 与 `Test/odd_channels_interop_test_20261012.md` §5）。demo 层注：自 2026-10-12 起 demo 内置 oddChannelFix 运行时补丁（默认开，见 6.6），命中奇数声道流时界面会显示真实声道数并修正播放——但 SDK 层奇数声道仍属不支持，奇数声道内容的正确性验证仍应以 Native/Linux 为准
+- 则：Subscriber 面板显示 codec（multiopus）与逐声道音量条；仅当 codec 为 `multiopus`，或 `getVolumeLevels()` 返回 4/6/8 个声道时，判定为多声道。普通单/双声道不得判定为多声道。**注意：对 3/5/7 奇数声道流，该判据会被误判（Web 按 N+1 偶数声道误解码，末声道为幻影复制，界面会显示「多声道 ✓」）——奇数声道不得用 Web 端验证**（见 6.3#2 与 `Docs/audio_multichannel_test_summary.md` §4.2）。demo 层注：自 2026-10-12 起 demo 内置 oddChannelFix 运行时补丁（默认开，见 6.6），命中奇数声道流时界面会显示真实声道数并修正播放——但 SDK 层奇数声道仍属不支持，奇数声道内容的正确性验证仍应以 Native/Linux 为准
 - 且：token 与 uid 绑定，两个标签页需各自 uid 的 token（或 uid=0 通配 token）
 
 #### 场景8.2：逐声道内容核对
@@ -395,7 +395,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 | # | 问题 | 维度 | 建议确认人 | 状态 |
 | --- | --- | --- | --- | --- |
 | 1 | Safari/Firefox 是否有支持计划（当前行为未定义） | 兼容性 | PM / 研发 | 待确认 |
-| 2 | 奇数声道（3/5/7）Web 端解码是否规划支持（当前仅偶数声道）。2026-10-12 实测补充：当前版本对奇数声道流不报错但按 N+1 偶数声道误解码（mono 子流当 stereo 解、末声道复制幻影声道、音量条误判多声道 ✓），结果不可信——见 `Test/odd_channels_interop_test_20261012.md` §5 | 功能边界 | PM / 研发 | 规划待确认；当前行为已实测（误解码且结果不可信） |
+| 2 | 奇数声道（3/5/7）Web 端解码是否规划支持（当前仅偶数声道）。2026-10-12 实测补充：当前版本对奇数声道流不报错但按 N+1 偶数声道误解码（mono 子流当 stereo 解、末声道复制幻影声道、音量条误判多声道 ✓），结果不可信——见 `Docs/audio_multichannel_test_summary.md` §4.2 | 功能边界 | PM / 研发 | 规划待确认；当前行为已实测（误解码且结果不可信） |
 | 3 | Electron 等 Chromium 内核框架是否纳入支持矩阵（未验证） | 平台 | PM / QA | 待确认 |
 | 4 | 多声道流在云录制、水晶球等云端链路上的表现与计费影响 | 协同 | PM / 服务端 | 待确认 |
 | 5 | SDK 是否计划提供协商后实际 codec/声道数的公开事件（当前依赖 getStats hook 绕行） | API | PM / 研发 | 待确认 |
@@ -436,7 +436,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 - 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Web SDK 4.20.1-200 多声道定制版及 Test Report）
 - 验证 demo：`Demo/web/`（`src/Multiopus.vue`、`src/oddChannelFix.ts` 等，三个 Live Demo 经 `src/App.vue` 切换，见 6.6）——继承已移除的 quick-demo-multiopus
 - 关联文档：`Spec/linux_sdk_audio_multichannel_spec.md`（Linux 侧发送/接收/布局映射需求）
-- 布局映射沟通记录：原 `References/沟通记录/` 已于 2026-10-09 删除；内容存档见 `References/communication_records_backup.md` / `communication_records_backup_en.md`（最终确认声道映射：逐样本交错 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）
+- 布局映射：最终确认顺序为逐样本交错 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R，见 `Docs/audio_multichannel_spec.md` §3.3
 - Chrome 缺陷依据：<https://bugs.chromium.org/p/chromium/issues/detail?id=1116042>；Opus multistream API：<https://www.opus-codec.org/docs/opus_api-1.1.2/group__opus__multistream.html>
 
 ### 变更记录
@@ -445,7 +445,7 @@ Linux 端发布 8ch OPUSMC (payload 125)
 | --- | --- | --- | --- |
 | v0.1 | 2026-08-12 | 初稿：基于 Web 多声道设计文档与 quick-demo-multiopus 收敛发布/订阅/声道选择需求 | Kimi Code |
 | v0.2 | 2026-10-12 | 一致性修订：场景1.2「3-8 声道」更正为「仅 4/6/8 偶数声道」（与 :120/:216 对齐）；场景2.2「声道光箱重排」笔误更正；参考资料中已删除的 `References/沟通记录/` 指向文字化存档；判定口径补齐（音量数组约 1 s / codec 最迟约 5 s）；场景5.1 与 8.1 补 dB 刻度底噪 caveat（~10% 为 dither 底噪非内容）；同步认可此前 quick-demo 移除等未入记录的正文修订 | Kimi Code |
-| v0.3 | 2026-10-12 | 奇数声道 Web 行为实测更正：6.3 技术维度「声道数范围」更新——3/5/7 流在 Web 端不报错但按 N+1 偶数声道误解码（mono 子流当 stereo 解、末声道复制出幻影声道、界面误判多声道 ✓），结果不可信；依据 `Test/odd_channels_interop_test_20261012.md` §5 | Kimi Code |
+| v0.3 | 2026-10-12 | 奇数声道 Web 行为实测更正：6.3 技术维度「声道数范围」更新——3/5/7 流在 Web 端不报错但按 N+1 偶数声道误解码（mono 子流当 stereo 解、末声道复制出幻影声道、界面误判多声道 ✓），结果不可信；依据 `Docs/audio_multichannel_test_summary.md` §4.2 | Kimi Code |
 | v0.4 | 2026-10-12 | 复审修订：场景8.1 判定准则补奇数声道误判警示（3/5/7 流不得用 Web 验证）；待确认问题2 状态改为「规划待确认；当前行为已实测」；quick-demo-multiopus 残留引用统一补移除注解（摘要/2.1/8.1/8.2）；6.4 表中 Multiopus.vue 行号引用改指 `Demo/web/src/Multiopus.vue` 现行位置 | Kimi Code |
 | v0.5 | 2026-10-13 | 修复：6.4 表残留引用清理补齐（AlexGongs/USAGE.md → `Demo/web/src/Multiopus.vue` 现行位置，行号对齐 :283/:378-419/:632/:289-307,710-735）；:120/:298 补 demo 层 oddChannelFix 边界说明；新增 6.6「Demo 层奇数声道运行时补丁（oddChannelFix）」章节（含 `Demo/web/` 三个 Live Demo 版本差异与 `?demo=N` 切换）；标题去「初稿」；8.2/参考资料残留路径同步清理 | Kimi Code |
 | v0.6 | 2026-10-13 | 全项目对齐复审：6.4 行号引用对齐 HEAD（getVolumeLevels :632→:639；PC hook :289-307→:289-310；detectCodec :710-735→:720-745）；codec 轮询口径更正为「800 ms 持续轮询、无次数上限」（6.2/场景3.2/8.1，与 demo 代码及 README/docs 一致，旧「最多 6 次」表述作废）；6.6 检测机制补实现粒度（步长 8 抽样比对）；Linux 侧场景编号顺延修正（2.1 需求点9→需求点10、场景8.2 引用的场景9.4→场景10.4，因 Linux spec v1.1 新增需求点8 顺延所致） | Kimi Code |

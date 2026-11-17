@@ -34,7 +34,7 @@
   奇数声道流仅 Native/Linux 端可验证，Web SDK 会误解码（按 N+1 声道、末声道复制幻影、界面误判
   多声道 ✓），结果不可信。边界说明：2026-10-12 起 `Demo/web` 内置 `oddChannelFix.ts` 运行时补丁，
   可修正 demo 层的判定与播放（开关默认开），但 **SDK 层面奇数声道仍不支持**，
-  Native 侧「以 Native/Linux 验证奇数声道」的结论不变（见 `Test/odd_channels_interop_test_20261012.md` §6）。
+  Native 侧「以 Native/Linux 验证奇数声道」的结论不变（见 `Docs/audio_multichannel_test_summary.md` §4.2）。
 - **后台发布**：`Info.plist` 配置 `UIBackgroundModes = audio`，app 退到后台时 RTC 音频发布保持
   （`AVAudioSession` 由 Agora SDK 自管理，app 侧无需额外音频会话代码）。
 - **不采集本地设备**：本 app 仅推送 WAV 文件，不使用麦克风/摄像头，

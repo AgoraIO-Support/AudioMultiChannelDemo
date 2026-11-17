@@ -42,7 +42,7 @@ English / 中文, defaults to English; switch via the Language picker at the top
   Boundary note: since 2026-10-12 `Demo/web` ships an `oddChannelFix.ts` runtime patch
   that fixes demo-layer detection/playback (on by default), but the **Web SDK itself still
   does not support odd channel counts** — the Native-side guidance "verify odd channels
-  with Native/Linux receivers" is unchanged (see `Test/odd_channels_interop_test_20261012.md` §6).
+  with Native/Linux receivers" is unchanged (see `Docs/audio_multichannel_test_summary.md` §4.2).
 - **Background publishing**: `UIBackgroundModes = audio` in `Info.plist` keeps RTC audio
   publishing alive when the app goes to background (`AVAudioSession` is managed by the
   Agora SDK itself; no app-side audio-session code is required).

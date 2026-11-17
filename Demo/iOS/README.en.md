@@ -21,7 +21,7 @@ open MultiChannelAudioSenderApp.xcworkspace
 > Platform note: multi-channel behavior on iOS has not been verified on device/simulator yet —
 > the macOS-side conclusions (the 4.5.2 send-side custom-track input clamp to 2 channels, lifted
 > from 4.5.3; receiver-side adaptive decoding including odd 3/5/7) come from macOS regression
-> testing (`Test/macos_sender_multi-channel_audio_test_result.md`); treat iOS behavior as
+> testing (`Docs/audio_multichannel_test_summary.md`); treat iOS behavior as
 > subject to verification. Audio dumps on iOS land inside the app sandbox container (exportable
 > via Xcode → Devices and Simulators); exact file naming is to be confirmed by measurement.
 

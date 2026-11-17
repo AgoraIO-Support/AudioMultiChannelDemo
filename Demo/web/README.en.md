@@ -31,7 +31,7 @@ See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
   the three pages): turning it off mid-subscription immediately reverts to the raw SDK behavior (N+1
   bars with the identical phantom pair), turning it back on re-runs detection and re-applies the fix —
   handy for side-by-side comparison. See
-  `Test/odd_channels_interop_test_20261012.md` §5/§6 for the mechanism and limitations.
+  `Docs/audio_multichannel_test_summary.md` §4.2 for the mechanism and limitations.
 - **Simultaneous video + multi-channel audio subscribe (Live Demo 3)**: open with `?demo=3`.
   Enter the channel, your uid (+token), and the target uid, then subscribe to the remote's
   multi-channel audio and video in one click: the video renders into the page's video area,
@@ -65,7 +65,7 @@ Key prerequisite: each of the three Live Demo components (`src/Multiopus.vue`,
 - **Even channel counts only**: the Web side decodes 4/6/8 channels. A 3/5/7-channel stream raises no
   error but is **mis-decoded** as the next even channel count (the odd mono substream is read as stereo,
   duplicating the last channel into a phantom one, and the demo even misjudges it as multi-channel ✓) —
-  results are untrustworthy (verified 2026-10-12, see `Test/odd_channels_interop_test_20261012.md` §5);
+  results are untrustworthy (verified 2026-10-12, see `Docs/audio_multichannel_test_summary.md` §4.2);
   16 or more channels are not supported.
 - Node.js 18+ (for local development).
 
@@ -183,7 +183,7 @@ alone is not sufficient evidence.
 3. Expected: the volume bars show the matching channel count (4/6/8) with content-level peaks on every
    channel, and the codec reads multiopus. Note: a macOS **4.5.2** sender carries content on only the
    first 2 channels (known input clamp); **≥ 4.5.3** delivers all channels. The verified version matrix
-   lives in `Test/macos_sender_multi-channel_audio_test_result.md`.
+   lives in `Docs/audio_multichannel_test_summary.md` §4.6.
 
 ## How to Judge the Result
 
@@ -227,7 +227,7 @@ To listen to one channel: enter a single index (e.g. `3`) and choose mono, or en
   (confirmed by a control experiment: the same Linux sender with the 24-bit file shows no floor,
   meter min = 0).
   Measurements confirm no leakage in the encode/transport/decode chain or in the final playout PCM
-  (see `Test/web_volume_meter_floor_linux2web_en.md`). Use channel selection + listening as
+  (see `Docs/audio_multichannel_test_summary.md` §4.5). Use channel selection + listening as
   the authoritative per-channel check; when reading the bars, remember ~10% ≈ -90 dB ≈ silence.
 
 - **Subscribed to a multi-channel stream but only hear mono/stereo?** Check that

@@ -1,6 +1,6 @@
 // 奇数声道（3/5/7）multiopus 流在 Web SDK 侧的误码修正补丁。
 //
-// 背景（2026-10-12 实测与源码阅读，详见 Test/odd_channels_interop_test_20261012.md §5）：
+// 背景（2026-10-12 实测与源码阅读，详见 Docs/audio_multichannel_test_summary.md §4.2）：
 // Agora Web SDK（agora-rtc-sdk-ng 4.20.1-200）的 multiopus 声道表写死为偶数（4+2*t → 4/6/8），
 // SDP fmtp 与解码后拆声道数量都查该表。收到 3/5/7 奇数声道流时，浏览器按错误的 N+1 偶数声道
 // 配置解码：stereo 子流正常，最后的 mono 子流被当 stereo 解成左右复制——解码输出的末两个声道

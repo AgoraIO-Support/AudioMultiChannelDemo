@@ -155,7 +155,7 @@ carries either a token or an appId (pass the appId when no certificate is enable
 > use `public/odd_3ch.wav` / `odd_5ch.wav` / `odd_7ch.wav` (cut from the 8ch asset via ffmpeg
 > channelmap) — e.g. 5 channels: `--audioFile public/odd_5ch.wav --numOfChannels 5
 > --custom_channel_num 5 --custom_payload_type 124 --sampleRate 48000` (interop verified, see
-> `Test/odd_channels_interop_test_20261012.md`).
+> `Docs/audio_multichannel_test_summary.md`).
 
 ### 2. Send raw multi-channel PCM (3~8 channels)
 
@@ -286,7 +286,7 @@ Use the Web verification demo (`Demo/web/` in this repo, agora-rtc-sdk-ng 4.20.1
 Note: the Web side decodes even channel counts only — a 3/5/7-channel stream raises no error there but
 is mis-decoded as the next even count (the last channel is duplicated into a phantom one and the demo
 even shows a false multi-channel ✓); results are untrustworthy, so verify odd channels with a
-Native/Linux receiver (see `Test/odd_channels_interop_test_20261012.md` §5).
+Native/Linux receiver (see `Docs/audio_multichannel_test_summary.md` §5).
 Safari/Firefox behavior is undefined.
 
 ### Encoded frame dump (sample_receive_encoded_audio)

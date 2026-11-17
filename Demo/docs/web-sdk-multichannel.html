@@ -131,7 +131,7 @@
           该结果说明：<strong>多声道不会改变纯音频 32 路的容量计数方式，第 33 路也可能不返回明确容量错误码</strong>。
           业务侧应提前限制发流人数并按需申请扩容；验收时必须由 receiver 验证真实媒体，同时复查既有发送端，
           不能只看 join/publish 成功日志或本端 outbound stats。完整证据见
-          <code>Test1112/multi-web-sender-one_web-receiver.md</code> §5.2（runId：
+          <code>Docs/audio_multichannel_test_summary.md</code> §4.7（runId：
           <code>full-1794902759472</code>）。此实测为 Linux + Web 混合端验证，不代表 32 个 Web 客户端并发场景。
         </p>
       </div>
@@ -142,7 +142,7 @@
         远端音轨的 <code>channelCount</code> 属性来自 <code>on_add_audio_stream</code> 信令中的 pt 值，
         反映信令协商的声道数（4/6/8）。仅支持偶数声道解码；3/5/7 奇数声道流不报错但会按
         N+1 偶数声道误解码（末声道复制出幻影声道、音量条误判多声道 ✓），结果不可信
-        （2026-10-12 实测，见仓库 <code>Test/odd_channels_interop_test_20261012.md</code> §5）。
+        （2026-10-12 实测，见仓库 <code>Docs/audio_multichannel_test_summary.md</code> §4.1～§4.2）。
         代码级根因：SDK 的 multiopus 声道表写死为偶数（<code>4 + 2 * t</code>），
         SDP fmtp 与拆声道数量都查该表——浏览器（Chrome 内置 multi-channel opus 解码器）只是按
         错误声明忠实解码。修复需 SDK 按流的真实配置生成/使用 fmtp，而非查偶数表。
@@ -198,7 +198,7 @@
           <strong>集成层必须在调用前校验 <code>0 &lt;= index &lt; remoteChannelCount</code></strong>，
           并在重新订阅或远端声道数变化后重新校验。发现非法项时应拒绝整个选择、保留之前的有效配置，
           不要只依赖 API 成功日志或源声道音量条判断结果。详细调查见
-          <code>Temp/web_sdk_select_channels_out_of_range_limitation_20261106.md</code>。
+          <code>Docs/audio_multichannel_test_summary.md</code> §4.3。
         </p>
       </div>
 
@@ -223,7 +223,7 @@
           静音声道音量柱显示约 10%（实测 4.6~12%，dB 刻度下 -90dB 残余的读数）；静音段为精确数字零的 24bit 素材则精确显示 0%。
           该残余不可闻、非 SDK 缺陷——逐声道内容核对请以 <code>selectChannels</code> + 试听为准，
           读音量柱时把 ~10% 视为无声。完整排查记录见
-          <code>Test/web_volume_meter_floor_linux2web.md</code>。
+          <code>Docs/audio_multichannel_test_summary.md</code> §4.5。
         </p>
       </div>
       <div class="note">
@@ -346,7 +346,7 @@ await client.publish(track);</code></pre>
       <h3>2.4 Demo 与在线验证</h3>
       <ul>
         <li>
-          <strong>在线 demo</strong>：<a href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">https://xiaoyingtao.convoai.club/multiopus/</a>（Chrome 96+）。
+          <strong>在线 demo</strong>：<a href="../index.html" target="_blank" rel="noopener">本站点 Web 验证 Demo</a>（Chrome 96+）。
           支持双标签页自收发：一个标签页以 Publisher uid 发布多声道 WAV，另一个以 Subscriber uid
           订阅检测；结果面板显示逐声道音量条与 codec 判定（默认 <code>?demo=1</code> 布局；<code>?demo=2</code> 原版布局无结果面板，自动订阅最新发布者或首个有音频的远端）。
         </li>
@@ -369,6 +369,19 @@ await client.publish(track);</code></pre>
           <span data-lang="zh">图：在线 Demo 实测 —— Linux 发布的 8 声道流在 Chrome 订阅端呈现 8 路音量条（codec 判定为 multiopus）。</span><span data-lang="en">Live demo: the 8-channel stream published from Linux renders 8 per-channel volume bars in Chrome (codec detected as multiopus).</span>
         </figcaption>
       </figure>
+
+      <h3>2.5 测试证据与未闭环项</h3>
+      <p>
+        跨端结果、原始用例归类和后续回归顺序统一见 <code>Docs/audio_multichannel_test_summary.md</code>。
+        正常 4/6/8ch 已获得多轮跨端媒体证据，4.24.9-dev.2 的旧版 <code>Stream closed</code> 清理问题未再复现；
+        但这些历史结果不能直接当作当前 4.24.10 主线版的全量通过结论。
+      </p>
+      <ul>
+        <li><strong>Web→iOS</strong>：间歇性 1ch 仍未闭环，后续未复现不能抵消已有失败证据。</li>
+        <li><strong>Web→macOS</strong>：W-M-08-1/2 的普通 mono/stereo dump 和 W-M-09 的非法 WAV 输入为严格失败，属于应用或 Native 集成问题。</li>
+        <li><strong>多 sender</strong>：MS-16 普通 mono/stereo 入口、MS-28 真并发 join/publish，以及原 32-Web runner 的 32/33 边界仍未完成；31 Linux + Web 的混合容量结果不能替代这些缺口。</li>
+        <li><strong>当前版本门禁</strong>：4.24.10 已完成安装和生产构建，仍须重跑 P0 媒体矩阵、奇数声道补丁开关、停发/重发、取消重订、离开和页面卸载。</li>
+      </ul>
 
       <h2>三、ORTC 协商与技术细节</h2>
       <p>
@@ -399,7 +412,7 @@ await client.publish(track);</code></pre>
         <li><strong>已知限制（2026-10-12 源码确认）</strong>：SDK 的 multiopus 声道表只含偶数声道
           （<code>4 + 2 * t</code> → 4/6/8），fmtp 的 <code>coupled_streams</code>/<code>num_streams</code> 均按该表生成。
           收到 3/5/7 奇数声道流时 SDP 声明与实际流不符，浏览器按错误配置解码，末声道被复制出幻影声道
-          （详见 <code>Test/odd_channels_interop_test_20261012.md</code> §5）。</li>
+          （详见 <code>Docs/audio_multichannel_test_summary.md</code> §4.1～§4.2）。</li>
         <li>
           声道选择没有使用 WebAudio，而是基于 Insertable Streams（<code>MediaStreamTrackProcessor / MediaStreamTrackGenerator</code>）实现，
           以绕开 Chrome WebAudio 在多声道输出上的缺陷（<a href="https://bugs.chromium.org/p/chromium/issues/detail?id=1116042" target="_blank" rel="noopener">chromium issue 1116042</a>）。
@@ -530,7 +543,7 @@ await client.publish(track);</code></pre>
           and the 33rd publisher may not receive an explicit capacity error</strong>. Applications should enforce
           publishing limits and request expansion in advance. Verification must use actual remote media and
           recheck existing publishers; join/publish success logs and local outbound stats alone are insufficient.
-          Full evidence: <code>Test1112/multi-web-sender-one_web-receiver.md</code> §5.2 (runId:
+          Full evidence: <code>Docs/audio_multichannel_test_summary.md</code> §4.7 (runId:
           <code>full-1794902759472</code>). This was a mixed Linux + Web test, not a test of 32 concurrent Web
           clients.
         </p>
@@ -544,7 +557,7 @@ await client.publish(track);</code></pre>
         negotiated channel count (4/6/8). Only even channel counts can be decoded; a 3/5/7-channel
         stream raises no error but is mis-decoded as the next even channel count (the last channel is
         duplicated into a phantom one and the volume bars misjudge it as multi-channel ✓) — results are
-        untrustworthy (verified 2026-10-12, see <code>Test/odd_channels_interop_test_20261012.md</code> §5 in the repo).
+        untrustworthy (verified 2026-10-12, see <code>Docs/audio_multichannel_test_summary.md</code> §4.1～§4.2 in the repo).
         Root cause at code level: the SDK's multiopus channel table is hardcoded to even counts
         (<code>4 + 2 * t</code>), and both the SDP fmtp and the frame-splitting count are derived from it —
         the browser (Chrome's built-in multi-channel opus decoder) simply decodes faithfully per the
@@ -609,7 +622,7 @@ await client.publish(track);</code></pre>
           count change. Reject the entire selection and preserve the previous valid configuration when
           an invalid item is found. Do not rely solely on API success logs or source-channel volume
           levels. Full investigation:
-          <code>Temp/web_sdk_select_channels_out_of_range_limitation_20261106.md</code>.
+          <code>Docs/audio_multichannel_test_summary.md</code> §4.3.
         </p>
       </div>
 
@@ -637,7 +650,7 @@ await client.publish(track);</code></pre>
           digital zeros read exactly 0%. The residue is inaudible and is not an SDK defect — for
           per-channel content verification, rely on <code>selectChannels</code> plus listening, and
           treat a ~10% reading as silence. Full investigation:
-          <code>Test/web_volume_meter_floor_linux2web_en.md</code>.
+          <code>Docs/audio_multichannel_test_summary.md</code> §4.5.
         </p>
       </div>
       <div class="note">
@@ -765,7 +778,7 @@ await client.publish(track);</code></pre>
       <h3>2.4 Demos and online verification</h3>
       <ul>
         <li>
-          <strong>Online demo</strong>: <a href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">https://xiaoyingtao.convoai.club/multiopus/</a> (Chrome 96+).
+          <strong>Online demo</strong>: <a href="../index.html" target="_blank" rel="noopener">Web verification demo on this site</a> (Chrome 96+).
           Supports two-tab self-verification: one tab publishes a multi-channel WAV with the Publisher
           uid, the other subscribes with the Subscriber uid; the result panel shows per-channel volume
           bars and the codec verdict (default <code>?demo=1</code> layout; the <code>?demo=2</code>
@@ -792,6 +805,21 @@ await client.publish(track);</code></pre>
           <span data-lang="zh">图：在线 Demo 实测 —— Linux 发布的 8 声道流在 Chrome 订阅端呈现 8 路音量条（codec 判定为 multiopus）。</span><span data-lang="en">Live demo: the 8-channel stream published from Linux renders 8 per-channel volume bars in Chrome (codec detected as multiopus).</span>
         </figcaption>
       </figure>
+
+      <h3>2.5 Test evidence and open issues</h3>
+      <p>
+        See <code>Docs/audio_multichannel_test_summary.md</code> for consolidated cross-platform results,
+        case classifications, and the recommended regression order. Normal 4/6/8-channel operation has
+        multiple rounds of direct media evidence, and the legacy <code>Stream closed</code> cleanup issue
+        did not reappear on 4.24.9-dev.2. These historical results do not constitute a full passing
+        regression for the current 4.24.10 mainline release.
+      </p>
+      <ul>
+        <li><strong>Web→iOS</strong>: the intermittent 1-channel issue remains open; a later non-reproduction does not erase the earlier failure evidence.</li>
+        <li><strong>Web→macOS</strong>: W-M-08-1/2 ordinary mono/stereo dumps and W-M-09 invalid WAV handling are strict failures in the application or Native integration, not in normal 4/6/8-channel Web decoding.</li>
+        <li><strong>Multiple senders</strong>: MS-16 ordinary mono/stereo input, MS-28 truly concurrent join/publish, and the original 32-Web runner's 32/33 boundary remain incomplete. The 31 Linux + Web mixed capacity result does not replace these gaps.</li>
+        <li><strong>Current version gate</strong>: 4.24.10 has passed installation and production build checks. The P0 media matrix, odd-channel patch on/off comparison, stop/republish, unsubscribe/resubscribe, leave, and page-unload cleanup still need to be rerun.</li>
+      </ul>
 
       <h2>3. ORTC Negotiation and Technical Details</h2>
       <p>
@@ -824,7 +852,7 @@ await client.publish(track);</code></pre>
           <code>coupled_streams</code>/<code>num_streams</code> are generated from that table. For 3/5/7-channel
           streams the SDP declaration mismatches the actual stream; the browser decodes per the wrong
           configuration and the last channel gets duplicated into a phantom one (see
-          <code>Test/odd_channels_interop_test_20261012.md</code> §5).</li>
+          <code>Docs/audio_multichannel_test_summary.md</code> §4.1～§4.2).</li>
         <li>
           Channel selection is not implemented with WebAudio, but with Insertable Streams
           (<code>MediaStreamTrackProcessor / MediaStreamTrackGenerator</code>) to work around a Chrome

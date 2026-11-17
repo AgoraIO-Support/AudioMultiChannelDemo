@@ -207,10 +207,10 @@ xcrun simctl launch --console booted com.agora.demo.MultiChannelAudioReceiverApp
   odd channel counts 3/5/7), and receives normal stereo/mono streams without any special
   handling. Payload type / `custom_channel_num` parameters are only required on the
   **sender** side (see `Demo/linux/README.md`).
-  **Caveat: the adaptive-decoding conclusion comes from macOS / Linux testing
-  (2026-10-12, see `Test/odd_channels_interop_test_20261012.md`); multi-channel decoding on
-  iOS (including odd channel counts 3/5/7) has NOT been verified yet — trust measurements,
-  not this paragraph.** What has been verified on the iOS simulator: engine creation,
+  **Caveat: the 3/5/7 adaptive-decoding conclusion comes from macOS / Linux testing
+  (see `Docs/audio_multichannel_test_summary.md` §4.1). Web→iOS testing has covered 4/6/8
+  channels, but an intermittent 1-channel issue remains open; 3/5/7 still need separate
+  iOS verification (see §3 and §5.1 of the summary).** What has been verified on the iOS simulator: engine creation,
   audience join, auto-subscribe, and frame-dump file creation (2026-10-13).
 - **The channel-count selector only controls the UI rows**: switching it pushes no SDK
   parameter; setting an `index` beyond the stream's actual channel count has no effect in

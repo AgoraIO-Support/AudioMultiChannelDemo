@@ -610,7 +610,7 @@ async function subscribe() {
   remoteChannelCount.value = (track as any).channelCount || 0;
 
   // 奇数声道流修正补丁（不改 SDK 文件，见 src/oddChannelFix.ts 与
-  // Test/odd_channels_interop_test_20261012.md §5/§6）：检测「末两声道恒等」的幻影签名，
+  // Docs/audio_multichannel_test_summary.md §4.2）：检测「末两声道恒等」的幻影签名，
   // 命中后修正音量显示声道数、channelCount 与播放输出；开关关闭时跳过（用于对比验证）
   if (oddFixEnabled.value) {
     const oddFixGen = oddFixGeneration;

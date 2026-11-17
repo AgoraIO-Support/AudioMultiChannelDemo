@@ -59,7 +59,7 @@
 
       <h2>能力边界要点</h2>
       <ul>
-        <li><strong>Web 仅偶数声道解码</strong>：4/6/8 可用；3/5/7 声道流对 Web 端不适用——实测不报错但会按 N+1 偶数声道误解码（末声道被复制出幻影声道、界面误判多声道 ✓），结果不可信（实测记录见仓库 <code>Test/odd_channels_interop_test_20261012.md</code> §5）。</li>
+        <li><strong>Web 仅偶数声道解码</strong>：4/6/8 可用；3/5/7 声道流对 Web 端不适用——实测不报错但会按 N+1 偶数声道误解码（末声道被复制出幻影声道、界面误判多声道 ✓），结果不可信（实测记录见仓库 <code>Docs/audio_multichannel_test_summary.md</code> §4.2）。</li>
         <li><strong>最多 8 声道</strong>：本功能支持 3~8 声道，16 声道及以上不支持。</li>
         <li><strong>浏览器要求</strong>：Chrome 96+（推荐 110+）；Edge 79+ 跟随 Chrome（Chromium 内核，预期等价、未经官方验证）；Safari / Firefox 不支持，加入多声道频道行为未定义（可能无声或仅立体声）；iOS 上所有浏览器均为 WebKit 引擎，不支持；Android Chrome / WebView（内核 96+）预期可用但未经官方验证（外放立体声等移动端限制）。</li>
         <li><strong>不支持端回退规则</strong>：Linux 发送时，不支持多声道的端加入会触发发送端回退为普通 Opus（可用私参 <code>che.audio.codec_unfallback</code> 强制不回退）；Web 发送时不回退，该不支持端无声。使用多声道时应保证频道内所有参与者均支持多声道。</li>
@@ -79,7 +79,11 @@
           <p class="card-title">Native SDK（macOS）多声道文档 →</p>
           <p class="card-desc">发送/接收集成要点、逐声道私参、版本实测矩阵（发送自 4.5.3 起可用，接收自 4.5.2 起可用）。</p>
         </a>
-        <a class="card" href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">
+        <a class="card" href="https://github.com/AgoraIO-Support/AudioMultiChannelDemo/blob/main/Docs/audio_multichannel_test_summary.md" target="_blank" rel="noopener">
+          <p class="card-title">多声道测试汇总 ↗</p>
+          <p class="card-desc">跨端测试结果、已知限制、未闭环问题、容量边界、版本范围与后续回归优先级。</p>
+        </a>
+        <a class="card" href="../index.html" target="_blank" rel="noopener">
           <p class="card-title">在线 Web 验证 Demo ↗</p>
           <p class="card-desc">在浏览器中订阅/发布多声道流，逐声道音量条与 codec 判定（Chrome 96+，新标签页打开）。</p>
         </a>
@@ -94,12 +98,13 @@
       <h2>SDK 版本与计费说明</h2>
       <ul>
         <li>
-          <strong>Web SDK</strong>：本功能需要多声道特殊版本。本仓库 Demo/web 使用
-          <code>agora-rtc-sdk-ng@4.20.1-200</code>；设计文档对应版本为
-          <code>agora-rtc-sdk-ng@4.20.1-100</code>，可通过 npm 或
+          <strong>Web SDK</strong>：自 <code>agora-rtc-sdk-ng@4.24.10</code> 起，音频多声道已合并进入主线版本，
+          本仓库 Demo/web 使用该主线版本，无需再依赖多声道定制构建。
+          <code>4.20.1-100 / 4.20.1-200</code> 属于早期音频多声道特殊版本，仅供历史验证参考，可通过
           <a href="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.1-100.js" target="_blank" rel="noopener">CDN</a>
-          获取，完整包见
-          <a href="https://download.agora.io/sdk/release/Agora_Web_SDK_v4_20_1-100_FULL.zip" target="_blank" rel="noopener">Agora_Web_SDK_v4_20_1-100_FULL.zip</a>。
+          或
+          <a href="https://download.agora.io/sdk/release/Agora_Web_SDK_v4_20_1-100_FULL.zip" target="_blank" rel="noopener">Agora_Web_SDK_v4_20_1-100_FULL.zip</a>
+          获取。
         </li>
         <li>
           <strong>Linux SDK</strong>：多声道验证版本为 <code>v4.4.30.149</code>（x86_64 / aarch64），下载：
@@ -195,7 +200,7 @@
 
       <h2>Capability boundaries</h2>
       <ul>
-        <li><strong>Even channel counts only on Web</strong>: 4/6/8 channels work. 3/5/7-channel streams are not applicable to Web receivers — they raise no error but are mis-decoded as the next even channel count (the last channel is duplicated into a phantom channel and the demo even misjudges it as multi-channel ✓); results are untrustworthy (see <code>Test/odd_channels_interop_test_20261012.md</code> §5 in the repo).</li>
+        <li><strong>Even channel counts only on Web</strong>: 4/6/8 channels work. 3/5/7-channel streams are not applicable to Web receivers — they raise no error but are mis-decoded as the next even channel count (the last channel is duplicated into a phantom channel and the demo even misjudges it as multi-channel ✓); results are untrustworthy (see <code>Docs/audio_multichannel_test_summary.md</code> §4.2 in the repo).</li>
         <li><strong>Maximum 8 channels</strong>: this feature supports 3 to 8 channels; 16 channels and above are not supported.</li>
         <li><strong>Browser requirement</strong>: Chrome 96+ (110+ recommended); Edge 79+ follows Chrome (Chromium-based, expected equivalent, not officially verified); Safari and Firefox are not supported — behavior in a multi-channel channel is undefined (possibly silence or stereo only); all browsers on iOS are WebKit-based and unsupported; Android Chrome / WebView (kernel 96+) are expected to work but are not officially verified (mobile limits such as stereo output).</li>
         <li><strong>Fallback rules for unsupported endpoints</strong>: when Linux is sending, an endpoint without multi-channel support joining the channel triggers the sender to fall back to plain Opus (the private parameter <code>che.audio.codec_unfallback</code> can force no-fallback); when Web is sending, no fallback occurs and the unsupported endpoint hears nothing. All participants in the channel should support multi-channel when using this feature.</li>
@@ -215,7 +220,11 @@
           <p class="card-title">Native SDK (macOS) multi-channel docs →</p>
           <p class="card-desc">Send/receive integration guide, per-channel private parameters, verified version matrix (sending works from 4.5.3, receiving from 4.5.2).</p>
         </a>
-        <a class="card" href="https://xiaoyingtao.convoai.club/multiopus/" target="_blank" rel="noopener">
+        <a class="card" href="https://github.com/AgoraIO-Support/AudioMultiChannelDemo/blob/main/Docs/audio_multichannel_test_summary.md" target="_blank" rel="noopener">
+          <p class="card-title">Multi-channel test summary ↗</p>
+          <p class="card-desc">Cross-platform results, known limitations, open issues, capacity boundaries, version scope, and regression priorities.</p>
+        </a>
+        <a class="card" href="../index.html" target="_blank" rel="noopener">
           <p class="card-title">Online Web verification demo ↗</p>
           <p class="card-desc">Subscribe/publish multi-channel streams in the browser with per-channel volume bars and codec detection (Chrome 96+, opens in a new tab).</p>
         </a>
@@ -230,9 +239,10 @@
       <h2>SDK versions and pricing</h2>
       <ul>
         <li>
-          <strong>Web SDK</strong>: this feature requires a special multi-channel build. This repo's
-          <code>Demo/web</code> uses <code>agora-rtc-sdk-ng@4.20.1-200</code>; the design doc version is
-          <code>agora-rtc-sdk-ng@4.20.1-100</code>, available on npm or via the
+          <strong>Web SDK</strong>: starting with <code>agora-rtc-sdk-ng@4.24.10</code>, audio multi-channel
+          support is merged into the mainline Web SDK. This repo's <code>Demo/web</code> uses that mainline
+          version, so no separate custom build is required. <code>4.20.1-100 / 4.20.1-200</code> are early
+          special audio multi-channel builds retained for historical reference, available via
           <a href="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.1-100.js" target="_blank" rel="noopener">CDN</a>
           and the
           <a href="https://download.agora.io/sdk/release/Agora_Web_SDK_v4_20_1-100_FULL.zip" target="_blank" rel="noopener">Agora_Web_SDK_v4_20_1-100_FULL.zip</a>
@@ -300,8 +310,8 @@
 
   <footer class="site-footer">
     <div class="container">
-      <span data-lang="zh">内容依据：多声道设计文档（ExT-1485178709 / ExT-1485178492）与 Spec/ 下 PRD；示例代码取自 Demo/linux、Demo/web 与 Demo/macOS；macOS 版本实测结论见 Test/macos_sender_multi-channel_audio_test_result.md。浏览器侧背景与多端支持分析见 References/chromium_webrtc_multi_channel_audio_references.md。</span>
-      <span data-lang="en">Sources: multi-channel design docs (ExT-1485178709 / ExT-1485178492) and the PRDs under Spec/; code samples are taken from Demo/linux, Demo/web and Demo/macOS; the verified macOS version matrix lives in Test/macos_sender_multi-channel_audio_test_result.md. For browser-side background and multi-endpoint support analysis, see References/chromium_webrtc_multi_channel_audio_references_en.md.</span>
+      <span data-lang="zh">内容依据：多声道设计文档（ExT-1485178709 / ExT-1485178492）与 Spec/ 下 PRD；示例代码取自 Demo/linux、Demo/web 与 Demo/macOS；跨端结果、macOS 版本矩阵与未闭环项见 Docs/audio_multichannel_test_summary.md。浏览器侧背景与多端支持分析见 References/chromium_webrtc_multi_channel_audio_references.md。</span>
+      <span data-lang="en">Sources: multi-channel design docs (ExT-1485178709 / ExT-1485178492) and the PRDs under Spec/; code samples are taken from Demo/linux, Demo/web and Demo/macOS; cross-platform results, the macOS version matrix, and open issues are consolidated in Docs/audio_multichannel_test_summary.md. For browser-side background and multi-endpoint support analysis, see References/chromium_webrtc_multi_channel_audio_references_en.md.</span>
     </div>
   </footer>
 

@@ -11,7 +11,7 @@
 - **逐声道音量条**：订阅后每 300ms 调用 `getVolumeLevels()` 渲染各声道实时音量。
 - **codec 判定**：hook `RTCPeerConnection.getStats()` 读取底层 inbound codec（`opus` / `multiopus`），订阅期间每 800ms 持续轮询（可观测协商回退）。
 - **声道选择播放**：`selectChannels(channels, mode)` 对远端音轨选择任意声道组合，支持 `surround` / `stereo` / `mono` 三种渲染模式，用于逐声道试听核对 Channel ID 素材。
-- **奇数声道修正补丁（`src/oddChannelFix.ts`）**：订阅 3/5/7 奇数声道流时，SDK 会按 N+1 偶数声道误解码（末声道为幻影复制、误判多声道 ✓）；补丁在运行时检测「末两声道逐样本恒等」签名，命中后修正音量显示声道数、`channelCount` 与播放输出（丢弃幻影声道），并弹窗提示。**三个 Live Demo 操作区都有「奇数声道补丁」开关（默认开，三页共享并记忆）**：订阅中关掉会立即撤销补丁恢复 SDK 原始行为（音量条变回 N+1 路、末两声道恒等），打开则重新检测修正，便于对比验证。原理与限制见 `Test/odd_channels_interop_test_20261012.md` §5/§6。
+- **奇数声道修正补丁（`src/oddChannelFix.ts`）**：订阅 3/5/7 奇数声道流时，SDK 会按 N+1 偶数声道误解码（末声道为幻影复制、误判多声道 ✓）；补丁在运行时检测「末两声道逐样本恒等」签名，命中后修正音量显示声道数、`channelCount` 与播放输出（丢弃幻影声道），并弹窗提示。**三个 Live Demo 操作区都有「奇数声道补丁」开关（默认开，三页共享并记忆）**：订阅中关掉会立即撤销补丁恢复 SDK 原始行为（音量条变回 N+1 路、末两声道恒等），打开则重新检测修正，便于对比验证。原理与限制见 `Docs/audio_multichannel_test_summary.md` §4.2。
 - **视频 + 多声道音频同时订阅（Live Demo 3）**：`?demo=3` 打开。输入频道 / 本端 uid(+token) / 目标 uid，一键同时订阅目标远端的多声道音频与视频：视频渲染到页面视频区，音频沿用 Live Demo 1 的逐声道音量条、codec 判定（音频 / 视频 codec 均显示）与声道选择播放；订阅期间对端补发视频或音频会自动补订。主要用于配合 Linux MKV demo（`sample_send_mkv_multiopus`，1 路视频 + 8 声道 OPUSMC 音频）做端到端验证，也可订阅 Live Demo 1/2 发布的纯音频流（此时视频区显示未发布）。
 - **双标签页角色控制**：通过 URL 参数 `channel` / `uid` / `subTo` 区分发布端与订阅端标签页。
 - **多 Live Demo 布局**：默认（`?demo=1`）为本工程布局；`?demo=2` 为参考 quick-demo-multiopus 原版的布局（自由文本音频地址、确定(环绕声/双声道/单声道)按钮、简洁音量条；该布局无 codec 判定 / 结果面板，也无 subTo 输入——自动订阅最新发布者或首个有音频的远端）；`?demo=3` 为视频 + 多声道音频同时订阅布局。各 demo 头部有快捷链接互相切换。
@@ -23,7 +23,7 @@
 
 - **浏览器：Chrome 96+，推荐 110+**。声道选择依赖 Insertable Streams（绕开 Chrome WebAudio 缺陷 issue 1116042）。
 - **Safari / Firefox 不支持**：加入多声道频道行为未定义（可能无声或仅立体声）。
-- **仅偶数声道**：Web 端仅支持 4/6/8 声道解码；3/5/7 声道流**不报错但会被误解码**为 N+1 偶数声道（mono 子流当 stereo 解，末声道复制出幻影声道，界面误判多声道 ✓），结果不可信（2026-10-12 实测，见 `Test/odd_channels_interop_test_20261012.md` §5）；16 声道及以上不支持。
+- **仅偶数声道**：Web 端仅支持 4/6/8 声道解码；3/5/7 声道流**不报错但会被误解码**为 N+1 偶数声道（mono 子流当 stereo 解，末声道复制出幻影声道，界面误判多声道 ✓），结果不可信（2026-10-12 实测，见 `Docs/audio_multichannel_test_summary.md` §4.2）；16 声道及以上不支持。
 - Node.js 18+（本地开发）。
 
 ## 安装与启动
@@ -109,7 +109,7 @@ Live Demo 2 的集成处理如下：
 2. 本 demo 以订阅端角色打开：`?channel=<同一频道>&uid=<web端uid>&subTo=<macOS端uid>`，加入频道后点「订阅检测」。
 3. 预期：音量条出现对应声道数（4/6/8）且各声道均有内容级峰值，codec 判定为 multiopus。
    注意：macOS **4.5.2** 发送时仅前 2 声道有内容（已知输入钳制），**≥ 4.5.3** 全声道正常；
-   版本实测矩阵见 `Test/macos_sender_multi-channel_audio_test_result.md`。
+   版本实测矩阵见 `Docs/audio_multichannel_test_summary.md` §4.6。
 
 ## 判定方法
 
@@ -134,7 +134,7 @@ demo 结果面板按「音量数组长度为 4/6/8，或 codec = multiopus」给
 ## 常见问题
 
 - **「打开发布端 / 打开订阅端」两个链接是干什么的？** 双标签页自验证的入口：「打开发布端」以本端 UID 开新标签页加入并发布素材；「打开订阅端」以目标 UID 开新标签页、订阅本端 UID（subTo）的流做逐声道检测。两个链接都会把当前频道名带入新标签页（页面上链接上方也有同样说明）。
-- **订阅 Linux 发送的 8 声道流时，没发声的声道音量柱也显示 ~10%（实测 4.6~12%）？** 两个原因叠加：① 音量表是 dB 宽量程刻度——`getVolumeLevels()` 的实现为 `(dBFS_RMS + 100) / 100`，只有精确数字零才显示 0%，-90dB 的不可闻残余就显示 ~10%（该实现无 Linux/Web 分支，读的是真实解码 PCM）；② Linux 发送用的 16bit 素材静音段带 -84dB dither，而 Web 发布用的 24bit 素材静音段是精确数字零，所以 web→web 显示 0（已用 24bit 素材在同一 Linux 发送端做对照实验：底数消失、min=0，确认素材 dither 为根源）。实测编码/传输/解码链路与最终播放 PCM 均无泄漏（详见 `Test/web_volume_meter_floor_linux2web.md`）。逐声道内容核对请以「声道选择 + 试听」为准；读音量柱时记住 ~10% ≈ -90dB ≈ 无声。
+- **订阅 Linux 发送的 8 声道流时，没发声的声道音量柱也显示 ~10%（实测 4.6~12%）？** 两个原因叠加：① 音量表是 dB 宽量程刻度——`getVolumeLevels()` 的实现为 `(dBFS_RMS + 100) / 100`，只有精确数字零才显示 0%，-90dB 的不可闻残余就显示 ~10%（该实现无 Linux/Web 分支，读的是真实解码 PCM）；② Linux 发送用的 16bit 素材静音段带 -84dB dither，而 Web 发布用的 24bit 素材静音段是精确数字零，所以 web→web 显示 0（已用 24bit 素材在同一 Linux 发送端做对照实验：底数消失、min=0，确认素材 dither 为根源）。实测编码/传输/解码链路与最终播放 PCM 均无泄漏（详见 `Docs/audio_multichannel_test_summary.md` §4.5）。逐声道内容核对请以「声道选择 + 试听」为准；读音量柱时记住 ~10% ≈ -90dB ≈ 无声。
 
 - **订阅多声道流只有单/双声道？** 检查是否在 `createClient` 配置中传入了 `multiopus: true`；未开启则按普通音频处理，只能解出单/双声道。
 - **token 报错 / 加入失败？** token 与 uid 绑定，两个标签页必须使用各自 uid 的 token（或 uid=0 通配 token）。demo 内 `APP_ID` 为明文演示凭证，正式使用请替换并在自己的服务端签发 token。

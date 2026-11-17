@@ -143,7 +143,7 @@ docker run --rm -it --network host agora-multichannel-linux \
 > 3/5/7 奇数声道用 `public/odd_3ch.wav` / `odd_5ch.wav` / `odd_7ch.wav`（ffmpeg channelmap 自
 > 8ch 素材截取），如 5 声道：`--audioFile public/odd_5ch.wav --numOfChannels 5
 > --custom_channel_num 5 --custom_payload_type 124 --sampleRate 48000`（互通已实测，见
-> `Test/odd_channels_interop_test_20261012.md`）。
+> `Docs/audio_multichannel_test_summary.md`）。
 
 ### 2. 发送 raw PCM 多声道（3~8 声道）
 
@@ -262,7 +262,7 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例
 3. `getVolumeLevels()` 返回数组长度等于实际解码声道数，底层 codec 显示为 `multiopus`；
 4. `selectChannels(channels, "surround"|"stereo"|"mono")` 可选择任意声道组合播放。
 
-注意：Web 端仅支持偶数声道解码；3/5/7 声道流在 Web 端不报错但会被误解码为 N+1 声道（末声道复制出幻影、界面误判多声道 ✓），结果不可信，奇数声道请用 Native/Linux 端验证（详见 `Test/odd_channels_interop_test_20261012.md` §5）；Safari/Firefox 行为未定义。
+注意：Web 端仅支持偶数声道解码；3/5/7 声道流在 Web 端不报错但会被误解码为 N+1 声道（末声道复制出幻影、界面误判多声道 ✓），结果不可信，奇数声道请用 Native/Linux 端验证（详见 `Docs/audio_multichannel_test_summary.md` §5）；Safari/Firefox 行为未定义。
 
 ### 编码帧落盘（sample_receive_encoded_audio）
 

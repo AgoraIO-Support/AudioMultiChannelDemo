@@ -20,7 +20,7 @@ open MultiChannelAudioSenderApp.xcworkspace
 
 > 平台提示：iOS 版本的多声道行为尚未做真机/模拟器实测——macOS 侧的实测结论
 > （4.5.2 发送侧自定义音轨输入钳制为 2 声道、4.5.3 起解除；接收侧自适应解码含 3/5/7
-> 奇数声道）来自 macOS 回归（`Test/macos_sender_multi-channel_audio_test_result.md`），
+> 奇数声道）来自 macOS 回归（`Docs/audio_multichannel_test_summary.md`），
 > iOS 行为以实测为准。两个 app 的 iOS 音频 dump 落在 app 沙盒容器内（可用
 > Xcode → Devices and Simulators 导出容器查看），文件名规则待实测。
 

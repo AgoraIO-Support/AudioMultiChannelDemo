@@ -172,9 +172,9 @@ xcrun simctl launch --console booted com.agora.demo.MultiChannelAudioReceiverApp
 - **接收端无需任何多声道私参**：Native SDK 在 123/124/125 协商机制下自适应解码 OPUSMC
   多声道流（包括 3/5/7 奇数声道），接收普通 stereo/mono 流也无需特殊处理。payload type /
   `custom_channel_num` 等参数只需在**发送端**设置（见 `Demo/linux/README.md`）。
-  **注意：该自适应解码结论来自 macOS / Linux 端实测（2026-10-12，见
-  `Test/odd_channels_interop_test_20261012.md`）；iOS 平台的多声道解码（含 3/5/7 奇数声道）
-  尚未实测，以实测为准。** 已在 iOS 模拟器验证的部分：引擎创建、观众加入、自动订阅、
+  **注意：3/5/7 奇数声道结论来自 macOS / Linux 端实测（见
+  `Docs/audio_multichannel_test_summary.md` §4.1）；iOS 的 4/6/8ch 已有 Web→iOS 实测，
+  但间歇性 1ch 未闭环，3/5/7 仍未单独验证（见汇总 §3、§5.1）。** 已在 iOS 模拟器验证的部分：引擎创建、观众加入、自动订阅、
   frame_dump 落盘（2026-10-13）。
 - **声道数选择器只是 UI 行数控制**：切换它不下发任何 SDK 参数；SDK 对超出流实际声道数的
   `index` 设置不产生效果；切换远端 uid 时会把全部 8 行（含隐藏行）状态重新下发，保证行为确定。

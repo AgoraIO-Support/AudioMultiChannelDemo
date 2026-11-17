@@ -152,7 +152,7 @@ mirrored to stdout unbuffered:
   `che.audio.frame_dump` at join; `autoQuitAfter`: seconds until the app terminates
   itself (> 0).
 - Used on 2026-10-12 for the 4.7.0 ↔ 4.7.0 native interop regression (per-channel NCC
-  check against the dump); results in `Test/macos_sender_multi-channel_audio_test_result.md`.
+  check against the dump); results in `Docs/audio_multichannel_test_summary.md`.
 
 ## Notes
 
@@ -162,10 +162,10 @@ mirrored to stdout unbuffered:
   handling. Payload type / `custom_channel_num` parameters are only required on the
   **sender** side (see `Demo/linux/README.en.md`).
 - **Odd channel counts (3/5/7)**: decoded adaptively on the Native side (interop verified
-  2026-10-12, see `Test/odd_channels_interop_test_20261012.md`); the Web side
+  2026-10-12, see `Docs/audio_multichannel_test_summary.md`); the Web side
   (`Demo/web`) raises no error for such streams but mis-decodes them as N+1 channels (the last
   channel is duplicated into a phantom one and the demo shows a false multi-channel ✓) —
-  results are untrustworthy, so never verify odd-channel streams on Web (§5 of the same document).
+  results are untrustworthy, so never verify odd-channel streams on Web (§4.2 of the summary).
 - **The channel-count selector only controls the UI rows**: switching it pushes no SDK
   parameter; setting an `index` beyond the stream's actual channel count has no effect in
   the SDK; whenever the selected uid changes, the state of all 8 rows (including hidden

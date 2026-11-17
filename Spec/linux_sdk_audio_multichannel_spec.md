@@ -264,7 +264,7 @@
 
 - 当：声道数大于 4
 - 则：发送端与接收端的声道数配置必须一致（payload 123 单值时代约束；123/124/125 协商后接收端免配私参，但接收 PCM 回调参数仍需与发送端声道数一致才能拿到完整声道）
-- 且：Web 端仅支持偶数声道解码；3/5/7 声道流对 Web 端不适用（2026-10-12 实测：不报错但按 N+1 偶数声道误解码、末声道复制出幻影声道、界面误判多声道 ✓，见 `Test/odd_channels_interop_test_20261012.md` §5）
+- 且：Web 端仅支持偶数声道解码；3/5/7 声道流对 Web 端不适用（2026-10-12 实测：不报错但按 N+1 偶数声道误解码、末声道复制出幻影声道、界面误判多声道 ✓，见 `Docs/audio_multichannel_test_summary.md` §4.2）
 
 ### 需求点5：接收多声道音频（解码 PCM 回调）
 
@@ -340,7 +340,7 @@
 - 且：stereo 模式将 0,2,4,6… 声道混入左、1,3,5,7… 声道混入右；mono 模式全部混为单声道（输出为立体声容器）；Safari/Firefox 加入多声道频道行为未定义（可能无声或仅立体声）
 - 且：`getVolumeLevels()` 为 dB 宽量程刻度（`(dBFS_RMS + 100) / 100`）：静音声道在 16bit dither
   素材下读数约 10%，仅精确数字零为 0%——判定逐声道内容以「有无内容级峰值」为准，
-  勿把底噪读数误判为串声道（实测分析见 `Test/web_volume_meter_floor_linux2web.md`）
+  勿把底噪读数误判为串声道（实测分析见 `Docs/audio_multichannel_test_summary.md`）
 
 #### 场景9.3：Channel ID 素材逐声道核对
 
@@ -361,7 +361,7 @@
 
 #### 场景10.2：已确认的最终声道映射（2025-04 联调结论）
 
-- 前置条件：双方已通过客户侧声道映射图（客户研发团队提供）与 Agora 侧声道映射图（Agora 侧同步）对齐，沟通记录 `audio_mutil_channel_mapping.txt` 明确结论 "Confirmed that it should be correct."（原文件已随 `References/沟通记录/` 于 2026-10-09 删除，内容存档见 `References/communication_records_backup.md` §2.2）
+- 前置条件：双方已确认 4 条立体声音轨到 8 声道流的布局映射；本仓库采用逐样本交错顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R（见 `Docs/audio_multichannel_spec.md` §3.3）
 - 当：将 4 条 stereo 轨映射进 8 声道流
 - 则：8 声道帧为**逐样本交错**布局，声道顺序为 CH1=T1L、CH2=T1R、CH3=T2L、CH4=T2R、CH5=T3L、CH6=T3R、CH7=T4L、CH8=T4R；即缓冲区按 `[T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R]` 每样本重复排列；声道对 (0,1)(2,3)(4,5)(6,7) 分别对应轨 1~4 的左右声道（客户 8 声道为 4 个独立立体声对，非 7.1 环绕布局）
 - 且：该声道配对与 8 声道 OPUSMC 编码 4 个 coupled stream 的配对 (0,1)(2,3)(4,5)(6,7) 一致（场景4.1 映射表）；`Agora_Order_Expectation.xlsx` 中按声道分块（LLLL…RRRR…）的画法为排查过程中的中间产物，不是最终约定
@@ -457,7 +457,7 @@
 | 1 | 能力协商回退的目标格式：Linux 设计文档记"回退到单声道（mono）"，Web 设计文档记"回退到双声道（dual-channel）"，两处表述不一致，需以实际版本行为为准。2026-10-12 补充：回退行为本身与 `che.audio.codec_unfallback` 强制开关已实测生效（Linux 发送遇不支持端回退普通 Opus；Web 发送不回退且不支持端无声），剩余未定点仅为回退后声道数（mono/stereo） | 兼容性 | 研发 / QA | 部分确认（行为与开关已实测）；回退目标声道数待研发确认 |
 | 2 | 多声道流在云录制、水晶球等云端链路上的表现与计费影响 | 协同 | PM / 服务端 | 待确认 |
 | 3 | 客户 VID、需求 Reporter 与期望交付版本号需在需求 Jira 中补齐 | 流程 | PM | 待确认 |
-| 4 | 3/5/7 奇数声道在 Native 端可自适应解码（2026-10-12 已实测：Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部互通，见 `Test/odd_channels_interop_test_20261012.md`），但客户实际业务是否使用奇数声道 | 场景 | 客户 / PM | 待确认（解码能力已实证；客户用量待确认） |
+| 4 | 3/5/7 奇数声道在 Native 端可自适应解码（2026-10-12 已实测：Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部互通，见 `Docs/audio_multichannel_test_summary.md`），但客户实际业务是否使用奇数声道 | 场景 | 客户 / PM | 待确认（解码能力已实证；客户用量待确认） |
 | 5 | 预编码 Opus 发送是否需支持 8 声道以外的预编码素材及 ogg 封装解析 | 功能边界 | 客户 / PM | 待确认 |
 | 6 | ~~布局粒度解释待确认~~ **已确认**：最终布局为 8 声道逐样本交错，声道顺序 T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R（见场景10.2）；2025-04 排查的接收端杂音问题根因即发送端 audio layout 错误（源数据逐样本交错 LRLR…，客户侧按平面块序 LLL…RRR… 读取），2025-04-14 客户确认问题解决。另：客户布局约定表中"每轨每写 120 样本"标注与 15360 字节总量（= 960 样本/声道/写）的换算出入不影响结论，以实际集成为准 | 集成约定 | Agora 侧与客户侧双方研发 | 已确认（2025-04-14） |
 
@@ -500,7 +500,7 @@
 - 设计文档：`References/Docs/ExT-1485178709-100726-0959-56_en.md`（Linux SDK 多声道）、`References/Docs/ExT-1485178492-100726-1000-58_en.md`（Web SDK 多声道）
 - 交付记录：`References/Docs/ExT-1574700707-170726-0613-20.pdf`（Linux SDK ARM Version 交付记录）
 - Web 验证 demo：`References/AlexGongs/quick-demo-multiopus/`（USAGE.md、src/Multiopus.vue）——已于 2026-10 移除，功能由 `Demo/web/` 继承
-- 沟通记录：原 `References/沟通记录/` 已于 2026-10-09 删除；全部内容已文字化存档于 `References/communication_records_backup.md` / `communication_records_backup_en.md`（含 2025-04 杂音排查与布局确认全过程、最终确认的声道映射、双方布局表内容、VictoriaMulti.mkv 元数据）
+- 布局映射：最终声道顺序与 4×stereo → 8 声道转换要求见 `Docs/audio_multichannel_spec.md` §3.3
 - 音频素材元数据（ffprobe 实测）：8_Channel_ID_signed_16_bit_pcm.wav = 48 kHz/8ch/16bit；6_Channel_ID.wav = 44.1 kHz/6ch(5.1)；4_Channel_ID.wav = 44.1 kHz/4ch（原 `*_metadata.txt` 记录已随历史参考包于 2026-10-12 一并删除；48 kHz 素材见 `Demo/linux/public/`（含 `odd_{3,5,7}ch.wav`），44.1 kHz 素材与 8ch 24bit 素材见 `Demo/web/public/`，可用 ffprobe 复测）
 
 ### 音频素材清单（已验证元数据）
@@ -516,8 +516,8 @@
 | `6_Channel_ID.wav` | WAV pcm_s16le | 44100 | 6（5.1 布局） | 16bit | 约 5.8 s | 六声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `4_Channel_ID.wav` | WAV pcm_s16le | 44100 | 4 | 16bit | 约 5.8 s | 四声道素材；发送前须重采样至 48 kHz | ffprobe 元数据 |
 | `send_audio_16k_1ch.pcm` | raw PCM | 16000 | 1 | 16bit | — | 普通单声道基线（非多声道） | SDK 包 `test_data/`（sync-data.sh 下载） |
-| `VictoriaMulti.mkv` | MKV：1 × mpeg4 视频 + 4 × ac3 音频流 | 44100 | 每轨 2（stereo），共 8 | fltp | 约 4 min | 客户源端 4×双声道承载 8 声道的实际内容样例（布局映射用） | 仅现存 `Demo/linux/public/VictoriaMulti.mkv`（Git LFS 指针，需 `git lfs pull` 取回实体文件）；最初来源 `References/沟通记录/` 内拷贝已随该目录删除，ffprobe 元数据见 `References/communication_records_backup.md` §2.6 |
-| 客户布局约定表 / `Agora_Order_Expectation.xlsx` | 布局约定文档（非音频，排查过程中间产物） | — | — | — | — | 客户当前布局（track 块序）与排查中期望布局的对比材料；**最终确认映射以双方确认的声道映射图为准**（逐样本交错，T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R） | 原 `References/沟通记录/`（已于 2026-10-09 删除；内容存档见 `References/communication_records_backup.md` §2.3/§2.4） |
+| `VictoriaMulti.mkv` | MKV：1 × mpeg4 视频 + 4 × ac3 音频流 | 44100 | 每轨 2（stereo），共 8 | fltp | 约 4 min | 客户源端 4×双声道承载 8 声道的实际内容样例（布局映射用） | 仅现存 `Demo/linux/public/VictoriaMulti.mkv`（Git LFS 指针，需 `git lfs pull` 取回实体文件）；相关布局转换要求见 `Docs/audio_multichannel_spec.md` §3.3 |
+| 客户布局约定表 / `Agora_Order_Expectation.xlsx` | 布局约定文档（非音频，排查过程中间产物） | — | — | — | — | 客户当前布局（track 块序）与排查中期望布局的对比材料；**最终确认映射以双方确认的声道映射图为准**（逐样本交错，T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R） | 最终映射要求见 `Docs/audio_multichannel_spec.md` §3.3 |
 
 注：Channel ID 系列素材各声道内容可区分，用于接收端逐声道核对；44.1 kHz 素材仅作素材格式参考，多声道发送必须使用 48 kHz 版本。
 
@@ -533,7 +533,7 @@
 | v0.6 | 2026-10-10 | 场景1.2 更新：本仓库已包含音视频同发 sample（`sample_send_mkv_multiopus`，音频 10ms/帧 + 视频按 PTS 节奏双线程独立发送），替换"未包含该音视频同发 sample"的过时表述 | Kimi Code |
 | v0.7 | 2026-10-12 | 一致性修订：场景8.1 `before_encoded.pcm` 括注更正为「编码前/编码器输入数据」（与命名及 macOS `before_mixed` dump 口径一致）；场景8.2 与 8.1 验收补 `getVolumeLevels` dB 刻度底噪 caveat（~10% 为 dither 底噪）；8.1 验证 demo 备注更新为 Demo/web（quick-demo-multiopus 已移除）；待确认问题1 收窄——回退行为与 unfallback 开关已实测，仅剩回退目标声道数（mono/stereo）待研发确认；附录素材表 `8_Channel_ID.wav` 位深更正为 24bit（afinfo 实测） | Kimi Code |
 | v0.8 | 2026-10-12 | 历史参考包 `References/LinuxSampleCodes/` 删除（其多声道测试功能已由 `Demo/linux/` 全覆盖并增强，素材已迁入 `Demo/linux/public/`）：6.4 表 API 事实来源改指 Demo/linux 对应 sample（含行号），参考资料与素材表来源同步修订 | Kimi Code |
-| v0.9 | 2026-10-12 | 奇数声道互通实测：3/5/7 声道经 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部通过（逐声道 NCC 0.46~1.00、同序号对应）；素材 `Demo/linux/public/odd_{3,5,7}ch.wav`（ffmpeg channelmap 截取）；待确认问题4 更新为「解码能力已实证、客户用量待确认」。详见 `Test/odd_channels_interop_test_20261012.md` | Kimi Code |
+| v0.9 | 2026-10-12 | 奇数声道互通实测：3/5/7 声道经 Linux↔Linux、Linux→macOS、macOS↔macOS、macOS→Linux 四链路全部通过（逐声道 NCC 0.46~1.00、同序号对应）；素材 `Demo/linux/public/odd_{3,5,7}ch.wav`（ffmpeg channelmap 截取）；待确认问题4 更新为「解码能力已实证、客户用量待确认」。详见 `Docs/audio_multichannel_test_summary.md` | Kimi Code |
 | v1.0 | 2026-10-12 | 复审修订：附录素材表 VictoriaMulti.mkv 来源更正（仓库现存 `References/VictoriaMulti.mkv` 与 `Demo/linux/public/VictoriaMulti.mkv`，Git LFS 同 md5；仅 `References/沟通记录/` 内拷贝被删除）；素材位置精确化（48 kHz 素材在 Demo/linux/public，44.1 kHz 与 24bit 素材在 Demo/web/public）；quick-demo-multiopus 残留引用补移除注解（2.1/2.2/8.2）；FAQ 示例改用仓库内 48 kHz 素材（旧示例 44.1 kHz 与场景2.3 强制校验冲突）；2.1 版本串日期与 QA 日期关系加注 | Kimi Code |
 | v1.1 | 2026-10-13 | 素材表 VictoriaMulti.mkv 存量描述更正：仅现存 `Demo/linux/public/VictoriaMulti.mkv`（Git LFS 指针，需 `git lfs pull`），「仓库现存 References/VictoriaMulti.mkv」系 v1.0 误记，以本条为准；新增需求点8（接收多声道音频与视频 AV 同收，覆盖第 4 条接收路径 `sample_receive_av_multiopus`），原需求点8/9 顺延为需求点9/10（全文场景编号与交叉引用同步调整），8.1 验收表补对应行，摘要/2.1/6.3/6.4/研发准入自检同步对齐「接收 4 路径」；标题去「初稿」 | Kimi Code |
 | v1.2 | 2026-10-13 | 全项目对齐复审：研发准入自检#1 遗漏修正——「发送 3 路径」更正为「发送 4 路径（含 MKV 4×双声道音视频同发）」（v1.1 仅对齐了「接收 4 路径」，:498 已是 4+4 口径）；Demo/linux README 与源码注释的需求点9→10 编号顺延同步已在仓库侧完成 | Kimi Code |
