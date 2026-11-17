@@ -64,7 +64,7 @@ The project uses ad-hoc signing (`CODE_SIGNING_ALLOWED=NO`), no sandbox, no enti
 ## Usage
 
 1. Pick a WAV asset (disabled while joined; Leave first to switch);
-2. Fill in App ID (pre-filled) and channel name, UID 0 = auto-assign, click Join;
+2. Fill in App ID (empty by default; enter your own Agora App ID) and channel name, UID 0 = auto-assign, click Join;
 3. Click Publish to start looping; Stop to halt;
 4. Verify on the receiving side with `MultiChannelAudioReceiver` or `Demo/web/`:
    check the codec (multiopus), channel count, and per-channel content.

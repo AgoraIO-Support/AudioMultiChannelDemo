@@ -55,7 +55,7 @@ xcodebuild -workspace MultiChannelAudioSender.xcworkspace \
 ## 使用流程
 
 1. 选择 WAV 素材（加入后不可切换，切换需先 Leave）；
-2. 填 App ID（默认预填）/频道名，UID 0 自动分配，点 Join；
+2. 填 App ID（默认留空，请填写自己的 Agora App ID）/频道名，UID 0 自动分配，点 Join；
 3. 点 Publish 开始循环发布；Stop 停止；
 4. 接收端验证：用 `MultiChannelAudioReceiver` 或 `Demo/web/` 订阅该频道，
    核对 codec（multiopus）、声道数与逐声道内容。

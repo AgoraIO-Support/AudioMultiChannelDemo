@@ -138,6 +138,7 @@ const messages = {
     myUid: "本端 UID",
     myUidPh: "加入用的 uid（与 token 绑定）",
     appId: "App ID",
+    appIdRequired: "请输入 App ID",
     token: "Token",
     tokenPh: "本端 uid 对应的 token（无证书项目可留空）",
     channelsLabel: "选择声道,以逗号(,)隔开(如0,1,2,3,4,5)",
@@ -182,6 +183,7 @@ const messages = {
     myUid: "Local UID",
     myUidPh: "join uid, bound to token",
     appId: "App ID",
+    appIdRequired: "Enter your Agora App ID",
     token: "Token",
     tokenPh: "token for local uid, leave empty if no certificate",
     channelsLabel: "Channels, comma-separated (e.g. 0,1,2,3,4,5)",
@@ -231,8 +233,8 @@ watch(
   { immediate: true }
 );
 
-// 演示用 App ID 默认值（明文 demo 凭证，正式使用请在页面内替换）。
-const DEFAULT_APP_ID = "43f818097c124394821bd44598b7ca9d";
+// 默认不预填 App ID，请在页面内填写；生产环境请从自己的服务端动态获取 token。
+const DEFAULT_APP_ID = "";
 
 const urlParams = new URLSearchParams(location.search);
 
@@ -300,6 +302,10 @@ const selectionText = computed(() => {
 
 async function joinChannel() {
   if (joined.value || joining.value) return;
+  if (!appId.value.trim()) {
+    notification.error({ title: m.value.appIdRequired, duration: 3000 });
+    return;
+  }
   joining.value = true;
   client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8", multiopus: true });
   try {

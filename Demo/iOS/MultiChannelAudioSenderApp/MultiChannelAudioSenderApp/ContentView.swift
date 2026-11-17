@@ -36,7 +36,7 @@ struct ContentView: View {
     @EnvironmentObject var senderManager: AgoraSenderManager
     @AppStorage("uiLanguage") private var uiLanguage = "en"
 
-    @AppStorage("appId") private var appId = "43f818097c124394821bd44598b7ca9d"
+    @AppStorage("appId") private var appId = ""
     @State private var token = ""
     @State private var channelId = ""
     @State private var uidText = "0"

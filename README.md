@@ -35,6 +35,7 @@
 ## 快速开始
 
 - 统一集成规格：见 `Docs/audio_multichannel_spec.md`；跨端测试结果与未闭环项：见 `Docs/audio_multichannel_test_summary.md`
+- 提交前安全检查：执行 `git config core.hooksPath .githooks` 启用预提交扫描，检查暂存文件名与新增内容中的常见私钥、Token；`.env` 与常见私钥文件已在 `.gitignore` 中排除（`.env.example` 除外）
 - Linux demo 构建与运行：见 `Demo/linux/README.md`（[English](Demo/linux/README.en.md)）
 - Web demo 启动与双标签页验证：见 `Demo/web/README.md`（[English](Demo/web/README.en.md)）
 - macOS 验证 app 构建与逐声道试听/发送：见 `Demo/macOS/README.md`（[English](Demo/macOS/README.en.md)）与 `Demo/macOS/MultiChannelAudioSender/README.md`（[English](Demo/macOS/MultiChannelAudioSender/README.en.md)）

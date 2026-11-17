@@ -82,7 +82,7 @@ xcodebuild -workspace MultiChannelAudioReceiver.xcworkspace \
        --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
    ```
 
-2. **本 app 加入同一频道**：App ID 默认预填 `43f818097c124394821bd44598b7ca9d`（手动修改后通过
+2. **本 app 加入同一频道**：App ID 默认留空，请填写你自己的 Agora App ID（输入后通过
    `@AppStorage` 持久化，下次启动保持）；填写 Token（无证书项目留空）、频道 ID、UID（0 = 自动分配），
    点击「加入频道」。状态栏显示「已加入频道」与本端 UID。
 3. **选择远端用户**：「远端多声道控制」区的下拉框中选择发送端 uid（通常会自动选中第一个）。

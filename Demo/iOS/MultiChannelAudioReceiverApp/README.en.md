@@ -134,9 +134,9 @@ xcodebuild -workspace MultiChannelAudioReceiverApp.xcworkspace \
        --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
    ```
 
-2. **Join the same channel from this app**: the App ID is pre-filled with the default
-   `43f818097c124394821bd44598b7ca9d` (your edits are persisted via `@AppStorage` across
-   launches); fill in Token (leave empty for projects without an App Certificate),
+2. **Join the same channel from this app**: the App ID is empty by default; enter your own
+   Agora App ID (your input is persisted via `@AppStorage` across launches); fill in Token
+   (leave empty for projects without an App Certificate),
    Channel ID and UID (0 = auto-assign), then tap "Join". The status line shows the
    connection state plus the assigned local UID.
 3. **Select the remote user**: pick the sender's uid in the "Remote Multi-Channel Control"

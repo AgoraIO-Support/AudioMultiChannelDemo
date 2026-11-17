@@ -160,6 +160,7 @@ const messages = {
     myUidPh: "加入用的 uid（与 token 绑定）",
     appId: "App ID",
     appIdPh: "Agora 项目的 App ID",
+    appIdRequired: "请输入 App ID",
     token: "Token",
     tokenPh: "本端 uid 对应的 token（无证书项目可留空）",
     wavToPublish: "发布素材",
@@ -216,6 +217,7 @@ const messages = {
     myUidPh: "join uid, bound to token",
     appId: "App ID",
     appIdPh: "App ID of your Agora project",
+    appIdRequired: "Enter your Agora App ID",
     token: "Token",
     tokenPh: "token for local uid, leave empty if no certificate",
     wavToPublish: "WAV to publish",
@@ -276,9 +278,8 @@ watch(
   { immediate: true }
 );
 
-// 演示用 App ID 默认值（明文 demo 凭证，仅供本地验证；生产环境请在页面内
-// 替换为自己的 App ID，并从自己的服务端动态获取 token）。
-const DEFAULT_APP_ID = "43f818097c124394821bd44598b7ca9d";
+// 默认不预填 App ID，请在页面内填写；生产环境请从自己的服务端动态获取 token。
+const DEFAULT_APP_ID = "";
 
 // 钩住 RTCPeerConnection，以便从底层 getStats() 读取实际收到的 codec
 // （opus = 普通单/双声道，multiopus = 多声道）。Agora SDK 不暴露内部 PC，
@@ -519,6 +520,10 @@ const codecText = computed(() => {
 
 async function joinChannel() {
   if (joined.value || joining.value) return;
+  if (!appId.value.trim()) {
+    notification.error({ title: m.value.appIdRequired, duration: 3000 });
+    return;
+  }
   joining.value = true;
   client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8", multiopus: true });
   try {

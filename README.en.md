@@ -35,6 +35,7 @@ Delivery repository for the multi-channel audio (multiopus) project, including:
 ## Quick Start
 
 - Unified integration specification: see `Docs/audio_multichannel_spec.md`; cross-platform results and open issues: see `Docs/audio_multichannel_test_summary.md`
+- Pre-commit security check: run `git config core.hooksPath .githooks` to enable scanning of staged filenames and added content for common private keys and tokens. `.env` and common private-key files are excluded by `.gitignore` (except `.env.example`)
 - Linux demo build and run: see `Demo/linux/README.md` ([English](Demo/linux/README.en.md))
 - Web demo startup and dual-tab verification: see `Demo/web/README.md` ([English](Demo/web/README.en.md))
 - macOS app builds and per-channel listening/sending: see `Demo/macOS/README.md` ([English](Demo/macOS/README.en.md)) and `Demo/macOS/MultiChannelAudioSender/README.en.md` ([中文](Demo/macOS/MultiChannelAudioSender/README.md))

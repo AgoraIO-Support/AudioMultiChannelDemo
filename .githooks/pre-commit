@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -u
+
+failures=0
+
+block() {
+  printf 'Secret scan blocked: %s\n' "$1" >&2
+  failures=$((failures + 1))
+}
+
+staged_files=$(git diff --cached --name-only --diff-filter=AM)
+if [ -z "$staged_files" ]; then
+  exit 0
+fi
+
+while IFS= read -r file; do
+  case "$file" in
+    .env.example|.env.sample|*/.env.example|*/.env.sample)
+      continue
+      ;;
+  esac
+
+  case "$file" in
+    .env|.env.*|*/.env|*/.env.*|*id_rsa*|*id_dsa*|*id_ecdsa*|*id_ed25519*|*.key|*.p12|*.pfx|*.keystore|*.jks|*.pem|*secrets.json|*credentials.json)
+      block "sensitive filename: $file"
+      ;;
+  esac
+done <<< "$staged_files"
+
+staged_diff=$(git diff --cached --no-color --unified=0 --diff-filter=AM -- . ':(exclude).githooks/pre-commit')
+patterns=(
+  'BEGIN [A-Z ]*PRIVATE KEY'
+  'AKIA[0-9A-Z]{16}'
+  'AIza[0-9A-Za-z_-]{35}'
+  'xox[baprs]-[A-Za-z0-9-]+'
+  'gh[pousr]_[A-Za-z0-9]{20,}'
+  'github_pat_[A-Za-z0-9_]{20,}'
+  'sk-[A-Za-z0-9]{32,}'
+  '(APP_CERTIFICATE|APP_SECRET|SECRET_KEY|AWS_SECRET_ACCESS_KEY|AGORA_APP_CERTIFICATE)[[:space:]]*[:=][[:space:]]*[^[:space:]<]+'
+)
+
+for pattern in "${patterns[@]}"; do
+  if printf '%s\n' "$staged_diff" | grep -Eq "$pattern"; then
+    block "high-confidence secret pattern in staged changes: $pattern"
+  fi
+done
+
+if [ "$failures" -ne 0 ]; then
+  printf 'Commit aborted. Remove the sensitive content or move it to a local, ignored file.\n' >&2
+  exit 1
+fi
+
+exit 0
