@@ -257,12 +257,6 @@ watch(
   { immediate: true }
 );
 
-// 开启多声道（multiopus）编解码协商能力：只有开了，订阅端才可能收到 4/6/8 声道的
-// 多声道流；不开则一律按普通单/双声道处理。
-// 注意：必须在 AgoraRTC.createClient() 之前设置，创建 client 后再设置不生效。
-//@ts-ignore
-AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true);
-
 // 演示用 App ID 默认值（明文 demo 凭证，仅供本地验证；生产环境请在页面内
 // 替换为自己的 App ID，并从自己的服务端动态获取 token）。
 const DEFAULT_APP_ID = "43f818097c124394821bd44598b7ca9d";
@@ -435,7 +429,7 @@ const videoEmptyText = computed(() =>
 async function joinChannel() {
   if (joined.value || joining.value) return;
   joining.value = true;
-  client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+  client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8", multiopus: true });
   try {
     const assignedUid = await client.join(
       appId.value,

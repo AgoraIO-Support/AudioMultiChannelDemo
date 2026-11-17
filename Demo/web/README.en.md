@@ -1,7 +1,7 @@
 # Web Multi-Channel Audio (multiopus) Demo
 
 A multi-channel audio send/receive verification app based on the Agora Web SDK
-(`agora-rtc-sdk-ng@4.20.1-200`, the multi-channel custom build). Tech stack: Vue3 + Vite + Naive UI.
+(`agora-rtc-sdk-ng@4.24.9`, the multi-channel custom build). Tech stack: Vue3 + Vite + Naive UI.
 See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
 
 [中文文档](README.md)
@@ -52,10 +52,9 @@ See `Spec/web_sdk_audio_multichannel_spec.md` for the requirements background.
 - **Chinese/English toggle**: a button in the top-right corner switches the UI language
   (defaults to the browser language; the choice is remembered in localStorage).
 
-Key prerequisite: `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` must be set before
-`createClient` (see the code comment; setting it after the client is created has no effect).
-Each of the three Live Demo components (`src/Multiopus.vue`, `src/MultiopusV2.vue`, and
-`src/MultiopusV3.vue`) sets it before its own `createClient` call.
+Key prerequisite: each of the three Live Demo components (`src/Multiopus.vue`,
+`src/MultiopusV2.vue`, and `src/MultiopusV3.vue`) passes `multiopus: true` to its own
+`createClient` call: `AgoraRTC.createClient({ mode: "rtc", codec: "vp8", multiopus: true })`.
 
 ## Requirements
 
@@ -80,10 +79,10 @@ npm run dev   # default http://localhost:5173/
 
 Other scripts: `npm run build` (vue-tsc type check + build to `dist/`), `npm run preview`.
 
-> `agora-rtc-sdk-ng@4.20.1-200` is published on the public npm registry and installs directly.
-> If the download fails, ask Agora for the offline package of this custom build, then place
-> `AgoraRTC_N-production.js` and `rtc-sdk_en.d.ts` in a local directory and reference it from
-> `package.json` as `"agora-rtc-sdk-ng": "file:./vendor/agora-rtc-sdk-ng"`.
+> This project uses the local `agora-rtc-sdk-ng@4.24.9` multi-channel custom build supplied by
+> Agora. `package.json` references it as
+> `"agora-rtc-sdk-ng": "file:../../Temp/agora-rtc-sdk-ng-4.24.9.tgz"`; keep that file in place
+> when reinstalling dependencies.
 
 ## Docker
 
@@ -154,6 +153,27 @@ joins while Linux is sending, the sender falls back to plain Opus (the Web side 
 change to opus and the channel count drop). When the Web side is sending, there is no fallback
 and the non-supporting endpoint hears nothing.
 
+### Integration Note: Duplicate Unsubscribe During Remote Teardown
+
+`user-unpublished` and `user-left` can arrive shortly after one another. If both callbacks enter
+`await client.unsubscribe(...)`, the second call can fail with `INVALID_REMOTE_USER` because the
+target user has already left. This is an **asynchronous cleanup race in the integration**, not a
+multi-channel decoding issue. The SDK is expected to reject an unsubscribe request for a user who
+is no longer in the channel.
+
+Live Demo 2 handles this as follows:
+
+- Uses `unsubscribing` as an in-flight guard, captures the target and synchronously clears the
+  subscription state before awaiting the SDK call, so the other remote event cannot enter again.
+- Ignores only the expected `INVALID_REMOTE_USER` race; other unsubscribe errors are rethrown
+  instead of being swallowed globally.
+- Disables resubscribe and leave until the unsubscribe completes, preventing overlap with the
+  previous cleanup.
+
+Integration verification should check that volume and subscription state are cleared, no unhandled
+Promise rejection occurs, and media resumes after resubscribing to a restarted Sender. A cleared UI
+alone is not sufficient evidence.
+
 ## End-to-End Verification with a macOS Sender
 
 1. On macOS (`Demo/macOS/MultiChannelAudioSender`, requires AgoraRtcEngine_macOS ≥ 4.5.3), publish the
@@ -212,8 +232,8 @@ To listen to one channel: enter a single index (e.g. `3`) and choose mono, or en
   the authoritative per-channel check; when reading the bars, remember ~10% ≈ -90 dB ≈ silence.
 
 - **Subscribed to a multi-channel stream but only hear mono/stereo?** Check that
-  `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` is set before `createClient`. Without
-  it, the stream is handled as plain audio and only mono/stereo can be decoded.
+  `multiopus: true` is passed in the `createClient` configuration. Without it, the stream is
+  handled as plain audio and only mono/stereo can be decoded.
 - **Token error / join failure?** Tokens are bound to uids — each tab must use the token for its
   own uid (or a uid=0 wildcard token). The `APP_ID` in the demo is a plain-text demo credential;
   replace it for real use and issue tokens from your own server.
@@ -234,7 +254,7 @@ To listen to one channel: enter a single index (e.g. `3`) and choose mono, or en
 ```
 Demo/web/
 ├─ index.html
-├─ package.json            # agora-rtc-sdk-ng pinned to 4.20.1-200
+├─ package.json            # agora-rtc-sdk-ng pinned to 4.24.9
 ├─ vite.config.ts
 ├─ tsconfig.json / tsconfig.app.json / tsconfig.node.json
 ├─ public/                 # 4/6/8_Channel_ID.wav assets

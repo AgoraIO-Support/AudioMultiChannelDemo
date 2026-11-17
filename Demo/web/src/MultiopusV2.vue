@@ -66,14 +66,14 @@
       <!-- 行4：操作按钮 -->
       <div class="content operation">
         <n-button type="info" @click="joinChannel" :disabled="joined || joining">{{ m.join }}</n-button>
-        <n-button type="info" @click="leaveChannel" :disabled="!joined || leaving">{{ m.leave }}</n-button>
+        <n-button type="info" @click="leaveChannel" :disabled="!joined || leaving || unsubscribing">{{ m.leave }}</n-button>
         <n-button type="info" @click="publishAudio" :disabled="!joined || published || publishing">
           {{ m.publish }}
         </n-button>
         <n-button type="info" @click="unpublishAudio" :disabled="!published">
           {{ m.unpublish }}
         </n-button>
-        <n-button type="success" @click="subscribe" :disabled="!joined || !hasRemote || subscribed || subscribing">
+        <n-button type="success" @click="subscribe" :disabled="!joined || !hasRemote || subscribed || subscribing || unsubscribing">
           {{ m.subscribe }}
         </n-button>
         <n-button type="info" @click="cancelSubscribe" :disabled="!subscribed">
@@ -231,10 +231,6 @@ watch(
   { immediate: true }
 );
 
-// 开启多声道（multiopus）编解码协商能力，必须在 createClient 之前设置。
-//@ts-ignore
-AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true);
-
 // 演示用 App ID 默认值（明文 demo 凭证，正式使用请在页面内替换）。
 const DEFAULT_APP_ID = "43f818097c124394821bd44598b7ca9d";
 
@@ -279,6 +275,7 @@ let subscribedUser: IAgoraRTCRemoteUser | undefined;
 const joining = ref(false);
 const publishing = ref(false);
 const subscribing = ref(false);
+const unsubscribing = ref(false);
 const leaving = ref(false);
 
 let localAudioTrack: ILocalAudioTrack | null = null;
@@ -304,7 +301,7 @@ const selectionText = computed(() => {
 async function joinChannel() {
   if (joined.value || joining.value) return;
   joining.value = true;
-  client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+  client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8", multiopus: true });
   try {
     const assignedUid = await client.join(
       appId.value,
@@ -450,7 +447,7 @@ async function unpublishAudio() {
 }
 
 async function subscribe() {
-  if (!client || !joined.value || subscribed.value || subscribing.value) return;
+  if (!client || !joined.value || subscribed.value || subscribing.value || unsubscribing.value) return;
   const user =
     lastPublishedUser || client.remoteUsers.find((u) => u.hasAudio) || client.remoteUsers[0];
   if (!user || !user.hasAudio) {
@@ -507,12 +504,10 @@ watch(oddFixEnabled, (on) => {
 });
 
 async function cancelSubscribe() {
-  if (!client) return;
-  // 以实际订阅的用户为准（而不是 lastPublishedUser 兜底），避免对错误用户 unsubscribe
-  // 导致真实订阅泄漏（服务端继续推流、声音继续响）
-  if (subscribedUser && remoteAudioTrack) {
-    await client.unsubscribe(subscribedUser, "audio");
-  }
+  const currentClient = client;
+  if (!currentClient || unsubscribing.value) return;
+  unsubscribing.value = true;
+  const user = remoteAudioTrack ? subscribedUser : undefined;
   subscribedUser = undefined;
   remoteAudioTrack = null;
   subscribed.value = false;
@@ -521,6 +516,23 @@ async function cancelSubscribe() {
   // 使在飞的 patchOddChannelStream onFixed 回调失效（订阅上下文已 teardown）
   oddFixGeneration++;
   window.clearInterval(volumeTimer);
+  try {
+    if (user) {
+      try {
+        await currentClient.unsubscribe(user, "audio");
+      } catch (e: any) {
+        // 远端在清理期间离开属于预期竞态，其他错误继续抛出
+        if (
+          e?.code !== "INVALID_REMOTE_USER" &&
+          !String(e?.message || e).includes("INVALID_REMOTE_USER")
+        ) {
+          throw e;
+        }
+      }
+    }
+  } finally {
+    unsubscribing.value = false;
+  }
 }
 
 // 声道选择：对远端多声道音轨选择任意声道组合，按 surround/stereo/mono 渲染。

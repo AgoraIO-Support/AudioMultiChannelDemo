@@ -76,6 +76,17 @@
         SDK 不做声道重排；广播场景下应与 Linux 侧的布局映射
         （T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R）保持一致。
       </p>
+      <div class="note">
+        <p>
+          <strong>已知限制：Web 自定义多声道发布仅支持 4 / 6 / 8 声道。</strong>
+          <code>createCustomAudioTrack({ mediaStreamTrack, channelCount })</code> 不会在入口校验声道数；
+          传入 3 / 5 / 7 等不支持的值时，即使日志出现 <code>publish onSuccess</code>，也可能无法形成有效远端流或对端
+          <code>user-published</code> 事件。集成层必须在创建音轨前拒绝不支持的声道数，不能把发布成功日志当作有效多声道发布的证明。
+        </p>
+        <p>
+          该限制与订阅 Native/Linux 奇数声道流时按 N+1 偶数声道解码是两个不同场景；不能根据后者推断 Web 也支持 3 / 5 / 7 声道自定义发布。
+        </p>
+      </div>
       <p>
         注：部分早期设计文档示例使用 <code>createMultiAudioTrack</code>，在本版多声道 SDK 中对应
         <code>AgoraRTC.createCustomAudioTrack({ mediaStreamTrack, channelCount })</code>。
@@ -125,6 +136,27 @@
         声道选择基于 Insertable Streams（MediaStreamTrackProcessor / Generator）实现，
         绕开 Chrome WebAudio 缺陷（chromium issue 1116042），可播放 8 个声道的任意组合。
       </p>
+      <div class="note">
+        <p>
+          <strong>已知限制：SDK 不校验声道序号是否超出当前流的实际声道数。</strong>
+          在当前多声道实现（已对 4.24.9 定制版实测）中，调用
+          <code>RemoteAudioTrack.selectChannels(channels, mode)</code> 时，SDK 不会逐项检查
+          <code>index &lt; remoteChannelCount</code>。日志中的 <code>onSuccess</code> 仅表示选择配置已被接受，
+          不代表目标声道存在或有音频输出。
+        </p>
+        <p>
+          例如，在 4ch 流上调用 <code>selectChannels([7], "mono")</code> 会返回成功，但输出为数字静音；
+          改选 <code>[3]</code> 可听到真实的第 4 个声道。原因是转换器只遍历真实 CH0～CH3，
+          没有任何源声道命中 <code>[7]</code>，输出缓冲区因此保持全零。若选择中混有合法和非法序号，
+          非法序号可能不会参与输出，因此“有声音”也不能证明整个选择列表合法。
+        </p>
+        <p>
+          <strong>集成层必须在调用前校验 <code>0 &lt;= index &lt; remoteChannelCount</code></strong>，
+          并在重新订阅或远端声道数变化后重新校验。发现非法项时应拒绝整个选择、保留之前的有效配置，
+          不要只依赖 API 成功日志或源声道音量条判断结果。详细调查见
+          <code>Temp/web_sdk_select_channels_out_of_range_limitation_20261106.md</code>。
+        </p>
+      </div>
 
       <figure class="doc-figure">
         <img src="assets/selectchannels-modes.svg" alt="The three selectChannels modes: surround, stereo (even to left, odd to right), and mono">
@@ -386,6 +418,17 @@ await client.publish(track);</code></pre>
         reorder channels; in broadcast scenarios it should match the Linux-side layout mapping
         (T1L,T1R,T2L,T2R,T3L,T3R,T4L,T4R).
       </p>
+      <div class="note">
+        <p>
+          <strong>Known limitation: custom multi-channel publishing from the Web supports only 4, 6, or 8 channels.</strong>
+          <code>createCustomAudioTrack({ mediaStreamTrack, channelCount })</code> does not validate the channel count at its entry point.
+          With unsupported values such as 3, 5, or 7, a <code>publish onSuccess</code> log may still appear even though no valid remote stream or
+          <code>user-published</code> event follows. Integrations must reject unsupported channel counts before creating the track and must not treat a successful publish log as proof of a valid multi-channel stream.
+        </p>
+        <p>
+          This is a different scenario from receiving a Native/Linux odd-channel stream, which is decoded as the next even channel count (N+1); the latter does not imply that custom odd-channel publishing is supported on the Web.
+        </p>
+      </div>
       <p>
         Note: some early design-doc samples use <code>createMultiAudioTrack</code>; in this
         multi-channel SDK version the corresponding API is
@@ -442,6 +485,32 @@ await client.publish(track);</code></pre>
         Generator) to work around a Chrome WebAudio defect (chromium issue 1116042), making it
         possible to play any combination of the 8 channels.
       </p>
+      <div class="note">
+        <p>
+          <strong>Known limitation: the SDK does not validate channel indexes against the current
+          stream's actual channel count.</strong> In the current multi-channel implementation (verified
+          with the 4.24.9 custom build), <code>RemoteAudioTrack.selectChannels(channels, mode)</code>
+          does not check that <code>index &lt; remoteChannelCount</code> for every item. An
+          <code>onSuccess</code> log only means that the selection was accepted; it does not prove
+          that the requested channel exists or carries audio.
+        </p>
+        <p>
+          For example, <code>selectChannels([7], "mono")</code> on a 4-channel stream succeeds but
+          produces digital silence, while <code>[3]</code> plays the real fourth channel. The
+          transformer iterates only the actual CH0–CH3 source channels, so none of them matches
+          <code>[7]</code> and the output buffer remains all zero. If valid and invalid indexes are
+          mixed, invalid indexes may simply be ignored, so audible output alone does not prove that
+          the entire selection is valid.
+        </p>
+        <p>
+          <strong>Integrations must validate <code>0 &lt;= index &lt; remoteChannelCount</code>
+          before calling this API</strong>, and validate again after resubscribing or a remote channel
+          count change. Reject the entire selection and preserve the previous valid configuration when
+          an invalid item is found. Do not rely solely on API success logs or source-channel volume
+          levels. Full investigation:
+          <code>Temp/web_sdk_select_channels_out_of_range_limitation_20261106.md</code>.
+        </p>
+      </div>
 
       <figure class="doc-figure">
         <img src="assets/selectchannels-modes.svg" alt="The three selectChannels modes: surround, stereo (even to left, odd to right), and mono">

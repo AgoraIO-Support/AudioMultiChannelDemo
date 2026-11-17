@@ -1,6 +1,6 @@
 # Web 音频多声道（multiopus）验证 Demo
 
-基于 Agora Web SDK（`agora-rtc-sdk-ng@4.20.1-200`，多声道定制版）的音频多声道收发验证工程，技术栈 Vue3 + Vite + Naive UI。需求背景见 `Spec/web_sdk_audio_multichannel_spec.md`。
+基于 Agora Web SDK（`agora-rtc-sdk-ng@4.24.9`，多声道定制版）的音频多声道收发验证工程，技术栈 Vue3 + Vite + Naive UI。需求背景见 `Spec/web_sdk_audio_multichannel_spec.md`。
 
 [English Documentation](README.en.md)
 
@@ -17,7 +17,7 @@
 - **多 Live Demo 布局**：默认（`?demo=1`）为本工程布局；`?demo=2` 为参考 quick-demo-multiopus 原版的布局（自由文本音频地址、确定(环绕声/双声道/单声道)按钮、简洁音量条；该布局无 codec 判定 / 结果面板，也无 subTo 输入——自动订阅最新发布者或首个有音频的远端）；`?demo=3` 为视频 + 多声道音频同时订阅布局。各 demo 头部有快捷链接互相切换。
 - **中英文切换**：右上角按钮切换界面语言（默认跟随浏览器语言，选择记忆在 localStorage）。
 
-关键前提：`AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` 需在 `createClient` 之前设置（代码内有注释说明，创建 client 后再设置不生效）。三个 Live Demo 组件（`src/Multiopus.vue` / `src/MultiopusV2.vue` / `src/MultiopusV3.vue`）各自在其 `createClient` 调用之前设置。
+关键前提：三个 Live Demo 组件（`src/Multiopus.vue` / `src/MultiopusV2.vue` / `src/MultiopusV3.vue`）均在 `createClient` 配置中传入 `multiopus: true`，即 `AgoraRTC.createClient({ mode: "rtc", codec: "vp8", multiopus: true })`。
 
 ## 环境要求
 
@@ -36,7 +36,7 @@ npm run dev   # 默认 http://localhost:5173/
 
 其他脚本：`npm run build`（vue-tsc 类型检查 + 构建到 `dist/`）、`npm run preview`。
 
-> `agora-rtc-sdk-ng@4.20.1-200` 已发布在公共 npm，可直接安装。若拉取失败，可向 Agora 索取该定制版离线包，解压后将 `AgoraRTC_N-production.js` 与 `rtc-sdk_en.d.ts` 放入本地目录，改写 `package.json` 为 `"agora-rtc-sdk-ng": "file:./vendor/agora-rtc-sdk-ng"` 形式引入。
+> 当前使用研发提供的 `agora-rtc-sdk-ng@4.24.9` 多声道定制版本地包。`package.json` 通过 `"agora-rtc-sdk-ng": "file:../../Temp/agora-rtc-sdk-ng-4.24.9.tgz"` 引入，重新安装依赖前请确保该文件存在。
 
 ## Docker 部署
 
@@ -89,6 +89,18 @@ URL 参数一览（均优先于 localStorage 回填值）：
 
 注意：频道内应保证所有端都支持多声道。Linux 发送时若有不支持端加入，发送端会回退普通 Opus（Web 端观测到 codec 变为 opus、声道数下降）；Web 发送时不回退，不支持端无声。
 
+### 集成注意：远端停流时的重复退订
+
+`user-unpublished` 与 `user-left` 可能在很短时间内先后到达。如果两个回调都进入 `await client.unsubscribe(...)`，第二次调用可能因目标用户已经离开而抛出 `INVALID_REMOTE_USER`。这是**集成层的异步清理竞态**，不是多声道解码异常；SDK 拒绝退订一个已经不在频道的用户属于预期行为。
+
+Live Demo 2 的集成处理如下：
+
+- 使用 `unsubscribing` 做 in-flight 防重，先保存本次退订目标并同步清理订阅状态，再执行 SDK 调用，避免另一个远端事件重复进入。
+- 仅忽略目标用户已经离开的 `INVALID_REMOTE_USER` 竞态，其他退订错误继续抛出，不在全局吞掉所有错误。
+- 退订完成前禁止重新订阅和离开频道，避免旧退订与新操作叠加。
+
+业务集成验收时，应同时检查音量与订阅状态正确清理、没有未处理 Promise 异常，并在 Sender 重启后重新订阅确认媒体恢复，而不能只看 UI 是否清空。
+
 ## 配合 macOS sender 做端到端验证
 
 1. macOS 端（`Demo/macOS/MultiChannelAudioSender`，需 AgoraRtcEngine_macOS ≥ 4.5.3）以主播角色发布内置
@@ -124,7 +136,7 @@ demo 结果面板按「音量数组长度为 4/6/8，或 codec = multiopus」给
 - **「打开发布端 / 打开订阅端」两个链接是干什么的？** 双标签页自验证的入口：「打开发布端」以本端 UID 开新标签页加入并发布素材；「打开订阅端」以目标 UID 开新标签页、订阅本端 UID（subTo）的流做逐声道检测。两个链接都会把当前频道名带入新标签页（页面上链接上方也有同样说明）。
 - **订阅 Linux 发送的 8 声道流时，没发声的声道音量柱也显示 ~10%（实测 4.6~12%）？** 两个原因叠加：① 音量表是 dB 宽量程刻度——`getVolumeLevels()` 的实现为 `(dBFS_RMS + 100) / 100`，只有精确数字零才显示 0%，-90dB 的不可闻残余就显示 ~10%（该实现无 Linux/Web 分支，读的是真实解码 PCM）；② Linux 发送用的 16bit 素材静音段带 -84dB dither，而 Web 发布用的 24bit 素材静音段是精确数字零，所以 web→web 显示 0（已用 24bit 素材在同一 Linux 发送端做对照实验：底数消失、min=0，确认素材 dither 为根源）。实测编码/传输/解码链路与最终播放 PCM 均无泄漏（详见 `Test/web_volume_meter_floor_linux2web.md`）。逐声道内容核对请以「声道选择 + 试听」为准；读音量柱时记住 ~10% ≈ -90dB ≈ 无声。
 
-- **订阅多声道流只有单/双声道？** 检查是否在 `createClient` 之前设置了 `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)`；未开启则按普通音频处理，只能解出单/双声道。
+- **订阅多声道流只有单/双声道？** 检查是否在 `createClient` 配置中传入了 `multiopus: true`；未开启则按普通音频处理，只能解出单/双声道。
 - **token 报错 / 加入失败？** token 与 uid 绑定，两个标签页必须使用各自 uid 的 token（或 uid=0 通配 token）。demo 内 `APP_ID` 为明文演示凭证，正式使用请替换并在自己的服务端签发 token。
 - **素材是 44.1kHz？** 4/6 声道素材为 44.1kHz/16bit，8 声道素材为 48kHz/24bit；经 Web Audio 图解码后统一按协商的 48kHz 编码（多声道编解码仅 48kHz），不影响验证。
 - **浏览器不支持？** Safari/Firefox 不支持多声道（行为未定义）；Chrome 94/95 相关接口默认关闭，96 起正式支持，推荐 110+。
@@ -136,7 +148,7 @@ demo 结果面板按「音量数组长度为 4/6/8，或 codec = multiopus」给
 ```
 Demo/web/
 ├─ index.html
-├─ package.json            # agora-rtc-sdk-ng 固定 4.20.1-200
+├─ package.json            # agora-rtc-sdk-ng 固定 4.24.9
 ├─ vite.config.ts
 ├─ tsconfig.json / tsconfig.app.json / tsconfig.node.json
 ├─ public/                 # 4/6/8_Channel_ID.wav 素材
