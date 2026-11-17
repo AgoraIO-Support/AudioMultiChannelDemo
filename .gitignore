@@ -15,3 +15,5 @@ Demo/iOS/**/Pods/
 Demo/iOS/**/*.xcworkspace
 Demo/iOS/**/*.xcodeproj
 Demo/iOS/**/build/
+LinuxSDKFolder/Aarch64/agora_rtc_sdk/
+LinuxSDKFolder/X86_64/agora_rtc_sdk/

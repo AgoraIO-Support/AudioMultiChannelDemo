@@ -30,9 +30,25 @@ case "$arch" in
   *) echo "usage: $0 [x86_64|aarch64] [clean]"; exit 1 ;;
 esac
 
+SDK_PACKAGE_DIR=$(dirname "$SDK_DIR")
 if [ ! -d "$SDK_DIR/agora_sdk" ] || [ ! -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so" ]; then
-  echo "error: SDK not found at $SDK_DIR"
-  echo "expected $SDK_DIR/agora_sdk/libagora_rtc_sdk.so to exist"
+  SDK_TGZ=""
+  for candidate in "$SDK_PACKAGE_DIR"/Agora-RTC-*-linux-gnu-*.tgz; do
+    if [ -f "$candidate" ]; then
+      SDK_TGZ="$candidate"
+      break
+    fi
+  done
+  if [ -z "$SDK_TGZ" ]; then
+    echo "error: SDK package not found in $SDK_PACKAGE_DIR"
+    exit 1
+  fi
+  echo "extracting SDK package: $SDK_TGZ"
+  tar -xzf "$SDK_TGZ" -C "$SDK_PACKAGE_DIR"
+fi
+
+if [ ! -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so" ]; then
+  echo "error: SDK not found at $SDK_DIR after extraction"
   exit 1
 fi
 

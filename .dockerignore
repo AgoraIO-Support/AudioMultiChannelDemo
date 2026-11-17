@@ -4,5 +4,5 @@ References
 Demo/web
 Demo/linux/build
 Demo/linux/out
-LinuxSDKFolder/*/*.tgz
+LinuxSDKFolder/*/agora_rtc_sdk
 **/.DS_Store

@@ -59,28 +59,22 @@ Demo/linux/
 
 ## Build
 
-### Prerequisites: Extract the SDK Package (Required)
+### SDK preparation: automatic extraction during builds
 
-The SDK under `LinuxSDKFolder/X86_64/` and `LinuxSDKFolder/Aarch64/` is kept as a compressed
-package (`Agora-RTC-<arch>-linux-gnu-*.tgz`, e.g.
-`Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz`; check the actual file
-name with `ls`). **You must extract it before building** to get the `agora_rtc_sdk/`
-directory (containing `agora_rtc_sdk/agora_sdk/libagora_rtc_sdk.so` and the
-`agora_rtc_sdk/agora_sdk/include/` headers); otherwise CMake configuration fails immediately
-with "libagora_rtc_sdk.so not found":
+`LinuxSDKFolder/X86_64/` and `LinuxSDKFolder/Aarch64/` now contain only the original SDK
+archives (`Agora-RTC-<arch>-linux-gnu-*.tgz`). Extracted `agora_rtc_sdk/` directories are
+not tracked in Git. Both `build.sh` and the Dockerfile locate and extract the appropriate
+archive for the target architecture, then verify `agora_rtc_sdk/agora_sdk/libagora_rtc_sdk.so`
+and the headers. No manual preprocessing is required. The extracted directories are excluded
+by both `.gitignore` and `.dockerignore` to keep them out of commits and Docker contexts.
+
+Manual CMake still requires extracting the archive first:
 
 ```bash
 # x86_64 example; same for aarch64, using the package under LinuxSDKFolder/Aarch64/
 cd LinuxSDKFolder/X86_64
 tar -xzf Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
 ```
-
-Extraction creates the `agora_rtc_sdk/agora_sdk/` layout under `LinuxSDKFolder/X86_64/`.
-Re-running it only overwrites/merges; it is safe to repeat.
-
-> Docker builds require this step too: the Dockerfile only COPYs `LinuxSDKFolder` from the
-> build context into the image and uses `agora_rtc_sdk/agora_sdk/` as-is — it does **not**
-> extract the package itself.
 
 ### Helper script (recommended)
 
@@ -90,8 +84,8 @@ cd Demo/linux
 ./build.sh clean      # remove build/ and out/
 ```
 
-The script selects `LinuxSDKFolder/X86_64/agora_rtc_sdk` or
-`LinuxSDKFolder/Aarch64/agora_rtc_sdk` and checks that `agora_sdk/libagora_rtc_sdk.so` exists.
+The script selects the SDK directory, extracts the archive when needed, and verifies that
+`agora_sdk/libagora_rtc_sdk.so` exists.
 
 ### Manual CMake
 
@@ -275,9 +269,9 @@ or channel loss.
 
 ### End-to-end verification with the Web demo
 
-Use the Web verification demo (`Demo/web/` in this repo, agora-rtc-sdk-ng 4.20.1-200 multi-channel build, Chrome 96+):
+Use the Web verification demo (`Demo/web/` in this repo, `agora-rtc-sdk-ng@4.24.10` mainline build, Chrome 96+):
 
-1. Set `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)` before creating the client.
+1. Create the client with `AgoraRTC.createClient({ mode: "rtc", codec: "vp8", multiopus: true })`.
 2. Subscribe to the multi-channel stream published by the Linux side.
 3. `getVolumeLevels()` returns an array whose length equals the decoded channel count, and the
    underlying codec shows as `multiopus`.

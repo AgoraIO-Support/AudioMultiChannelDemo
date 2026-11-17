@@ -7,7 +7,7 @@
 - Agora Linux SDK 3~8 声道音频收发 C++ demo
 - Web 端多声道验证 demo（OPUSMC，payload type 123/124/125，仅 48 kHz）
 - macOS 多声道验证 app（Native SDK）：MultiChannelAudioReceiver（观众角色纯接收，逐声道选择收听与音量调节）与 MultiChannelAudioSender（主播角色发布多声道 WAV，中/英文 UI，默认英文）
-- 配套文档站与部署资料
+- 配套集成规格、测试汇总与文档站
 
 ![Agora multi-channel audio (multiopus) overview](References/assets/multiopus-repo-overview.svg)
 
@@ -24,16 +24,17 @@
 | 目录 | 内容 |
 | --- | --- |
 | `Demo/linux/` | Linux C++ demo：发送 4 路径（raw PCM / WAV 16bit/24bit / 预编码 Opus / MKV 音视频同发）+ 接收 4 路径（解码 PCM / 编码帧 / 混音 / 音视频同收），x86_64 + aarch64 |
-| `Demo/web/` | Web 验证 demo（Vue3 + Vite，agora-rtc-sdk-ng 4.20.1-200）：多声道发布/订阅、声道选择播放、逐声道音量 |
+| `Demo/web/` | Web 验证 demo（Vue3 + Vite，agora-rtc-sdk-ng 4.24.10）：多声道发布/订阅、声道选择播放、逐声道音量 |
 | `Demo/macOS/` | macOS 验证 app（SwiftUI + AgoraRtcEngine_macOS，CocoaPods）：`MultiChannelAudioReceiver` 观众角色纯接收多声道/立体声流（逐声道控制、远端视频显示、码率走势图、音频帧 dump）；`MultiChannelAudioSender` 主播角色发布内置 4/6/8 声道 Channel ID WAV（10ms pacer + 多声道私参协商；发送侧 2 声道钳制仅存在于 4.5.2，4.5.3 起已修复） |
 | `Demo/iOS/` | iOS 验证 app（SwiftUI + AgoraRtcEngine_iOS 4.7.0，CocoaPods，iOS 14.0+）：`MultiChannelAudioReceiverApp` 与 `MultiChannelAudioSenderApp`，由 macOS 双 app 移植（功能逐项对齐；iOS 平台多声道行为以实测为准） |
 | `Demo/docs/` | 多声道接入文档站（随 Web 构建发布到 `dist/docs/`） |
 | `Docs/` | 音频多声道集成规格与跨端测试汇总 |
-| `LinuxSDKFolder/` | Agora Linux SDK v4.4.30.149（X86_64 / Aarch64，含符号包） |
-| `References/` | 参考材料（历史 sample、设计文档、沟通记录的文字化备份，不入 Docker 构建上下文） |
+| `LinuxSDKFolder/` | Agora Linux SDK v4.4.30.149 原始 tgz（X86_64 / Aarch64，构建时自动解压） |
+| `References/` | 多声道设计文档与 Chromium/WebRTC 技术参考资料（不入 Docker 构建上下文） |
 
 ## 快速开始
 
+- 统一集成规格：见 `Docs/audio_multichannel_spec.md`；跨端测试结果与未闭环项：见 `Docs/audio_multichannel_test_summary.md`
 - Linux demo 构建与运行：见 `Demo/linux/README.md`（[English](Demo/linux/README.en.md)）
 - Web demo 启动与双标签页验证：见 `Demo/web/README.md`（[English](Demo/web/README.en.md)）
 - macOS 验证 app 构建与逐声道试听/发送：见 `Demo/macOS/README.md`（[English](Demo/macOS/README.en.md)）与 `Demo/macOS/MultiChannelAudioSender/README.md`（[English](Demo/macOS/MultiChannelAudioSender/README.en.md)）

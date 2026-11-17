@@ -51,26 +51,21 @@ Demo/linux/
 
 ## 构建方法
 
-### 前置条件：解压 SDK 包（必做）
+### SDK 包准备：构建时自动解压
 
-`LinuxSDKFolder/X86_64/` 与 `LinuxSDKFolder/Aarch64/` 下的 SDK 以压缩包（
-`Agora-RTC-<arch>-linux-gnu-*.tgz`，如 `Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz`，
-文件名以目录下实际为准，可 `ls` 确认）形式入库。**构建前必须先解压**，得到
-`agora_rtc_sdk/` 目录（内含 `agora_rtc_sdk/agora_sdk/libagora_rtc_sdk.so` 与
-`agora_rtc_sdk/agora_sdk/include/` 头文件），否则 CMake 配置会因找不到
-`libagora_rtc_sdk.so` 直接失败：
+`LinuxSDKFolder/X86_64/` 与 `LinuxSDKFolder/Aarch64/` 只保留原始 SDK 压缩包
+（`Agora-RTC-<arch>-linux-gnu-*.tgz`），解压后的 `agora_rtc_sdk/` 目录不纳入 Git。
+`build.sh` 与 Dockerfile 会按目标架构自动定位并解压对应 tgz，再检查
+`agora_rtc_sdk/agora_sdk/libagora_rtc_sdk.so` 和头文件是否存在，无需手工预处理。
+解压目录同时被 `.gitignore` 与 `.dockerignore` 排除，避免重复入库或增大构建上下文。
+
+只有手动执行 CMake 时才需要先自行解压：
 
 ```bash
 # x86_64 为例；aarch64 同理，用 LinuxSDKFolder/Aarch64/ 下的压缩包
 cd LinuxSDKFolder/X86_64
 tar -xzf Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
 ```
-
-解压即在 `LinuxSDKFolder/X86_64/` 下形成 `agora_rtc_sdk/agora_sdk/` 目录结构；
-重复解压只会覆盖合并，无害。
-
-> Docker 构建同样需要先完成本步骤：Dockerfile 只是把构建上下文中的 `LinuxSDKFolder`
-> 原样 COPY 进镜像并直接使用其中的 `agora_rtc_sdk/agora_sdk/`，**不会**自行解压压缩包。
 
 ### 便捷脚本（推荐）
 
@@ -80,8 +75,7 @@ cd Demo/linux
 ./build.sh clean      # 清理 build/ 与 out/
 ```
 
-脚本会自动选择 `LinuxSDKFolder/X86_64/agora_rtc_sdk` 或 `LinuxSDKFolder/Aarch64/agora_rtc_sdk`
-并校验 `agora_sdk/libagora_rtc_sdk.so` 是否存在。
+脚本会自动选择 SDK 目录、按需解压 tgz，并校验 `agora_sdk/libagora_rtc_sdk.so` 是否存在。
 
 ### 手动 CMake
 
@@ -255,9 +249,9 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例
 
 ### Web demo 端到端验证
 
-配合 Web 验证 demo（本仓库 `Demo/web/`，agora-rtc-sdk-ng 4.20.1-200 多声道版本，Chrome 96+）：
+配合 Web 验证 demo（本仓库 `Demo/web/`，`agora-rtc-sdk-ng@4.24.10` 主线版，Chrome 96+）：
 
-1. 创建 client 前设置 `AgoraRTC.setParameter("ENABLE_MULTIOPUS_CODEC", true)`；
+1. 使用 `AgoraRTC.createClient({ mode: "rtc", codec: "vp8", multiopus: true })` 创建 client；
 2. 订阅 Linux 端发布的多声道流；
 3. `getVolumeLevels()` 返回数组长度等于实际解码声道数，底层 codec 显示为 `multiopus`；
 4. `selectChannels(channels, "surround"|"stereo"|"mono")` 可选择任意声道组合播放。

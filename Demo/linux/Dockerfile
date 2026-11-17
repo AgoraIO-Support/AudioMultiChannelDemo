@@ -21,15 +21,25 @@ WORKDIR /src
 COPY LinuxSDKFolder ./LinuxSDKFolder
 COPY Demo/linux ./Demo/linux
 
-# 按目标架构选择 SDK（amd64→X86_64，arm64→Aarch64），编译 sample，
+# 按目标架构选择 SDK 目录，若尚未解压则自动提取对应 tgz，再编译 sample，
 # 并把 SDK 动态库收集到固定目录 /sdk-libs，供运行阶段拷贝
 RUN set -eux; \
     arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
     case "$arch" in \
-      amd64) SDK_DIR=/src/LinuxSDKFolder/X86_64/agora_rtc_sdk ;; \
-      arm64) SDK_DIR=/src/LinuxSDKFolder/Aarch64/agora_rtc_sdk ;; \
+      amd64) SDK_PARENT=/src/LinuxSDKFolder/X86_64 ;; \
+      arm64) SDK_PARENT=/src/LinuxSDKFolder/Aarch64 ;; \
       *) echo "unsupported arch: $arch"; exit 1 ;; \
     esac; \
+    SDK_DIR="$SDK_PARENT/agora_rtc_sdk"; \
+    if [ ! -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so" ]; then \
+      SDK_TGZ=""; \
+      for candidate in "$SDK_PARENT"/Agora-RTC-*-linux-gnu-*.tgz; do \
+        if [ -f "$candidate" ]; then SDK_TGZ="$candidate"; break; fi; \
+      done; \
+      if [ -z "$SDK_TGZ" ]; then echo "SDK package not found in $SDK_PARENT"; exit 1; fi; \
+      tar -xzf "$SDK_TGZ" -C "$SDK_PARENT"; \
+    fi; \
+    test -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so"; \
     cmake -S /src/Demo/linux -B /build \
       -DAGORA_SDK_DIR="$SDK_DIR" -DCMAKE_BUILD_TYPE=Release -Wno-dev; \
     cmake --build /build -j"$(nproc)"; \

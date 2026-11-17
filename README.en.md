@@ -7,7 +7,7 @@ Delivery repository for the multi-channel audio (multiopus) project, including:
 - A C++ demo for 3–8 channel audio send/receive on the Agora Linux SDK
 - A Web-side multi-channel verification demo (OPUSMC, payload types 123/124/125, 48 kHz only)
 - macOS multi-channel verification apps (Native SDK): MultiChannelAudioReceiver (audience-role receive-only, per-channel playback selection and volume) and MultiChannelAudioSender (broadcaster-role publishing of multi-channel WAV files), bilingual English/Chinese UI with English as default
-- The accompanying documentation site and deployment materials
+- The integration specification, cross-platform test summary, and documentation site
 
 ![Agora multi-channel audio (multiopus) overview](References/assets/multiopus-repo-overview.svg)
 
@@ -24,16 +24,17 @@ Delivery repository for the multi-channel audio (multiopus) project, including:
 | Directory | Contents |
 | --- | --- |
 | `Demo/linux/` | Linux C++ demo: 4 send paths (raw PCM / 16-bit & 24-bit WAV / pre-encoded Opus / MKV A/V send) + 4 receive paths (decoded PCM / encoded frames / mixed audio / A/V receive), x86_64 + aarch64 |
-| `Demo/web/` | Web verification demo (Vue3 + Vite, agora-rtc-sdk-ng 4.20.1-200): multi-channel publish/subscribe, per-channel playback selection, per-channel volume |
+| `Demo/web/` | Web verification demo (Vue3 + Vite, agora-rtc-sdk-ng 4.24.10): multi-channel publish/subscribe, per-channel playback selection, per-channel volume |
 | `Demo/macOS/` | macOS verification apps (SwiftUI + AgoraRtcEngine_macOS, CocoaPods): `MultiChannelAudioReceiver` — audience-role receive-only for multi-channel/stereo streams (per-channel control, remote video display, bitrate charts, audio frame dump); `MultiChannelAudioSender` — broadcaster-role publishing of bundled 4/6/8-channel Channel ID WAV files (10 ms pacer + multi-channel private-parameter negotiation; the send-side 2-channel clamp exists only in 4.5.2 and is lifted from 4.5.3) |
 | `Demo/iOS/` | iOS verification apps (SwiftUI + AgoraRtcEngine_iOS 4.7.0, CocoaPods, iOS 14.0+): `MultiChannelAudioReceiverApp` and `MultiChannelAudioSenderApp`, ported from the macOS pair (feature-parity; multi-channel behavior on iOS is subject to verification) |
 | `Demo/docs/` | Multi-channel integration documentation site (built with the Web app and published to `dist/docs/`) |
 | `Docs/` | Multi-channel integration specification and cross-platform test summary |
-| `LinuxSDKFolder/` | Agora Linux SDK v4.4.30.149 (X86_64 / Aarch64, including symbol packages) |
-| `References/` | Reference materials (historical samples, design docs, communication records; excluded from the Docker build context) |
+| `LinuxSDKFolder/` | Original Agora Linux SDK v4.4.30.149 tgz archives (X86_64 / Aarch64, extracted automatically during builds) |
+| `References/` | Multi-channel design documents and Chromium/WebRTC technical references (excluded from the Docker build context) |
 
 ## Quick Start
 
+- Unified integration specification: see `Docs/audio_multichannel_spec.md`; cross-platform results and open issues: see `Docs/audio_multichannel_test_summary.md`
 - Linux demo build and run: see `Demo/linux/README.md` ([English](Demo/linux/README.en.md))
 - Web demo startup and dual-tab verification: see `Demo/web/README.md` ([English](Demo/web/README.en.md))
 - macOS app builds and per-channel listening/sending: see `Demo/macOS/README.md` ([English](Demo/macOS/README.en.md)) and `Demo/macOS/MultiChannelAudioSender/README.en.md` ([中文](Demo/macOS/MultiChannelAudioSender/README.md))
