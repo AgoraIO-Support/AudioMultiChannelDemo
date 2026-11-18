@@ -94,6 +94,18 @@ c++ -std=c++11 -Wall -Wextra -Werror tests/private_pcm_files_test.cpp -o build/p
 ./build/private_pcm_files_test
 ```
 
+After building and preparing `out/public/`, run the connection-failure cleanup regression
+for all four senders:
+
+```bash
+export LD_LIBRARY_PATH="$(pwd)/../../LinuxSDKFolder/Aarch64/agora_rtc_sdk/agora_sdk${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+bash tests/connection_failure_regression.sh
+```
+
+Use `X86_64` instead of `Aarch64` for that architecture. The test uses an invalid App ID,
+checks the connection wait timeout and exit status, and prints the directory containing its logs;
+no real App ID or token is required.
+
 ### Manual CMake
 
 ```bash
@@ -223,10 +235,10 @@ the running user or an administrator to inspect and remove.
     --remoteUserId 8899 --audioFile received_av_8ch.pcm --videoFile received_video.yuv
 ```
 
-- Audio dumps to 48 kHz / N-channel / 16-bit interleaved PCM (same as
-  `sample_receive_pcm_multiopus`);
-- Video dumps as raw I420 frames (~3 MB per frame at 1080p; a new file every 100 MB). Play it
-  back with `ffplay -f rawvideo -pix_fmt yuv420p -s 1920x1080 received_video.yuv`;
+- Audio and video are dumped per remote UID as `<audioFile>.uid-<UID>` and
+  `<videoFile>.uid-<UID>`: 48 kHz / N-channel / 16-bit interleaved PCM and raw I420 frames
+  (~3 MB per frame at 1080p; a new file every 100 MB). For example, play UID 8899 with
+  `ffplay -f rawvideo -pix_fmt yuv420p -s 1920x1080 received_video.yuv.uid-8899`;
 - Without `--remoteUserId`, the sample subscribes to audio and video of all remote users.
 
 ### Force no fallback (codec_unfallback)
@@ -271,10 +283,12 @@ The sender must set the payload type parameters. The receiver does not need them
 
 ### PCM dump files (sample_receive_pcm_multiopus)
 
-Output is raw 48 kHz / N-channel / 16-bit little-endian interleaved PCM. Play it with ffplay:
+Output is raw 48 kHz / N-channel / 16-bit little-endian interleaved PCM. Each remote user gets
+an independent file named `<audioFile>.uid-<UID>`; rotated files use `.2`, `.3`, and so on.
+Path characters in a UID are replaced with `_`:
 
 ```bash
-ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8-channel example
+ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm.uid-8899   # 8-channel example
 # Or use Audacity: File > Import > Raw Data, choose Signed 16-bit PCM / Little-endian / N channels / 48000 Hz
 ```
 
@@ -300,11 +314,15 @@ Safari/Firefox behavior is undefined.
 
 ### Encoded frame dump (sample_receive_encoded_audio)
 
-Output is a raw OPUSMC frame stream (640 bytes per frame), suitable for forwarding or custom
-decoding. The callback `info` carries only `codec` and `sendTs` (in SDK v4.4.30.149,
+Output is a per-user raw OPUSMC frame stream (640 bytes per frame), suitable for forwarding or
+custom decoding. Files are named `<audioFile>.uid-<UID>`. The callback `info` carries only
+`codec` and `sendTs` (in SDK v4.4.30.149,
 `AudioEncodedFrameInfo` in `AgoraMediaBase.h` has no channel-count or sample-rate fields).
 
 ### Mixed audio dump (sample_receive_mixed_audio)
+
+This callback contains the SDK's global mix and has no remote-UID dimension, so it remains one
+aggregate output file.
 
 Output is mixed 48 kHz / 16-bit little-endian interleaved PCM, 2 channels by default
 (multi-channel streams are always mixed down to 2 channels — odd channels to one side, even

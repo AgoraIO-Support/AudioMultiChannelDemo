@@ -6,7 +6,7 @@
 //   - 通过 setPlaybackAudioFrameBeforeMixingParameters(numOfChannels, 48000) 设置回调参数
 //   - onPlaybackAudioFrameBeforeMixing 按远端用户回调解码后的多声道 PCM（16bit 交错）
 //   - 回调声道数须与发送端声道数一致，否则无法还原完整多声道（spec 场景4.5/5.1）
-//   - 落盘文件追加写入，单文件达到 100 MB 自动切换新文件；
+//   - 按远端 UID 分文件落盘，单文件达到 100 MB 自动切换新文件；
 //     可用 ffplay / Audacity 按 48 kHz / N 声道 / 16bit 导入逐声道核对
 //
 //  说明：payload 123/124/125 协商机制下，接收端无需设置 che.audio.custom_payload_type。
@@ -14,7 +14,10 @@
 //
 
 #include <csignal>
+#include <cstdint>
 #include <cstring>
+#include <map>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -55,13 +58,13 @@ struct SampleOptions {
 class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
  public:
   PcmFrameObserver(const std::string& outputFilePath)
-      : outputFilePath_(outputFilePath),
-        pcmFile_(nullptr),
-        fileCount(0),
-        fileSize_(0) {}
+      : outputFilePath_(outputFilePath) {}
 
   ~PcmFrameObserver() {
-    if (pcmFile_) fclose(pcmFile_);
+    std::lock_guard<std::mutex> lock(file_mutex_);
+    for (auto& item : files_) {
+      if (item.second.file) fclose(item.second.file);
+    }
   }
 
   bool onPlaybackAudioFrame(const char* channelId, AudioFrame& audioFrame) override {
@@ -91,24 +94,40 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
   AudioParams getMixedAudioParams() override { return AudioParams(); };
 
  private:
+  struct UserFileState {
+    FILE* file = nullptr;
+    int fileCount = 0;
+    uint64_t fileSize = 0;
+    uint64_t frameCount = 0;
+    int64_t lastRenderTimeMs = 0;
+    uint32_t lastRtpTimestamp = 0;
+    int channels = 0;
+    int sampleRate = 0;
+  };
+
   std::string outputFilePath_;
-  FILE* pcmFile_;
-  int fileCount;
-  int fileSize_;
+  std::map<std::string, UserFileState> files_;
+  std::mutex file_mutex_;
 };
 
 bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
                                                         agora::media::base::user_id_t userId,
                                                         AudioFrame& audioFrame) {
-  // Create new file to save received PCM samples (append mode)
-  if (!pcmFile_) {
-    std::string fileName =
-        (++fileCount > 1) ? (outputFilePath_ + to_string(fileCount)) : outputFilePath_;
-    if (!(pcmFile_ = fopen(fileName.c_str(), "ab"))) {
+  const std::string uid = userId ? userId : "unknown";
+  std::lock_guard<std::mutex> lock(file_mutex_);
+  UserFileState& state = files_[uid];
+
+  // Keep one file sequence per remote UID. Use truncation so a new run cannot
+  // contaminate validation with bytes left by an older run.
+  if (!state.file) {
+    ++state.fileCount;
+    std::string fileName = makePerUserOutputPath(outputFilePath_, uid.c_str());
+    if (state.fileCount > 1) fileName += "." + to_string(state.fileCount);
+    if (!(state.file = fopen(fileName.c_str(), "wb"))) {
       AG_LOG(ERROR, "Failed to create received audio file %s", fileName.c_str());
       return false;
     }
-    AG_LOG(INFO, "Created file %s to save received PCM samples", fileName.c_str());
+    AG_LOG(INFO, "Created file %s for remote user %s", fileName.c_str(), uid.c_str());
   }
 
   // Write PCM samples（16bit 交错，声道数与 setPlaybackAudioFrameBeforeMixingParameters 一致）
@@ -117,17 +136,22 @@ bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
     AG_LOG(WARNING, "Empty audio frame received, skip writing");
     return true;
   }
-  if (fwrite(audioFrame.buffer, 1, writeBytes, pcmFile_) != writeBytes) {
+  if (fwrite(audioFrame.buffer, 1, writeBytes, state.file) != writeBytes) {
     AG_LOG(ERROR, "Error writing decoded audio data: %s", std::strerror(errno));
     return false;
   }
-  fileSize_ += writeBytes;
+  state.fileSize += writeBytes;
+  state.frameCount++;
+  state.lastRenderTimeMs = audioFrame.renderTimeMs;
+  state.lastRtpTimestamp = audioFrame.rtpTimestamp;
+  state.channels = audioFrame.channels;
+  state.sampleRate = audioFrame.samplesPerSec;
 
   // Close the file if size limit is reached
-  if (fileSize_ >= DEFAULT_FILE_LIMIT) {
-    fclose(pcmFile_);
-    pcmFile_ = nullptr;
-    fileSize_ = 0;
+  if (state.fileSize >= DEFAULT_FILE_LIMIT) {
+    fclose(state.file);
+    state.file = nullptr;
+    state.fileSize = 0;
   }
   return true;
 }

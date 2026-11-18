@@ -750,6 +750,24 @@ int main(int argc, char* argv[]) {
   // Wait until connected before sending media stream
   if (connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
     AG_LOG(ERROR, "Wait for connection timeout or failure!");
+    // Both tracks have been published before the wait. Perform the same
+    // teardown as the normal exit path before returning from the failure path.
+    connection->getLocalUser()->unpublishAudio(customAudioTrack);
+    connection->getLocalUser()->unpublishVideo(customVideoTrack);
+    connection->unregisterObserver(connObserver.get());
+    if (connection->disconnect()) {
+      AG_LOG(ERROR, "Failed to disconnect from Agora channel after connection failure!");
+    }
+    connObserver.reset();
+    localUserObserver.reset();
+    audioFrameSender = nullptr;
+    customAudioTrack = nullptr;
+    videoFrameSender = nullptr;
+    customVideoTrack = nullptr;
+    factory = nullptr;
+    connection = nullptr;
+    service->release();
+    service = nullptr;
     return -1;
   }
 

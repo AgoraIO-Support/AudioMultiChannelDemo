@@ -5,9 +5,9 @@
 //  以 sample_receive_pcm_multiopus 为骨架，增加视频接收：
 //   - 音频：setPlaybackAudioFrameBeforeMixingParameters(numOfChannels, 48000) +
 //     onPlaybackAudioFrameBeforeMixing 按远端用户回调解码后的多声道 PCM（16bit 交错），
-//     落盘 --audioFile（100MB 切换新文件），每 500 帧打一次日志
+//     按远端 UID 落盘 --audioFile（100MB 切换新文件），每 500 帧打一次日志
 //   - 视频：registerVideoFrameObserver(IVideoFrameObserver2)，onFrame 回调解码后的
-//     I420 帧，逐平面落盘 --videoFile（100MB 切换新文件），每 100 帧打一次日志
+//     I420 帧，按远端 UID 落盘 --videoFile（100MB 切换新文件），每 100 帧打一次日志
 //   - --remoteUserId 非空时 subscribeAudio + subscribeVideo 指定用户；
 //     为空时 subscribeAllAudio + subscribeAllVideo 订阅全部远端用户
 //
@@ -15,7 +15,10 @@
 //
 
 #include <csignal>
+#include <cstdint>
 #include <cstring>
+#include <map>
+#include <mutex>
 #include <cerrno>
 #include <sstream>
 #include <string>
@@ -60,14 +63,13 @@ struct SampleOptions {
 class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
  public:
   PcmFrameObserver(const std::string& outputFilePath)
-      : outputFilePath_(outputFilePath),
-        pcmFile_(nullptr),
-        fileCount(0),
-        fileSize_(0),
-        frameCount_(0) {}
+      : outputFilePath_(outputFilePath) {}
 
   ~PcmFrameObserver() {
-    if (pcmFile_) fclose(pcmFile_);
+    std::lock_guard<std::mutex> lock(file_mutex_);
+    for (auto& item : files_) {
+      if (item.second.file) fclose(item.second.file);
+    }
   }
 
   bool onPlaybackAudioFrame(const char* channelId, AudioFrame& audioFrame) override {
@@ -97,49 +99,66 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
   AudioParams getMixedAudioParams() override { return AudioParams(); };
 
  private:
+  struct UserFileState {
+    FILE* file = nullptr;
+    int fileCount = 0;
+    uint64_t fileSize = 0;
+    uint64_t frameCount = 0;
+    int64_t lastRenderTimeMs = 0;
+    uint32_t lastRtpTimestamp = 0;
+    int channels = 0;
+    int sampleRate = 0;
+  };
+
   std::string outputFilePath_;
-  FILE* pcmFile_;
-  int fileCount;
-  int fileSize_;
-  long frameCount_;
+  std::map<std::string, UserFileState> files_;
+  std::mutex file_mutex_;
 };
 
 class YuvFrameObserver : public agora::rtc::IVideoFrameObserver2 {
  public:
   YuvFrameObserver(const std::string& outputFilePath)
-      : outputFilePath_(outputFilePath),
-        yuvFile_(nullptr),
-        fileCount(0),
-        fileSize_(0),
-        frameCount_(0) {}
+      : outputFilePath_(outputFilePath) {}
 
   ~YuvFrameObserver() {
-    if (yuvFile_) fclose(yuvFile_);
+    std::lock_guard<std::mutex> lock(file_mutex_);
+    for (auto& item : files_) {
+      if (item.second.file) fclose(item.second.file);
+    }
   }
 
   void onFrame(const char* channelId, agora::user_id_t remoteUid,
                const agora::media::base::VideoFrame* frame) override;
 
  private:
+  struct UserFileState {
+    FILE* file = nullptr;
+    int fileCount = 0;
+    uint64_t fileSize = 0;
+    uint64_t frameCount = 0;
+    int64_t lastRenderTimeMs = 0;
+  };
+
   std::string outputFilePath_;
-  FILE* yuvFile_;
-  int fileCount;
-  long fileSize_;
-  long frameCount_;
+  std::map<std::string, UserFileState> files_;
+  std::mutex file_mutex_;
 };
 
 bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
                                                         agora::media::base::user_id_t userId,
                                                         AudioFrame& audioFrame) {
-  // Create new file to save received PCM samples (append mode)
-  if (!pcmFile_) {
-    std::string fileName =
-        (++fileCount > 1) ? (outputFilePath_ + to_string(fileCount)) : outputFilePath_;
-    if (!(pcmFile_ = fopen(fileName.c_str(), "ab"))) {
+  const std::string uid = userId ? userId : "unknown";
+  std::lock_guard<std::mutex> lock(file_mutex_);
+  UserFileState& state = files_[uid];
+  if (!state.file) {
+    ++state.fileCount;
+    std::string fileName = makePerUserOutputPath(outputFilePath_, uid.c_str());
+    if (state.fileCount > 1) fileName += "." + to_string(state.fileCount);
+    if (!(state.file = fopen(fileName.c_str(), "wb"))) {
       AG_LOG(ERROR, "Failed to create received audio file %s", fileName.c_str());
       return false;
     }
-    AG_LOG(INFO, "Created file %s to save received PCM samples", fileName.c_str());
+    AG_LOG(INFO, "Created file %s for remote user %s", fileName.c_str(), uid.c_str());
   }
 
   // Write PCM samples（16bit 交错，声道数与 setPlaybackAudioFrameBeforeMixingParameters 一致）
@@ -148,80 +167,89 @@ bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
     AG_LOG(WARNING, "Empty audio frame received, skip writing");
     return true;
   }
-  if (fwrite(audioFrame.buffer, 1, writeBytes, pcmFile_) != writeBytes) {
+  if (fwrite(audioFrame.buffer, 1, writeBytes, state.file) != writeBytes) {
     AG_LOG(ERROR, "Error writing decoded audio data: %s", std::strerror(errno));
     return false;
   }
-  fileSize_ += writeBytes;
-  frameCount_++;
+  state.fileSize += writeBytes;
+  state.frameCount++;
+  state.lastRenderTimeMs = audioFrame.renderTimeMs;
+  state.lastRtpTimestamp = audioFrame.rtpTimestamp;
+  state.channels = audioFrame.channels;
+  state.sampleRate = audioFrame.samplesPerSec;
 
   // 每 500 帧（10ms/帧，~5s）打一次进度日志
-  if (frameCount_ % 500 == 0) {
+  if (state.frameCount % 500 == 0) {
     AG_LOG(INFO, "Received audio frames: %ld from user %s (%dch %dHz, %.1f MB written)",
-           frameCount_, userId, audioFrame.channels, audioFrame.samplesPerSec,
-           (double)fileSize_ / 1024 / 1024);
+           (long)state.frameCount, uid.c_str(), audioFrame.channels, audioFrame.samplesPerSec,
+           (double)state.fileSize / 1024 / 1024);
   }
 
   // Close the file if size limit is reached
-  if (fileSize_ >= DEFAULT_FILE_LIMIT) {
-    fclose(pcmFile_);
-    pcmFile_ = nullptr;
-    fileSize_ = 0;
+  if (state.fileSize >= DEFAULT_FILE_LIMIT) {
+    fclose(state.file);
+    state.file = nullptr;
+    state.fileSize = 0;
   }
   return true;
 }
 
 void YuvFrameObserver::onFrame(const char* channelId, agora::user_id_t remoteUid,
                                const agora::media::base::VideoFrame* videoFrame) {
+  const std::string uid = remoteUid ? remoteUid : "unknown";
+  std::lock_guard<std::mutex> lock(file_mutex_);
   if (!videoFrame || !videoFrame->yBuffer || !videoFrame->uBuffer || !videoFrame->vBuffer) {
     AG_LOG(WARNING, "Empty video frame received, skip writing");
     return;
   }
   if (videoFrame->type != agora::media::base::VIDEO_PIXEL_I420) {
     // demo 只落盘 I420；其他格式（如 NV12）直接跳过并提示
-    if (frameCount_ == 0) {
+    if (files_[uid].frameCount == 0) {
       AG_LOG(WARNING, "Unexpected video pixel format %d, only I420 is dumped", videoFrame->type);
     }
     return;
   }
 
-  // Create new file to save received YUV frames (append mode)
-  if (!yuvFile_) {
-    std::string fileName =
-        (++fileCount > 1) ? (outputFilePath_ + to_string(fileCount)) : outputFilePath_;
-    if (!(yuvFile_ = fopen(fileName.c_str(), "ab"))) {
+  UserFileState& state = files_[uid];
+  if (!state.file) {
+    ++state.fileCount;
+    std::string fileName = makePerUserOutputPath(outputFilePath_, uid.c_str());
+    if (state.fileCount > 1) fileName += "." + to_string(state.fileCount);
+    if (!(state.file = fopen(fileName.c_str(), "wb"))) {
       AG_LOG(ERROR, "Failed to create received video file %s", fileName.c_str());
       return;
     }
-    AG_LOG(INFO, "Created file %s to save received YUV frames", fileName.c_str());
+    AG_LOG(INFO, "Created file %s for remote user %s", fileName.c_str(), uid.c_str());
   }
 
   // 逐行写 Y/U/V 平面（stride 可能大于 width）
   const int width = videoFrame->width;
   const int height = videoFrame->height;
   for (int r = 0; r < height; r++) {
-    fwrite(videoFrame->yBuffer + r * videoFrame->yStride, 1, width, yuvFile_);
+    fwrite(videoFrame->yBuffer + r * videoFrame->yStride, 1, width, state.file);
   }
   for (int r = 0; r < height / 2; r++) {
-    fwrite(videoFrame->uBuffer + r * videoFrame->uStride, 1, width / 2, yuvFile_);
+    fwrite(videoFrame->uBuffer + r * videoFrame->uStride, 1, width / 2, state.file);
   }
   for (int r = 0; r < height / 2; r++) {
-    fwrite(videoFrame->vBuffer + r * videoFrame->vStride, 1, width / 2, yuvFile_);
+    fwrite(videoFrame->vBuffer + r * videoFrame->vStride, 1, width / 2, state.file);
   }
-  fileSize_ += (long)width * height * 3 / 2;
-  frameCount_++;
+  state.fileSize += (uint64_t)width * height * 3 / 2;
+  state.frameCount++;
+  state.lastRenderTimeMs = videoFrame->renderTimeMs;
 
   // 每 100 帧打一次进度日志
-  if (frameCount_ % 100 == 0) {
+  if (state.frameCount % 100 == 0) {
     AG_LOG(INFO, "Received video frames: %ld from user %s (%dx%d, %.1f MB written)",
-           frameCount_, remoteUid, width, height, (double)fileSize_ / 1024 / 1024);
+           (long)state.frameCount, uid.c_str(), width, height,
+           (double)state.fileSize / 1024 / 1024);
   }
 
   // Close the file if size limit is reached
-  if (fileSize_ >= DEFAULT_FILE_LIMIT) {
-    fclose(yuvFile_);
-    yuvFile_ = nullptr;
-    fileSize_ = 0;
+  if (state.fileSize >= DEFAULT_FILE_LIMIT) {
+    fclose(state.file);
+    state.file = nullptr;
+    state.fileSize = 0;
   }
 }
 

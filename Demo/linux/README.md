@@ -84,6 +84,16 @@ c++ -std=c++11 -Wall -Wextra -Werror tests/private_pcm_files_test.cpp -o build/p
 ./build/private_pcm_files_test
 ```
 
+构建完成并准备好 `out/public/` 后，可用以下命令回归四个发送端的连接失败清理：
+
+```bash
+export LD_LIBRARY_PATH="$(pwd)/../../LinuxSDKFolder/Aarch64/agora_rtc_sdk/agora_sdk${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+bash tests/connection_failure_regression.sh
+```
+
+按实际架构将 `Aarch64` 改为 `X86_64`。测试使用无效 App ID，检查连接等待超时、
+退出码和日志；日志目录由脚本打印，不需要真实 App ID 或 token。
+
 ### 手动 CMake
 
 ```bash
@@ -207,9 +217,10 @@ PCM 文件权限最多为 0600），随后音频 10ms/帧、
     --remoteUserId 8899 --audioFile received_av_8ch.pcm --videoFile received_video.yuv
 ```
 
-- 音频落盘为 48 kHz / N 声道 / 16bit 交错 PCM（同 `sample_receive_pcm_multiopus`）；
-- 视频落盘为 I420 裸帧序列（1080p 时每帧约 3MB，100MB 自动切换新文件），可用
-  `ffplay -f rawvideo -pix_fmt yuv420p -s 1920x1080 received_video.yuv` 回放核对；
+- 音频和视频都按远端 UID 独立落盘，文件名分别为 `<audioFile>.uid-<UID>` 和
+  `<videoFile>.uid-<UID>`，格式为 48 kHz / N 声道 / 16bit 交错 PCM 与 I420 裸帧序列；
+  1080p 视频每帧约 3MB，100MB 自动切换新文件，可用
+  `ffplay -f rawvideo -pix_fmt yuv420p -s 1920x1080 received_video.yuv.uid-8899` 回放核对；
 - `--remoteUserId` 缺省时订阅频道内全部远端用户的音频与视频。
 
 ### 强制不回退（codec_unfallback）
@@ -250,10 +261,12 @@ PCM 文件权限最多为 0600），随后音频 10ms/帧、
 
 ### PCM 落盘文件（sample_receive_pcm_multiopus）
 
-输出为 48 kHz / N 声道 / 16bit 小端交错裸 PCM，可用 ffplay 直接播放验证：
+输出为 48 kHz / N 声道 / 16bit 小端交错裸 PCM，可用 ffplay 直接播放验证。接收全部远端用户时，
+每个用户独立写入 `<audioFile>.uid-<UID>`，分片文件追加 `.2`、`.3`；UID 中的路径字符会被替换为 `_`。
+指定 `--remoteUserId` 时也使用相同命名规则，避免不同运行方式产生混淆：
 
 ```bash
-ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例
+ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm.uid-8899   # 8 声道示例
 # 或用 Audacity：File > Import > Raw Data，选 Signed 16-bit PCM / Little-endian / N channels / 48000 Hz
 ```
 
@@ -273,11 +286,14 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm   # 8 声道示例
 
 ### 编码帧落盘（sample_receive_encoded_audio）
 
-输出为 OPUSMC 裸帧流（640 字节/帧），可用于转发或自行解码。回调 `info` 仅携带
+输出为按 UID 分开的 OPUSMC 裸帧流（640 字节/帧），可用于转发或自行解码。文件名为
+`<audioFile>.uid-<UID>`，回调 `info` 仅携带
 `codec` 与 `sendTs`（SDK v4.4.30.149 头文件 `AgoraMediaBase.h` 中
 `AudioEncodedFrameInfo` 无声道数/采样率字段）。
 
 ### 混音落盘（sample_receive_mixed_audio）
+
+该回调提供 SDK 的全局混音结果，没有远端 UID 维度，因此仍写入一个聚合文件。
 
 输出为混音后的 48 kHz / 16bit 小端交错裸 PCM，默认 2 声道（多声道流混音恒为
 2 声道，奇数声道混一路、偶数声道混一路；`--numOfChannels 1` 时输出 mono）：

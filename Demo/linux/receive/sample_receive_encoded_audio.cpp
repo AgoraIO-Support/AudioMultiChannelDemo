@@ -8,11 +8,14 @@
 //   - IAudioEncodedFrameReceiver::onEncodedAudioFrameReceived 回调 OPUSMC 编码帧，
 //     info 仅携带 codec 与 sendTs（v4.4.30.149 不提供声道数/采样率，业务侧不得依赖）
 //   - 该路径不解码、不播放，与播放路径互斥；业务侧可自行解码或转发
-//   - 落盘文件追加写入，单文件达到 100 MB 自动切换新文件
+//   - 按远端 UID 分文件落盘，单文件达到 100 MB 自动切换新文件
 //
 
 #include <csignal>
+#include <cstdint>
 #include <cstring>
+#include <map>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -45,52 +48,80 @@ struct SampleOptions {
 class EncodedAudioReceiver : public agora::rtc::IAudioEncodedFrameReceiver {
  public:
   EncodedAudioReceiver(const std::string& outputFilePath)
-      : outputFilePath_(outputFilePath), file_(nullptr), fileCount(0), fileSize_(0),
-        frameCount_(0) {}
+      : outputFilePath_(outputFilePath) {}
 
   ~EncodedAudioReceiver() {
-    if (file_) fclose(file_);
+    std::lock_guard<std::mutex> lock(file_mutex_);
+    for (auto& item : files_) {
+      if (item.second.file) fclose(item.second.file);
+    }
   }
 
   bool onEncodedAudioFrameReceived(
       const uint8_t* packet, size_t length,
       const agora::media::base::AudioEncodedFrameInfo& info) override;
 
+  bool onEncodedAudioFrameReceivedForUser(
+      const std::string& userId, const uint8_t* packet, size_t length,
+      const agora::media::base::AudioEncodedFrameInfo& info);
+
  private:
+  struct UserFileState {
+    FILE* file = nullptr;
+    int fileCount = 0;
+    uint64_t fileSize = 0;
+    uint64_t frameCount = 0;
+    uint64_t lastSendTs = 0;
+    uint8_t codec = 0;
+    size_t lastFrameLength = 0;
+  };
+
   std::string outputFilePath_;
-  FILE* file_;
-  int fileCount;
-  int fileSize_;
-  int frameCount_;  // 回调约 20ms/帧，用于日志节流
+  std::map<std::string, UserFileState> files_;
+  std::mutex file_mutex_;
 };
 
 bool EncodedAudioReceiver::onEncodedAudioFrameReceived(
     const uint8_t* packet, size_t length, const agora::media::base::AudioEncodedFrameInfo& info) {
-  if (!file_) {
-    std::string fileName =
-        (++fileCount > 1) ? (outputFilePath_ + to_string(fileCount)) : outputFilePath_;
-    if (!(file_ = fopen(fileName.c_str(), "ab"))) {
+  return onEncodedAudioFrameReceivedForUser("unknown", packet, length, info);
+}
+
+bool EncodedAudioReceiver::onEncodedAudioFrameReceivedForUser(
+    const std::string& userId, const uint8_t* packet, size_t length,
+    const agora::media::base::AudioEncodedFrameInfo& info) {
+  std::lock_guard<std::mutex> lock(file_mutex_);
+  UserFileState& state = files_[userId];
+  if (!state.file) {
+    ++state.fileCount;
+    std::string fileName = makePerUserOutputPath(outputFilePath_, userId.c_str());
+    if (state.fileCount > 1) fileName += "." + to_string(state.fileCount);
+    if (!(state.file = fopen(fileName.c_str(), "wb"))) {
       AG_LOG(ERROR, "Failed to create received audio file %s", fileName.c_str());
       return false;
     }
-    AG_LOG(INFO, "Created file %s to save received encoded audio frames", fileName.c_str());
+    AG_LOG(INFO, "Created file %s for remote user %s", fileName.c_str(), userId.c_str());
   }
 
   // 回调约 20ms/帧，逐帧打日志会刷屏：保留首帧，之后每 250 帧（约 5s）打一次
-  if (frameCount_++ % 250 == 0) {
-    AG_LOG(INFO, "Received encoded audio frame: length=%zu codec=%d sendTs=%llu (frame #%d)",
-           length, info.codec, (unsigned long long)info.sendTs, frameCount_);
+  if (state.frameCount++ % 250 == 0) {
+    AG_LOG(INFO,
+           "Received encoded audio frame: user=%s length=%zu codec=%d sendTs=%llu (frame #%llu)",
+           userId.c_str(), length, info.codec, (unsigned long long)info.sendTs,
+           (unsigned long long)state.frameCount);
   }
 
-  if (fwrite(packet, 1, length, file_) != length) {
+  if (fwrite(packet, 1, length, state.file) != length) {
     AG_LOG(ERROR, "Error writing encoded audio data: %s", std::strerror(errno));
     return false;
   }
-  fileSize_ += length;
-  if (fileSize_ >= DEFAULT_FILE_LIMIT) {
-    fclose(file_);
-    file_ = nullptr;
-    fileSize_ = 0;
+  state.fileSize += length;
+  state.lastSendTs = info.sendTs;
+  state.codec = info.codec;
+  state.lastFrameLength = length;
+  if (state.fileSize >= DEFAULT_FILE_LIMIT) {
+    fclose(state.file);
+    state.file = nullptr;
+    state.fileSize = 0;
   }
   return true;
 }
@@ -164,7 +195,11 @@ int main(int argc, char* argv[]) {
       std::make_shared<SampleLocalUserObserver>(connection->getLocalUser());
 
   auto audioReceiver = std::make_shared<EncodedAudioReceiver>(options.audioFile);
-  localUserObserver->setEncodedAudioFrameObserver(audioReceiver.get());
+  localUserObserver->setEncodedAudioFrameCallback(
+      [audioReceiver](const std::string& userId, const uint8_t* packet, size_t length,
+                      const agora::media::base::AudioEncodedFrameInfo& info) {
+        return audioReceiver->onEncodedAudioFrameReceivedForUser(userId, packet, length, info);
+      });
 
   // Register the observer before connecting so the first subscribed frames are not missed.
   if (connection->connect(options.appId.c_str(), options.channelId.c_str(),

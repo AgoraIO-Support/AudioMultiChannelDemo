@@ -27,3 +27,7 @@ static inline std::string to_string(int val) {
 int32_t getLocalIP(agora::agora_refptr<agora::rtc::IRtcConnection>& connection, std::string& ip);
 
 int32_t setLocalIP(agora::agora_refptr<agora::rtc::IRtcConnection>& connection, const std::string& ip);
+
+// Build a filesystem-safe output path for a remote user. Receiver samples use
+// this helper so subscribeAll* never mixes different users into one file.
+std::string makePerUserOutputPath(const std::string& basePath, const char* userId);

@@ -487,6 +487,22 @@ int main(int argc, char* argv[]) {
   // Wait until connected before sending media stream
   if (connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
     AG_LOG(ERROR, "Wait for connection timeout or failure!");
+    // Tear down all SDK objects before returning from a failed connect wait.
+    // Returning with a live connection can make the SDK abort during process
+    // shutdown because its worker threads and observers are still registered.
+    connection->getLocalUser()->unpublishAudio(customAudioTrack);
+    connection->unregisterObserver(connObserver.get());
+    if (connection->disconnect()) {
+      AG_LOG(ERROR, "Failed to disconnect from Agora channel after connection failure!");
+    }
+    connObserver.reset();
+    localUserObserver.reset();
+    audioFrameSender = nullptr;
+    customAudioTrack = nullptr;
+    factory = nullptr;
+    connection = nullptr;
+    service->release();
+    service = nullptr;
     return -1;
   }
 

@@ -12,6 +12,7 @@
 #include <string>
 #include <fstream>
 #include <cstring>
+#include <cctype>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -172,4 +173,13 @@ int32_t setLocalIP(agora::agora_refptr<agora::rtc::IRtcConnection>& connection, 
   agoraParameter->getString(stringKey, retStringValue);
   AG_LOG(INFO, "setLocalIP:%s", retStringValue->data());
   return 0;
+}
+
+std::string makePerUserOutputPath(const std::string& basePath, const char* userId) {
+  std::string safeUid = (userId && *userId) ? userId : "unknown";
+  for (char& ch : safeUid) {
+    unsigned char value = static_cast<unsigned char>(ch);
+    if (!std::isalnum(value) && ch != '_' && ch != '-' && ch != '.') ch = '_';
+  }
+  return basePath + ".uid-" + safeUid;
 }

@@ -6,8 +6,13 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <functional>
 #include <map>
+#include <memory>
 #include <mutex>
+#include <string>
 
 #include "AgoraBase.h"
 #include "NGIAgoraLocalUser.h"
@@ -28,6 +33,13 @@ struct videoInfo{
   videoInfo(int w ,int h ,bool mute):width(w),height(h),muted(mute) {};
 };
 
+// The SDK encoded-frame callback does not include the remote UID. The common
+// observer creates one receiver adapter per subscribed audio track and adds
+// the UID at the application boundary before forwarding the callback.
+using EncodedAudioFrameCallback = std::function<bool(
+    const std::string&, const uint8_t*, size_t,
+    const agora::media::base::AudioEncodedFrameInfo&)>;
+
 class SampleLocalUserObserver : public agora::rtc::ILocalUserObserver {
  public:
   SampleLocalUserObserver(agora::rtc::IRtcConnection* connection);
@@ -40,47 +52,41 @@ class SampleLocalUserObserver : public agora::rtc::ILocalUserObserver {
   void PublishVideoTrack(agora::agora_refptr<agora::rtc::ILocalVideoTrack> videoTrack);
   void UnpublishAudioTrack(agora::agora_refptr<agora::rtc::ILocalAudioTrack> audioTrack);
   void UnpublishVideoTrack(agora::agora_refptr<agora::rtc::ILocalVideoTrack> videoTrack);
-  agora::agora_refptr<agora::rtc::IRemoteAudioTrack> GetRemoteAudioTrack() {
-    return remote_audio_track_;
-  }
-  agora::agora_refptr<agora::rtc::IRemoteVideoTrack> GetRemoteVideoTrack() {
-    return remote_video_track_;
-  }
+  // Compatibility accessor for callers that only handle one remote user. New
+  // code should use the UID overload so that it cannot accidentally select a
+  // different user after another subscription arrives.
+  agora::agora_refptr<agora::rtc::IRemoteAudioTrack> GetRemoteAudioTrack();
+  agora::agora_refptr<agora::rtc::IRemoteAudioTrack> GetRemoteAudioTrack(
+      const std::string& userId);
+  bool GetRemoteAudioTrackStats(const std::string& userId,
+                                agora::rtc::RemoteAudioTrackStats& stats);
+  // Compatibility accessor; prefer the UID overload for multi-user receive.
+  agora::agora_refptr<agora::rtc::IRemoteVideoTrack> GetRemoteVideoTrack();
+  agora::agora_refptr<agora::rtc::IRemoteVideoTrack> GetRemoteVideoTrack(
+      const std::string& userId);
+  bool GetRemoteVideoTrackStats(const std::string& userId,
+                                agora::rtc::RemoteVideoTrackStats& stats);
 
-  void setVideoEncodedImageReceiver(agora::media::IVideoEncodedFrameObserver* receiver) {
-    video_encoded_receiver_ = receiver;
-  }
+  void setVideoEncodedImageReceiver(agora::media::IVideoEncodedFrameObserver* receiver);
 
-  void setEncodedAudioFrameObserver(agora::rtc::IAudioEncodedFrameReceiver* observer) {
-    audio_encoded_receiver_ = observer;
-  }
+  void setEncodedAudioFrameObserver(agora::rtc::IAudioEncodedFrameReceiver* observer);
 
-  void setAudioFrameObserver(agora::media::IAudioFrameObserverBase* observer) {
-    audio_frame_observer_ = observer;
-  }
+  void setEncodedAudioFrameCallback(const EncodedAudioFrameCallback& callback);
+
+  void setAudioFrameObserver(agora::media::IAudioFrameObserverBase* observer);
   
   void setSubscribeUserString(std::string username){
       user_string_ = username;
   }
-  void unsetAudioFrameObserver() {
-    if (audio_frame_observer_) {
-      local_user_->unregisterAudioFrameObserver(audio_frame_observer_);
-    }
-  }
+  void unsetAudioFrameObserver();
 
-  void setVideoFrameObserver( agora::rtc::IVideoFrameObserver2* observer) {
-    video_frame_observer_ = observer;
-  }
+  void setVideoFrameObserver(agora::rtc::IVideoFrameObserver2* observer);
 
   void setUseStringUid(bool used){
      use_string_uid_ = used;
   }
 
-  void unsetVideoFrameObserver() {
-    if (remote_video_track_ && video_frame_observer_) {
-      local_user_->unregisterVideoFrameObserver(video_frame_observer_);
-    }
-  }
+  void unsetVideoFrameObserver();
 
   void setEnableVideoMix(bool enable){
        enable_video_mix_ = enable;
@@ -128,7 +134,7 @@ void onStreamMessage(agora::user_id_t userId, int streamId, const char* data, si
                                     int elapsed) ;
 
   void onRemoteVideoTrackStatistics(agora::agora_refptr<agora::rtc::IRemoteVideoTrack> videoTrack,
-                                    const agora::rtc::RemoteVideoTrackStats& stats) override {}
+                                    const agora::rtc::RemoteVideoTrackStats& stats) override;
 
   void onLocalVideoTrackStateChanged(agora::agora_refptr<agora::rtc::ILocalVideoTrack> videoTrack,
                                      agora::rtc::LOCAL_VIDEO_STREAM_STATE state,
@@ -143,7 +149,7 @@ void onStreamMessage(agora::user_id_t userId, int streamId, const char* data, si
   void onLocalAudioTrackStatistics(const agora::rtc::LocalAudioStats& stats) override {}
 
   void onRemoteAudioTrackStatistics(agora::agora_refptr<agora::rtc::IRemoteAudioTrack> audioTrack,
-                                    const agora::rtc::RemoteAudioTrackStats& stats) override {}
+                                    const agora::rtc::RemoteAudioTrackStats& stats) override;
                                   
   //void onRemoteVideoStreamInfoUpdated(const agora::rtc::RemoteVideoStreamInfo& info) override {}
   
@@ -189,29 +195,55 @@ void onStreamMessage(agora::user_id_t userId, int streamId, const char* data, si
   void onActiveSpeaker(agora::user_id_t userId){}
  private:
 
+  struct RemoteAudioTrackState {
+    agora::agora_refptr<agora::rtc::IRemoteAudioTrack> track;
+    std::shared_ptr<agora::rtc::IAudioEncodedFrameReceiver> encoded_receiver;
+    agora::rtc::IAudioEncodedFrameReceiver* raw_encoded_receiver{nullptr};
+    agora::rtc::RemoteAudioTrackStats stats;
+    bool has_stats{false};
+  };
+
+  struct RemoteVideoTrackState {
+    agora::agora_refptr<agora::rtc::IRemoteVideoTrack> track;
+    agora::rtc::RemoteVideoTrackStats stats;
+    bool has_stats{false};
+  };
+
+  void registerAudioFrameObserverIfNeededLocked();
+  void registerVideoFrameObserverIfNeededLocked();
+  void clearAudioEncodedReceiversLocked();
+  void removeRemoteAudioTrackLocked(const std::string& userId);
+  void removeRemoteVideoTrackLocked(const std::string& userId);
+  void clearRemoteTrackStates();
+
   agora::rtc::MixerLayoutConfig calculate_layout(int width,int height);
 
   agora::rtc::IRtcConnection* connection_{nullptr};
   agora::rtc::ILocalUser* local_user_{nullptr};
 
-  agora::agora_refptr<agora::rtc::IRemoteAudioTrack> remote_audio_track_;
-  agora::agora_refptr<agora::rtc::IRemoteVideoTrack> remote_video_track_;
+  std::map<std::string, RemoteAudioTrackState> remote_audio_tracks_;
+  std::map<std::string, RemoteVideoTrackState> remote_video_tracks_;
+  std::string last_audio_uid_;
+  std::string last_video_uid_;
 
   agora::agora_refptr<agora::rtc::IVideoMixerSource> video_mixer_{nullptr};
 
   agora::media::IVideoEncodedFrameObserver* video_encoded_receiver_{nullptr};
   agora::rtc::IAudioEncodedFrameReceiver* audio_encoded_receiver_{nullptr};
+  EncodedAudioFrameCallback encoded_audio_frame_callback_;
 
   agora::media::IAudioFrameObserverBase* audio_frame_observer_{nullptr};
   agora::rtc::IVideoFrameObserver2* video_frame_observer_{nullptr};
-
-  std::map<std::string ,agora::agora_refptr<agora::rtc::IRemoteVideoTrack>> remote_video_track_map_;
   std::map<std::string ,videoInfo> remote_source_map_;
 
 
   std::mutex observer_lock_;
   bool use_string_uid_{false};
   std::string  user_string_; 
+
+  bool audio_frame_observer_registered_{false};
+  bool video_frame_observer_registered_{false};
+  bool video_encoded_receiver_registered_{false};
 
   bool enable_video_mix_{false};
   int x_offset_{0};
