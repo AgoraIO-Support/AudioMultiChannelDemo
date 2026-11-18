@@ -6,9 +6,9 @@
 //  mpeg4 1920x1080 + 4 x AC-3 44.1kHz stereo，共承载 8 声道内容）：
 //   - 启动时用 ffmpeg 一次性解码 4 条 AC-3 音轨，逐轨 swresample 到 48kHz stereo s16，
 //     再按需求点10 的 4xstereo 布局重排为逐样本交错 8 声道 PCM，写入临时文件
-//     （/tmp/<mkv名>_8ch48k.pcm，243s 素材约 187MB，避免全量驻留内存）；
+//     （每次运行使用私有临时目录，243s 素材约 187MB，避免全量驻留内存）；
 //     声道顺序 CH1=T1L, CH2=T1R, ..., CH8=T4R；各轨长度差异（~35ms 级）末尾补零对齐。
-//     临时文件若比 MKV 新则直接复用，跳过重复转码。
+//     正常退出或初始化失败时清理临时文件，不跨进程复用转换结果。
 //   - 音频发送：10ms/帧（480 样本/声道），PacerInfo 节奏，到文件末尾循环
 //   - 视频发送：边解边发（av_read_frame -> mpeg4 decode -> sws_scale 转 I420 ->
 //     sendVideoFrame），按帧 PTS 节奏，到文件末尾循环
@@ -29,7 +29,7 @@
 #include <thread>
 #include <vector>
 
-#include <sys/stat.h>
+#include "private_pcm_files.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -60,7 +60,7 @@ extern "C" {
 #define DEFAULT_VIDEO_FILE "public/VictoriaMulti.mkv"
 
 // 4xstereo 布局决定的固定参数（spec 需求点10）
-#define EXPECTED_AUDIO_TRACKS (4)   // MKV 中必须恰好 4 条立体声音轨
+#define EXPECTED_AUDIO_TRACKS (PrivatePcmFiles::kTrackCount)  // 4 条立体声音轨
 #define CHANNELS_PER_TRACK (2)
 #define TOTAL_CHANNELS (8)
 #define AUDIO_SAMPLE_RATE (48000)
@@ -81,22 +81,6 @@ struct MkvVideoInfo {
   int height = 0;
   double fps = 0.0;
 };
-
-// 取文件名（去目录、去扩展名），用于派生临时 PCM 文件名
-static std::string basenameNoExt(const std::string& path) {
-  size_t slash = path.find_last_of("/\\");
-  std::string name = (slash == std::string::npos) ? path : path.substr(slash + 1);
-  size_t dot = name.find_last_of('.');
-  if (dot != std::string::npos) name = name.substr(0, dot);
-  return name;
-}
-
-// 转换产物已存在且不比 MKV 旧时直接复用，避免每次启动重复解码
-static bool pcmUpToDate(const std::string& pcmPath, const std::string& mkvPath) {
-  struct stat stPcm, stMkv;
-  if (stat(pcmPath.c_str(), &stPcm) != 0 || stat(mkvPath.c_str(), &stMkv) != 0) return false;
-  return stPcm.st_size > 0 && stPcm.st_mtime >= stMkv.st_mtime;
-}
 
 // 前置校验：ffmpeg 能打开、恰好 1 路视频、恰好 4 条 stereo 音轨
 static bool probeMkvFile(const std::string& path, MkvVideoInfo& videoInfo) {
@@ -248,7 +232,7 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
       avformat_close_input(&fmt);
       return false;
     }
-    if (!(tracks[t].out = fopen(tmpFiles[t].c_str(), "wb"))) {
+    if (!(tracks[t].out = PrivatePcmFiles::create(tmpFiles[t]))) {
       AG_LOG(ERROR, "Failed to create temp pcm file %s", tmpFiles[t].c_str());
       cleanupTracks();
       avformat_close_input(&fmt);
@@ -334,7 +318,7 @@ static bool interleaveTo8Ch(const std::string tmpFiles[EXPECTED_AUDIO_TRACKS],
       return false;
     }
   }
-  FILE* out = fopen(outPath.c_str(), "wb");
+  FILE* out = PrivatePcmFiles::create(outPath);
   if (!out) {
     AG_LOG(ERROR, "Failed to create 8ch pcm file %s", outPath.c_str());
     for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) fclose(in[t]);
@@ -383,17 +367,10 @@ static bool interleaveTo8Ch(const std::string tmpFiles[EXPECTED_AUDIO_TRACKS],
 }
 
 // 启动准备：probe -> 解码 4 音轨 -> 重排 8 声道，返回临时 PCM 文件路径
-static bool prepareAudioPcm(const SampleOptions& options, std::string& pcmPath) {
-  std::string base = basenameNoExt(options.videoFile);
-  pcmPath = "/tmp/" + base + "_8ch48k.pcm";
-  if (pcmUpToDate(pcmPath, options.videoFile)) {
-    AG_LOG(INFO, "Reuse existing converted pcm %s (newer than mkv)", pcmPath.c_str());
-    return true;
-  }
-
+static bool prepareAudioPcm(const SampleOptions& options, const PrivatePcmFiles& files) {
   std::string tmpFiles[EXPECTED_AUDIO_TRACKS];
   for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) {
-    tmpFiles[t] = "/tmp/" + base + "_track" + to_string(t) + "_48k2ch.pcm";
+    tmpFiles[t] = files.trackPath(t);
   }
 
   AG_LOG(INFO, "Decoding %d AC-3 tracks from %s ...", EXPECTED_AUDIO_TRACKS,
@@ -402,7 +379,7 @@ static bool prepareAudioPcm(const SampleOptions& options, std::string& pcmPath) 
   if (!decodeAudioTracks(options.videoFile, tmpFiles, trackSamples)) return false;
 
   int64_t totalSamples = 0;
-  bool ok = interleaveTo8Ch(tmpFiles, trackSamples, pcmPath, totalSamples);
+  bool ok = interleaveTo8Ch(tmpFiles, trackSamples, files.pcmPath(), totalSamples);
   for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) remove(tmpFiles[t].c_str());
   return ok;
 }
@@ -648,8 +625,13 @@ int main(int argc, char* argv[]) {
   if (!probeMkvFile(options.videoFile, videoInfo)) return -1;
 
   // 启动时一次性完成音频转码：4xAC-3 -> 交错 8 声道 48kHz s16 临时文件
-  std::string pcmPath;
-  if (!prepareAudioPcm(options, pcmPath)) return -1;
+  PrivatePcmFiles files;
+  if (!files.initialize()) {
+    AG_LOG(ERROR, "Failed to create private temporary directory: %s", std::strerror(errno));
+    return -1;
+  }
+  if (!prepareAudioPcm(options, files)) return -1;
+  const std::string pcmPath = files.pcmPath();
 
   std::signal(SIGQUIT, SignalHandler);
   std::signal(SIGABRT, SignalHandler);

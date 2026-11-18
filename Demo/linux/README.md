@@ -77,6 +77,13 @@ cd Demo/linux
 
 脚本会自动选择 SDK 目录、按需解压 tgz，并校验 `agora_sdk/libagora_rtc_sdk.so` 是否存在。
 
+可单独验证 MKV 临时文件的权限、符号链接防护与清理：
+
+```bash
+c++ -std=c++11 -Wall -Wextra -Werror tests/private_pcm_files_test.cpp -o build/private_pcm_files_test
+./build/private_pcm_files_test
+```
+
 ### 手动 CMake
 
 ```bash
@@ -105,17 +112,19 @@ docker buildx build --platform linux/arm64 \
 ```
 
 镜像内：二进制与素材在 `/app`（含 `public/`），SDK 动态库在 `/opt/agora/lib`
-（已通过 `LD_LIBRARY_PATH` 配置）。RTC 媒体走 UDP，建议运行时使用 host 网络：
+（已通过 `LD_LIBRARY_PATH` 配置）。镜像默认以非 root 用户（UID 10001）运行，
+`/app` 可用于写入接收文件和 SDK 日志；若挂载输出目录，需确保该用户有写入权限。
+先使用默认容器网络，并确认环境允许 RTC UDP 流量：
 
 ```bash
-docker run --rm -it --network host agora-multichannel-linux \
+docker run --rm -it agora-multichannel-linux \
     ./sample_send_wav_multiopus --channelId <name> --token <token> \
     --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" \
     --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
 ```
 
 所有 sample 的运行参数与下方「运行示例」一致，把 `docker run ... agora-multichannel-linux`
-后面的部分换成对应命令即可。
+后面的部分换成对应命令即可。仅在实际网络环境需要时才使用 `--network host`。
 
 ## 运行示例
 
@@ -177,8 +186,12 @@ docker run --rm -it --network host agora-multichannel-linux \
 
 素材 `public/VictoriaMulti.mkv`（1 路 mpeg4 1920x1080 + 4 条 AC-3 44.1kHz stereo 轨，
 共承载 8 声道）。启动时 ffmpeg 一次性解码 4 条音轨、重采样到 48kHz 并重排为交错 8 声道
-写入 `/tmp/VictoriaMulti_8ch48k.pcm`（复用已转换产物，见日志），随后音频 10ms/帧、
+写入每次运行独立创建的 `/tmp/agora-multiopus-XXXXXX/` 私有目录（权限 0700；
+PCM 文件权限最多为 0600），随后音频 10ms/帧、
 视频按 PTS 节奏各自循环发送。声道数 8 / payload 125 / 48000 写死：
+
+每次启动都会重新转换；正常退出或初始化失败时清理临时文件。收到默认终止进程的信号
+（如 SIGTERM、SIGKILL）或转换期间被中断时可能留下该私有目录，需由运行用户或管理员检查后清理。
 
 ```bash
 # 该 sample 依赖 ffmpeg（libavformat/libavcodec/libavutil/libswresample/libswscale），

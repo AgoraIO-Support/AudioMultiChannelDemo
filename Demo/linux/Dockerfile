@@ -61,8 +61,11 @@ WORKDIR /app
 COPY --from=builder /src/Demo/linux/out/ /app/
 COPY --from=builder /sdk-libs/ /opt/agora/lib/
 ENV LD_LIBRARY_PATH=/opt/agora/lib
+RUN useradd --system --uid 10001 --no-create-home --home-dir /app agora \
+ && chown agora /app
+USER agora
 
-# RTC 媒体走 UDP，建议运行时加 --network host，例如：
-#   docker run --rm -it --network host agora-multichannel-linux \
+# 默认使用容器网络；仅在网络环境确需 host 模式时再显式启用。
+#   docker run --rm -it agora-multichannel-linux \
 #     ./sample_send_opus8 --channelId test --token <token> --audioFile public/8ch_2.opus
 CMD ["/bin/bash"]

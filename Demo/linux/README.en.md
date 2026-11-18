@@ -87,6 +87,13 @@ cd Demo/linux
 The script selects the SDK directory, extracts the archive when needed, and verifies that
 `agora_sdk/libagora_rtc_sdk.so` exists.
 
+To check the MKV temporary file permissions, symlink protection, and cleanup independently:
+
+```bash
+c++ -std=c++11 -Wall -Wextra -Werror tests/private_pcm_files_test.cpp -o build/private_pcm_files_test
+./build/private_pcm_files_test
+```
+
 ### Manual CMake
 
 ```bash
@@ -115,18 +122,21 @@ docker buildx build --platform linux/arm64 \
 ```
 
 Inside the image: binaries and assets are in `/app` (including `public/`), and the SDK shared
-libraries are in `/opt/agora/lib` (wired up via `LD_LIBRARY_PATH`). RTC media runs over UDP,
-so host networking is recommended:
+libraries are in `/opt/agora/lib` (wired up via `LD_LIBRARY_PATH`). The image runs as a
+non-root user (UID 10001); `/app` is writable for receiver output and SDK logs. Any mounted
+output directory must also be writable by that user. Start with the default container network
+and ensure RTC UDP traffic is allowed:
 
 ```bash
-docker run --rm -it --network host agora-multichannel-linux \
+docker run --rm -it agora-multichannel-linux \
     ./sample_send_wav_multiopus --channelId <name> --token <token> \
     --audioFile "public/8_Channel_ID_signed_16_bit_pcm.wav" \
     --numOfChannels 8 --custom_channel_num 8 --custom_payload_type 125 --sampleRate 48000
 ```
 
 All samples take the same arguments as in "Run Examples" below — just replace the part after
-`docker run ... agora-multichannel-linux` with the command you want.
+`docker run ... agora-multichannel-linux` with the command you want. Use `--network host`
+only when required by the network environment.
 
 ## Run Examples
 
@@ -189,10 +199,15 @@ carries either a token or an appId (pass the appId when no certificate is enable
 
 Asset: `public/VictoriaMulti.mkv` (1 mpeg4 1920x1080 stream + 4 AC-3 44.1 kHz stereo tracks,
 carrying 8 channels in total). At startup, ffmpeg decodes the 4 audio tracks once, resamples
-them to 48 kHz, and reorders them into interleaved 8-channel PCM at
-`/tmp/VictoriaMulti_8ch48k.pcm` (an up-to-date converted file is reused, see the logs). Audio is
+them to 48 kHz, and reorders them into interleaved 8-channel PCM in a per-run private
+`/tmp/agora-multiopus-XXXXXX/` directory (mode 0700, PCM files at most 0600). Audio is
 then sent in 10 ms frames and video on a per-frame PTS cadence, each looping independently.
 Channel count 8 / payload type 125 / 48000 Hz are hardcoded:
+
+The conversion runs on every startup. Temporary files are removed on normal exit or
+initialization failure. A signal that terminates the process by default (such as SIGTERM or
+SIGKILL), or an interruption during conversion, can leave the private directory behind for
+the running user or an administrator to inspect and remove.
 
 ```bash
 # This sample depends on ffmpeg (libavformat/libavcodec/libavutil/libswresample/libswscale);
