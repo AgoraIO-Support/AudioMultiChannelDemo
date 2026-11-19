@@ -6,7 +6,7 @@
 
 ## 结论
 
-Linux Demo 的功能入口比较完整，已经覆盖 4 类发送路径和 4 类接收路径。`Demo/linux/tests/` 现已包含连接失败回归、私有 PCM 文件安全测试、输入校验单测和 MKV 退出回归脚本，但仍没有可重复的多声道媒体正确性分析器。
+Linux Demo 的功能入口比较完整，已经覆盖 4 类发送路径和 4 类接收路径。`Demo/linux/tests/` 现已包含连接失败回归、私有 PCM 文件安全测试、输入校验单测、PCM 逐声道内容分析单测和 MKV 退出回归脚本；`Demo/linux/out/pcm_channel_analyzer` 提供可用于真实接收文件的分析入口。
 
 目前最大的验证风险是把“收到数据、每个声道有非静音信号”当成多声道正确。这个判据不能发现声道顺序错误、串声道、声道复制或声道丢失。
 
@@ -49,17 +49,20 @@ Linux Demo 的功能入口比较完整，已经覆盖 4 类发送路径和 4 类
 - [private_pcm_files_test.cpp](../Demo/linux/tests/private_pcm_files_test.cpp)：检查临时目录 0700、文件权限、重复文件、符号链接防护和析构清理。
 - [multichannel_input_validation_test.cpp](../Demo/linux/tests/multichannel_input_validation_test.cpp)：覆盖 RIFF/WAV chunk 边界、奇数 chunk 对齐、Extensible PCM GUID、非法格式、CLI/声道/采样率错配、短 PCM、PCM 尾帧补零和非整帧 Opus。
 - [run_input_validation_tests.sh](../Demo/linux/tests/run_input_validation_tests.sh)：无需 Agora SDK 即可运行上述输入校验测试。
+- [pcm_channel_analyzer.cpp](../Demo/linux/common/pcm_channel_analyzer.cpp) 与 [pcm_channel_analyzer](../Demo/linux/tools/pcm_channel_analyzer.cpp)：读取 16/24bit WAV 或裸 16bit PCM，计算每路 RMS、峰值、源到接收的相关性和一对一映射，检查声道乱序、丢失、复制和明显串音。
+- [pcm_channel_analyzer_test.cpp](../Demo/linux/tests/pcm_channel_analyzer_test.cpp)：对 3/4/5/6/7/8 声道覆盖正确映射、乱序、复制、静音丢失、声道数错配和比较偏移。
+- [run_pcm_channel_analysis_tests.sh](../Demo/linux/tests/run_pcm_channel_analysis_tests.sh)：无需 Agora SDK 即可运行逐声道分析合成测试。
 - [mkv_exit_regression.sh](../Demo/linux/tests/mkv_exit_regression.sh)：在提供 `APP_TOKEN` 后重复运行正常退出、sender SIGINT、sender SIGTERM、receiver 先退出，并分别覆盖真实临时文件和 `/dev/null`。
 
 ## 部分覆盖
 
-### 声道内容只验证到“非静音”
+### 声道内容分析器已完成，真实媒体门禁仍待执行
 
-当前回归检查每个声道是否有信号，但没有自动比较源文件和接收文件的声道对应关系。现有记录也明确说明，这不能证明逐声道内容、声像定位或无串音。
+逐声道分析器已经可以对 3/4/5/6/7/8 声道计算 RMS、峰值和源到接收的相关性，并以一对一映射检查顺序、丢失、复制和明显串音。当前缺的是在有效凭据下运行各发送/接收组合，把真实落盘 PCM 交给分析器并保存通过结果；Opus 编码、网络抖动和启动延迟也需要按场景选择比较窗口或 `--source-offset-ms`。
 
 ### 4×stereo 到 8ch 的布局
 
-MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧，跨端记录也有 4×stereo 映射证据。但 Linux 接收端没有独立的逐声道内容 oracle，不能仅凭文件可播放或各声道有能量确认映射正确。
+MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧，跨端记录也有 4×stereo 映射证据。逐声道分析器现在可以作为 Linux 接收端的内容 oracle，但仍需用真实 MKV 接收文件执行并保存结果。
 
 ### 24bit 转换
 
@@ -79,7 +82,7 @@ MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧，跨端记录�
 
 | 优先级 | 缺失场景 | 建议验收标准 |
 | --- | --- | --- |
-| P0 | 逐声道内容正确性 | 对 3/4/5/6/7/8ch 计算每路 RMS、峰值和与源声道的相关性，检查顺序、丢失、复制和串音 |
+| P0 | 逐声道内容正确性 | 分析器和 3/4/5/6/7/8ch 合成单测已完成；仍需对真实接收 PCM 执行分析，确认源到接收映射、RMS/峰值、顺序、丢失、复制和串音 |
 | P0 | 可重复的 Linux P0 矩阵 | 将 4 类发送端 × 4 类接收端、偶数/奇数声道、16/24bit 纳入可重跑脚本；结果区分通过、错配、限制和失败 |
 | P0 | 非法输入和参数组合 | 已完成 malformed/truncated WAV、44.1kHz、8/32bit/float、2/9ch、WAV 头与 CLI 不一致、payload 与声道不匹配、短 PCM、非整帧 Opus 的本地单测；仍需真实进程端到端确认连接前拒绝且不发布 |
 | P0 | MKV 音视频退出稳定性 | 代码和 `mkv_exit_regression.sh` 已覆盖统一 teardown、正常退出、SIGINT/SIGTERM、发送端/接收端先退出、真实写盘和 `/dev/null`；尚未使用有效 `APP_TOKEN` 执行真实 ARM64/x86_64 网络回归，仍需确认无卡死、残留线程和未关闭文件 |
@@ -95,7 +98,7 @@ MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧，跨端记录�
 
 ## 建议的第一阶段落地顺序
 
-1. 增加逐声道 PCM 分析器：确认采样率、位深、声道数，计算逐声道峰值/RMS，并用 Channel ID 素材做源到接收声道的相关性比较。
+1. 在 ARM64 P0 多声道矩阵中运行 `pcm_channel_analyzer`，保存有效凭据下 3/4/5/6/7/8ch 的真实映射和统计结果。
 2. 执行 ARM64 P0 多声道矩阵和 MKV 退出脚本，保存有效凭据下的可复现日志与结果。
 3. 执行 x86_64 对等回归，覆盖相同的媒体、输入和退出场景。
 4. 增加真实 codec fallback/`codec_unfallback` 协商测试，断言 codec、远端媒体和失败行为。

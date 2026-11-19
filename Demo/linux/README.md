@@ -30,6 +30,7 @@ Demo/linux/
 ├── common/                   # 拷贝自 LinuxSDKFolder/X86_64 example/common（与 SDK v4.4.30.149 匹配）
 ├── multiopus/                # 发送端 4 个 sample
 ├── receive/                  # 接收端 4 个 sample
+├── tools/                    # 逐声道 PCM 内容分析工具
 ├── public/                   # 素材：8ch_2.opus、8_Channel_ID_signed_16_bit_pcm.wav（及同名 .raw.pcm）、
 │                             # 4/6_Channel_ID_48k.wav（48kHz 重采样版）、8_Channel_ID_24bit.wav（24bit 验证素材）、
 │                             # odd_3ch/odd_5ch/odd_7ch.wav（3/5/7 奇数声道素材，ffmpeg channelmap 自 8ch 素材截取）、
@@ -93,6 +94,33 @@ bash tests/connection_failure_regression.sh
 
 按实际架构将 `Aarch64` 改为 `X86_64`。测试使用无效 App ID，检查连接等待超时、
 退出码和日志；日志目录由脚本打印，不需要真实 App ID 或 token。
+
+### 逐声道 PCM 内容分析
+
+构建会生成 `out/pcm_channel_analyzer`。它读取发送源 WAV（支持 16/24bit PCM）或裸 16bit
+PCM，以及 `sample_receive_pcm_multiopus` 产生的远端裸 PCM，输出每路 RMS、峰值、源到接收
+声道的最佳一对一映射和相关性。相关性、声道数或 RMS 检查失败时返回非零，能够发现声道
+乱序、丢失、复制和明显串音；它不把“文件非空”或“每路有音量”当成通过。
+
+例如 8 声道 WAV 发送并由 UID 8899 接收后：
+
+```bash
+./out/pcm_channel_analyzer \
+  --source public/8_Channel_ID_signed_16_bit_pcm.wav \
+  --received received_8ch.pcm.uid-8899 \
+  --channels 8 --sample-rate 48000 --max-seconds 5
+```
+
+3/5/7 声道分别把 `--channels` 改为对应值；裸 PCM 源还需增加
+`--source-channels N`。若接收录制从源文件中段开始，可用
+`--source-offset-ms <毫秒>` 对齐比较窗口。工具默认比较前 5 秒，适合在每个 3/4/5/6/7/8
+声道回归场景结束后作为门禁命令运行。
+
+不依赖 Agora SDK 的合成测试可运行：
+
+```bash
+bash tests/run_pcm_channel_analysis_tests.sh
+```
 
 ### 手动 CMake
 

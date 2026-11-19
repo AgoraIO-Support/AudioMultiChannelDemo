@@ -33,6 +33,7 @@ Demo/linux/
 ├── common/                   # Copied from LinuxSDKFolder/X86_64 example/common (matches SDK v4.4.30.149)
 ├── multiopus/                # 4 sender samples
 ├── receive/                  # 4 receiver samples
+├── tools/                    # Per-channel PCM content analysis tool
 ├── public/                   # Assets: 8ch_2.opus, 8_Channel_ID_signed_16_bit_pcm.wav (+ same-name .raw.pcm),
 │                             # 4/6_Channel_ID_48k.wav (48 kHz resampled), 8_Channel_ID_24bit.wav (24-bit verification asset),
 │                             # odd_3ch/odd_5ch/odd_7ch.wav (3/5/7 odd-channel assets, cut from the 8ch one via ffmpeg channelmap),
@@ -105,6 +106,35 @@ bash tests/connection_failure_regression.sh
 Use `X86_64` instead of `Aarch64` for that architecture. The test uses an invalid App ID,
 checks the connection wait timeout and exit status, and prints the directory containing its logs;
 no real App ID or token is required.
+
+### Per-channel PCM content analysis
+
+The build also produces `out/pcm_channel_analyzer`. It reads a source WAV (16/24-bit integer PCM)
+or raw 16-bit PCM and the remote raw PCM written by `sample_receive_pcm_multiopus`, then prints RMS,
+peak, the best one-to-one source-to-received mapping, and correlation for every channel. A channel
+count, correlation, or RMS check failure returns non-zero, so channel reordering, loss, duplication,
+and clear crosstalk are detected. A non-empty file or non-silent channels alone are not treated as
+success.
+
+For example, after sending the 8-channel WAV and receiving UID 8899:
+
+```bash
+./out/pcm_channel_analyzer \
+  --source public/8_Channel_ID_signed_16_bit_pcm.wav \
+  --received received_8ch.pcm.uid-8899 \
+  --channels 8 --sample-rate 48000 --max-seconds 5
+```
+
+Use `--channels` 3/4/5/6/7/8 for the corresponding cases. A raw PCM source also needs
+`--source-channels N`. If the receiver starts in the middle of the source file, use
+`--source-offset-ms <milliseconds>` to align the comparison window. The default comparison window
+is the first five seconds, so the tool can be used as a gate after each multi-channel regression.
+
+The SDK-independent synthetic tests can be run with:
+
+```bash
+bash tests/run_pcm_channel_analysis_tests.sh
+```
 
 ### Manual CMake
 

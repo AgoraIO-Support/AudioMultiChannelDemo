@@ -39,3 +39,4 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/out/)
 
 add_subdirectory(multiopus)
 add_subdirectory(receive)
+add_subdirectory(tools)
