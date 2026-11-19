@@ -95,6 +95,28 @@ bash tests/connection_failure_regression.sh
 按实际架构将 `Aarch64` 改为 `X86_64`。测试使用无效 App ID，检查连接等待超时、
 退出码和日志；日志目录由脚本打印，不需要真实 App ID 或 token。
 
+### 生命周期与订阅回归
+
+重新构建后，在有有效凭据和 RTC 网络的 Linux 环境运行：
+
+```bash
+APP_TOKEN='<凭据>' bash tests/lifecycle_regression.sh
+```
+
+`APP_TOKEN` 对应 sample 的 `--token` 参数；无证书项目传 App ID。脚本默认以固定数字 UID
+运行 8 声道 PCM sender/receiver，在同一连接内重复取消发布/重新发布、取消订阅/重新订阅，
+再分别让 sender 和 receiver 以相同 UID 离开并重进，最后在控制信号附近快速退出。它检查
+API 返回值、连接与订阅回调、停止后 PCM 不再增长、恢复后 PCM 重新增长以及进程退出码；
+应用错误与 SDK 日志致命错误也会导致失败；每个进程的 SDK 日志、应用日志和接收文件
+保存在脚本打印的临时目录中。`CYCLES`（默认 3）、`TIMEOUT_SEC`、
+`SETTLE_SEC`、`OBSERVE_SEC`、`MIN_GROWTH_BYTES`（默认 38400 字节）、`CHANNEL_ID`、`SENDER_UID`、`RECEIVER_UID` 和
+`PCM_INPUT` 可通过环境变量调整。使用已有凭据时，确保它适用于所选频道和两个 UID。
+
+两端的 `--lifecycleControl 1` 为测试专用入口：每次 `SIGUSR1` 切换发布或订阅状态，
+脚本会等待上一次操作返回后再发送下一次信号；接收端会逐帧 flush，便于观察文件增长。
+此测试不检查逐声道内容，也不替代长稳、Token 续期或网络恢复测试。
+无需 SDK 和网络的脚本编排正反例可运行 `python3 tests/lifecycle_harness_test.py`。
+
 ### 逐声道 PCM 内容分析
 
 构建会生成 `out/pcm_channel_analyzer`。它读取发送源 WAV（支持 16/24bit PCM）或裸 16bit

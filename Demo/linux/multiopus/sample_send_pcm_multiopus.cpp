@@ -66,6 +66,7 @@ struct SampleOptions {
   int customPayloadType = 0;   // che.audio.custom_payload_type，0 表示按声道数自动推导
   int customSampleRate = 0;    // che.audio.custom_sample_rate，0 表示跟随 sampleRate
   bool codecUnfallback = false;  // che.audio.codec_unfallback，service 级、createRtcConnection 前设置
+  int lifecycleControl = 0;  // opt-in SIGUSR1 publish/unpublish control for regression
 
   struct {
     int sampleRate = DEFAULT_SAMPLE_RATE;
@@ -157,7 +158,10 @@ static void SampleSendAudioTask(
 }
 
 static std::atomic<bool> exitFlag(false);
+static_assert(ATOMIC_BOOL_LOCK_FREE == 2, "signal control requires lock-free atomic bool");
+static std::atomic<bool> togglePublish(false);
 static void SignalHandler(int /*sigNo*/) { exitFlag.store(true, std::memory_order_relaxed); }
+static void TogglePublishHandler(int /*sigNo*/) { togglePublish.store(true, std::memory_order_relaxed); }
 
 int main(int argc, char* argv[]) {
   SampleOptions options;
@@ -181,6 +185,8 @@ int main(int argc, char* argv[]) {
   optParser.add_long_opt("codecUnfallback", &options.codecUnfallback,
                          "Pass 1 to set che.audio.codec_unfallback=[123,124,125] on service "
                          "level before createRtcConnection to force multi-channel codec");
+  optParser.add_long_opt("lifecycleControl", &options.lifecycleControl,
+                         "Set to 1 to toggle publication with SIGUSR1 (regression only)");
 
   if ((argc <= 1) || !optParser.parse_opts(argc, argv)) {
     std::ostringstream strStream;
@@ -257,6 +263,7 @@ int main(int argc, char* argv[]) {
   std::signal(SIGABRT, SignalHandler);
   std::signal(SIGINT, SignalHandler);
   std::signal(SIGTERM, SignalHandler);
+  if (options.lifecycleControl == 1) std::signal(SIGUSR1, TogglePublishHandler);
 
   // Create Agora service
   auto service = createAndInitAgoraService(false, true, true);
@@ -379,20 +386,36 @@ int main(int argc, char* argv[]) {
          options.audio.numOfChannels, options.audio.sampleRate);
   std::thread sendAudioThread(SampleSendAudioTask, options, audioFrameSender, std::ref(exitFlag));
 
+  bool published = true;
+  int result = 0;
+  while (!exitFlag.load(std::memory_order_relaxed)) {
+    if (togglePublish.exchange(false, std::memory_order_relaxed)) {
+      const int ret = published ? connection->getLocalUser()->unpublishAudio(customAudioTrack)
+                                : connection->getLocalUser()->publishAudio(customAudioTrack);
+      AG_LOG(INFO, "LIFECYCLE publish=%d ret=%d", published ? 0 : 1, ret);
+      if (ret != 0) {
+        result = 1;
+        exitFlag.store(true, std::memory_order_relaxed);
+      } else {
+        published = !published;
+      }
+    }
+    usleep(10000);
+  }
   sendAudioThread.join();
 
   // Unpublish audio track
-  connection->getLocalUser()->unpublishAudio(customAudioTrack);
+  if (published) connection->getLocalUser()->unpublishAudio(customAudioTrack);
 
-  // Unregister connection observer
-  connection->unregisterObserver(connObserver.get());
-
-  // Disconnect from Agora channel
+  // Keep the observer alive until the asynchronous disconnect completes.
   if (connection->disconnect()) {
     AG_LOG(ERROR, "Failed to disconnect from Agora channel!");
-    return -1;
+    result = 1;
+  } else if (connObserver->waitUntilDisconnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
+    AG_LOG(ERROR, "Wait for disconnection timed out!");
+    result = 1;
   }
-  AG_LOG(INFO, "Disconnected from Agora channel successfully");
+  connection->unregisterObserver(connObserver.get());
 
   // Destroy Agora connection and related resources
   connObserver.reset();
@@ -406,5 +429,5 @@ int main(int argc, char* argv[]) {
   service->release();
   service = nullptr;
 
-  return 0;
+  return result;
 }

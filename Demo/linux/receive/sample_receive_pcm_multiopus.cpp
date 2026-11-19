@@ -14,6 +14,7 @@
 //
 
 #include <csignal>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <map>
@@ -48,6 +49,7 @@ struct SampleOptions {
   std::string userId;
   std::string remoteUserId;
   std::string audioFile = DEFAULT_AUDIO_FILE;
+  int lifecycleControl = 0;
 
   struct {
     int sampleRate = DEFAULT_SAMPLE_RATE;
@@ -57,8 +59,12 @@ struct SampleOptions {
 
 class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
  public:
-  PcmFrameObserver(const std::string& outputFilePath)
-      : outputFilePath_(outputFilePath) {}
+  PcmFrameObserver(const std::string& outputFilePath, bool flushFrames, int expectedChannels,
+                   int expectedSampleRate)
+      : outputFilePath_(outputFilePath),
+        flushFrames_(flushFrames),
+        expectedChannels_(expectedChannels),
+        expectedSampleRate_(expectedSampleRate) {}
 
   ~PcmFrameObserver() {
     std::lock_guard<std::mutex> lock(file_mutex_);
@@ -93,6 +99,10 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
 
   AudioParams getMixedAudioParams() override { return AudioParams(); };
 
+  bool hasMetadataMismatch() const {
+    return metadataMismatch_.load(std::memory_order_relaxed);
+  }
+
  private:
   struct UserFileState {
     FILE* file = nullptr;
@@ -106,6 +116,10 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
   };
 
   std::string outputFilePath_;
+  bool flushFrames_;
+  int expectedChannels_;
+  int expectedSampleRate_;
+  std::atomic<bool> metadataMismatch_{false};
   std::map<std::string, UserFileState> files_;
   std::mutex file_mutex_;
 };
@@ -130,8 +144,20 @@ bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
     AG_LOG(INFO, "Created file %s for remote user %s", fileName.c_str(), uid.c_str());
   }
 
-  // Write PCM samples（16bit 交错，声道数与 setPlaybackAudioFrameBeforeMixingParameters 一致）
-  size_t writeBytes = audioFrame.samplesPerChannel * audioFrame.channels * sizeof(int16_t);
+  if (audioFrame.channels != expectedChannels_ || audioFrame.samplesPerSec != expectedSampleRate_) {
+    metadataMismatch_.store(true, std::memory_order_relaxed);
+    AG_LOG(ERROR,
+           "PCM_FRAME_METADATA_MISMATCH user=%s gotChannels=%d expectedChannels=%d "
+           "gotSampleRate=%d expectedSampleRate=%d",
+           uid.c_str(), audioFrame.channels, expectedChannels_, audioFrame.samplesPerSec,
+           expectedSampleRate_);
+    return false;
+  }
+
+  // Write complete interleaved PCM frames. Use the configured channel count
+  // after validating the callback metadata, so odd-channel files cannot gain
+  // or lose trailing samples when the SDK reports a transient frame shape.
+  size_t writeBytes = audioFrame.samplesPerChannel * expectedChannels_ * sizeof(int16_t);
   if (!audioFrame.buffer || writeBytes == 0) {
     AG_LOG(WARNING, "Empty audio frame received, skip writing");
     return true;
@@ -140,12 +166,25 @@ bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
     AG_LOG(ERROR, "Error writing decoded audio data: %s", std::strerror(errno));
     return false;
   }
+  if (flushFrames_ && fflush(state.file) != 0) {
+    AG_LOG(ERROR, "Error flushing decoded audio data: %s", std::strerror(errno));
+    return false;
+  }
   state.fileSize += writeBytes;
   state.frameCount++;
   state.lastRenderTimeMs = audioFrame.renderTimeMs;
   state.lastRtpTimestamp = audioFrame.rtpTimestamp;
   state.channels = audioFrame.channels;
   state.sampleRate = audioFrame.samplesPerSec;
+
+  if (state.frameCount == 1) {
+    AG_LOG(INFO,
+           "PCM_FRAME_METADATA user=%s channels=%d samplesPerChannel=%d sampleRate=%d "
+           "rtpTimestamp=%u renderTimeMs=%lld",
+           uid.c_str(), audioFrame.channels, audioFrame.samplesPerChannel,
+           audioFrame.samplesPerSec, audioFrame.rtpTimestamp,
+           static_cast<long long>(audioFrame.renderTimeMs));
+  }
 
   // Close the file if size limit is reached
   if (state.fileSize >= DEFAULT_FILE_LIMIT) {
@@ -156,8 +195,11 @@ bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
   return true;
 }
 
-static bool exitFlag = false;
-static void SignalHandler(int sigNo) { exitFlag = true; }
+static_assert(ATOMIC_BOOL_LOCK_FREE == 2, "signal control requires lock-free atomic bool");
+static std::atomic<bool> exitFlag(false);
+static std::atomic<bool> toggleSubscribe(false);
+static void SignalHandler(int /*sigNo*/) { exitFlag.store(true, std::memory_order_relaxed); }
+static void ToggleSubscribeHandler(int /*sigNo*/) { toggleSubscribe.store(true, std::memory_order_relaxed); }
 
 int main(int argc, char* argv[]) {
   SampleOptions options;
@@ -169,6 +211,8 @@ int main(int argc, char* argv[]) {
   optParser.add_long_opt("remoteUserId", &options.remoteUserId,
                          "The remote user to receive stream from (default: subscribe all)");
   optParser.add_long_opt("audioFile", &options.audioFile, "Output audio file");
+  optParser.add_long_opt("lifecycleControl", &options.lifecycleControl,
+                         "Set to 1 to toggle subscription with SIGUSR1 (regression only)");
   optParser.add_long_opt("sampleRate", &options.audio.sampleRate,
                          "Sample rate for received audio (48000)");
   optParser.add_long_opt("numOfChannels", &options.audio.numOfChannels,
@@ -203,6 +247,8 @@ int main(int argc, char* argv[]) {
   std::signal(SIGQUIT, SignalHandler);
   std::signal(SIGABRT, SignalHandler);
   std::signal(SIGINT, SignalHandler);
+  std::signal(SIGTERM, SignalHandler);
+  if (options.lifecycleControl == 1) std::signal(SIGUSR1, ToggleSubscribeHandler);
 
   // Create Agora service
   auto service = createAndInitAgoraService(false, true, true);
@@ -249,7 +295,9 @@ int main(int argc, char* argv[]) {
 
   // Register audio frame observer to receive audio stream.
   // 回调声道数必须与发送端一致才能拿到完整多声道（spec 场景5.1）
-  auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(options.audioFile);
+  auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(
+      options.audioFile, options.lifecycleControl == 1, options.audio.numOfChannels,
+      options.audio.sampleRate);
   if (connection->getLocalUser()->setPlaybackAudioFrameBeforeMixingParameters(
           options.audio.numOfChannels, options.audio.sampleRate)) {
     AG_LOG(ERROR, "Failed to set audio frame parameters!");
@@ -266,31 +314,49 @@ int main(int argc, char* argv[]) {
 
   // Wait until connected before entering the receive loop；
   // 连接超时/失败则不进入接收循环，走下方清理后退出
+  int result = 0;
   if (connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
     AG_LOG(ERROR, "Wait for connection timeout or failure!");
+    result = 1;
   } else {
     // Start receiving incoming media data
     AG_LOG(INFO, "Start receiving multi-channel audio data (channels=%d, sampleRate=%d) ...",
            options.audio.numOfChannels, options.audio.sampleRate);
 
     // Periodically check exit flag
-    while (!exitFlag) {
+    bool subscribed = true;
+    while (!exitFlag.load(std::memory_order_relaxed)) {
+      if (toggleSubscribe.exchange(false, std::memory_order_relaxed)) {
+        int ret;
+        if (options.remoteUserId.empty()) {
+          ret = subscribed ? connection->getLocalUser()->unsubscribeAllAudio()
+                           : connection->getLocalUser()->subscribeAllAudio();
+        } else {
+          ret = subscribed ? connection->getLocalUser()->unsubscribeAudio(options.remoteUserId.c_str())
+                           : connection->getLocalUser()->subscribeAudio(options.remoteUserId.c_str());
+        }
+        AG_LOG(INFO, "LIFECYCLE subscribe=%d ret=%d", subscribed ? 0 : 1, ret);
+        if (ret != 0) { result = 1; break; }
+        subscribed = !subscribed;
+      }
       usleep(10000);
     }
   }
 
+  if (pcmFrameObserver->hasMetadataMismatch()) result = 1;
+
   // Unregister audio frame observer
   localUserObserver->unsetAudioFrameObserver();
 
-  // Unregister connection observer
-  connection->unregisterObserver(connObserver.get());
-
-  // Disconnect from Agora channel
+  // Keep the observer alive until the asynchronous disconnect completes.
   if (connection->disconnect()) {
     AG_LOG(ERROR, "Failed to disconnect from Agora channel!");
-    return -1;
+    result = 1;
+  } else if (connObserver->waitUntilDisconnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
+    AG_LOG(ERROR, "Wait for disconnection timed out!");
+    result = 1;
   }
-  AG_LOG(INFO, "Disconnected from Agora channel successfully");
+  connection->unregisterObserver(connObserver.get());
 
   // Destroy Agora connection and related resources
   localUserObserver.reset();
@@ -301,5 +367,5 @@ int main(int argc, char* argv[]) {
   service->release();
   service = nullptr;
 
-  return 0;
+  return result;
 }

@@ -12,6 +12,7 @@
 #include <string>
 #include <fstream>
 #include <cstring>
+#include <cstdlib>
 #include <cctype>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -47,6 +48,9 @@ agora::base::IAgoraService* createAndInitAgoraService(bool enableAudioDevice,
   AG_LOG(INFO, "SDK version: %d\n", buildNum);
   auto service = createAgoraService();
   agora::base::AgoraServiceConfiguration scfg;
+  const char* requestedLogPath = std::getenv("AGORA_LOG_PATH");
+  const char* logPath = requestedLogPath && *requestedLogPath ? requestedLogPath : DEFAULT_LOG_PATH;
+  if (requestedLogPath && *requestedLogPath) scfg.logConfig.filePath = logPath;
   scfg.appId = appid;
   scfg.enableAudioProcessor = enableAudioProcessor;
   scfg.enableAudioDevice = enableAudioDevice;
@@ -59,8 +63,8 @@ agora::base::IAgoraService* createAndInitAgoraService(bool enableAudioDevice,
     return nullptr;
   }
 
-  AG_LOG(INFO, "Created log file at %s", DEFAULT_LOG_PATH);
-  if (service->setLogFile(DEFAULT_LOG_PATH, DEFAULT_LOG_SIZE) != 0) {
+  AG_LOG(INFO, "Created log file at %s", logPath);
+  if (service->setLogFile(logPath, DEFAULT_LOG_SIZE) != 0) {
     return nullptr;
   }
  if(verifyLicense() != 0) return nullptr;

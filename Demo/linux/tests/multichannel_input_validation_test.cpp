@@ -118,6 +118,15 @@ void expectWavValidationRejected(const std::vector<uint8_t>& bytes) {
 }  // namespace
 
 int main() {
+  const uint8_t negativeOne[3] = {0xff, 0xff, 0xff};
+  const uint8_t negativeMin[3] = {0x00, 0x00, 0x80};
+  const uint8_t positiveMax[3] = {0xff, 0xff, 0x7f};
+  const uint8_t positiveOne[3] = {0x01, 0x00, 0x00};
+  assert(agora_demo::decodePcm24LeToS16(negativeOne) == -1);
+  assert(agora_demo::decodePcm24LeToS16(negativeMin) == -32768);
+  assert(agora_demo::decodePcm24LeToS16(positiveMax) == 32767);
+  assert(agora_demo::decodePcm24LeToS16(positiveOne) == 0);
+
   const uint16_t channels = 8;
   const uint32_t sampleRate = 48000;
   const size_t frameBytes = channels * 2 * (sampleRate / 100);

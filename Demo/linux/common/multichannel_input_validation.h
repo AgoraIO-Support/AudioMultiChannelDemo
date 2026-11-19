@@ -44,6 +44,12 @@ bool validateRawPcmFile(const std::string& path, int sampleRate, int channels,
 // Encoded Opus frames cannot be padded. The file must contain whole 640-byte frames.
 bool validateOpusRawFile(const std::string& path, size_t frameBytes, std::string* error);
 
+// Decode one little-endian signed 24-bit PCM sample into the signed 16-bit
+// value sent to the SDK. The conversion is explicit about sign extension and
+// arithmetic right shift so the sender and content analyzer use identical
+// semantics on every supported architecture.
+int16_t decodePcm24LeToS16(const uint8_t* bytes);
+
 // Reads one frame. A partial final frame is zero-padded and reported as kPadded.
 FrameReadResult readFrameWithPadding(FILE* file, void* buffer, size_t frameBytes,
                                      size_t* bytesRead, std::string* error);

@@ -57,6 +57,14 @@ class EncodedAudioReceiver : public agora::rtc::IAudioEncodedFrameReceiver {
     }
   }
 
+  bool hasTimestampIssue() {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+    for (const auto& item : files_) {
+      if (item.second.timestampIssue) return true;
+    }
+    return false;
+  }
+
   bool onEncodedAudioFrameReceived(
       const uint8_t* packet, size_t length,
       const agora::media::base::AudioEncodedFrameInfo& info) override;
@@ -72,6 +80,7 @@ class EncodedAudioReceiver : public agora::rtc::IAudioEncodedFrameReceiver {
     uint64_t fileSize = 0;
     uint64_t frameCount = 0;
     uint64_t lastSendTs = 0;
+    bool timestampIssue = false;
     uint8_t codec = 0;
     size_t lastFrameLength = 0;
   };
@@ -102,11 +111,34 @@ bool EncodedAudioReceiver::onEncodedAudioFrameReceivedForUser(
     AG_LOG(INFO, "Created file %s for remote user %s", fileName.c_str(), userId.c_str());
   }
 
-  // 回调约 20ms/帧，逐帧打日志会刷屏：保留首帧，之后每 250 帧（约 5s）打一次
-  if (state.frameCount++ % 250 == 0) {
+  const bool hasPreviousTimestamp = state.frameCount != 0;
+  const uint64_t timestampDelta = hasPreviousTimestamp && info.sendTs >= state.lastSendTs
+                                      ? info.sendTs - state.lastSendTs
+                                      : 0;
+  // The first callback after subscription may cover packets accumulated while
+  // the remote track was being subscribed (for example, a 2880-tick gap).
+  // Starting with the second interval, enforce monotonic 20 ms Opus pacing;
+  // later gaps indicate a real timestamp discontinuity.
+  const bool afterSubscriptionWarmup = state.frameCount > 1;
+  if (hasPreviousTimestamp && afterSubscriptionWarmup &&
+      (info.sendTs <= state.lastSendTs || timestampDelta > 1920)) {
+    state.timestampIssue = true;
+    AG_LOG(ERROR,
+           "ENCODED_TIMESTAMP_GAP user=%s previous=%llu current=%llu delta=%llu",
+           userId.c_str(), static_cast<unsigned long long>(state.lastSendTs),
+           static_cast<unsigned long long>(info.sendTs),
+           static_cast<unsigned long long>(timestampDelta));
+  }
+  ++state.frameCount;
+
+  // Keep the first five frames for interval assertions, then sample every
+  // 250 frames to avoid flooding the application log.
+  if (state.frameCount <= 5 || state.frameCount % 250 == 0) {
     AG_LOG(INFO,
-           "Received encoded audio frame: user=%s length=%zu codec=%d sendTs=%llu (frame #%llu)",
+           "Received encoded audio frame: user=%s length=%zu codec=%d sendTs=%llu delta=%llu "
+           "(frame #%llu)",
            userId.c_str(), length, info.codec, (unsigned long long)info.sendTs,
+           static_cast<unsigned long long>(timestampDelta),
            (unsigned long long)state.frameCount);
   }
 
@@ -234,6 +266,7 @@ int main(int argc, char* argv[]) {
 
   // Destroy Agora connection and related resources
   localUserObserver.reset();
+  const bool timestampIssue = audioReceiver->hasTimestampIssue();
   audioReceiver.reset();
   connection = nullptr;
 
@@ -241,5 +274,5 @@ int main(int argc, char* argv[]) {
   service->release();
   service = nullptr;
 
-  return 0;
+  return timestampIssue ? 1 : 0;
 }

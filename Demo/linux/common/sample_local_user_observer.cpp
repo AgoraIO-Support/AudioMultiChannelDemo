@@ -271,11 +271,11 @@ void SampleLocalUserObserver::removeRemoteAudioTrackLocked(const std::string& us
   } else if (last_audio_uid_ == userId) {
     last_audio_uid_ = remote_audio_tracks_.begin()->first;
   }
-  if (remote_audio_tracks_.empty() && audio_frame_observer_registered_ &&
-      audio_frame_observer_) {
-    local_user_->unregisterAudioFrameObserver(audio_frame_observer_);
-    audio_frame_observer_registered_ = false;
-  }
+  // The PCM observer belongs to the local user, not to an individual track.
+  // Keep it registered across the last track disappearing or being replaced;
+  // unregistering and registering again inside the subscription callback can
+  // leave before-mixing PCM callbacks stopped after a remote republish.
+  // unsetAudioFrameObserver()/clearRemoteTrackStates() handle final teardown.
 }
 
 void SampleLocalUserObserver::removeRemoteVideoTrackLocked(const std::string& userId) {
@@ -350,6 +350,7 @@ void SampleLocalUserObserver::clearRemoteTrackStates() {
 void SampleLocalUserObserver::onUserAudioTrackSubscribed(
     agora::user_id_t userId,
     agora::agora_refptr<agora::rtc::IRemoteAudioTrack> audioTrack) {
+  AG_LOG(INFO, "onUserAudioTrackSubscribed: userId %s", normalizeUserId(userId).c_str());
   std::lock_guard<std::mutex> lock(observer_lock_);
   const std::string uid = normalizeUserId(userId);
   removeRemoteAudioTrackLocked(uid);

@@ -107,13 +107,18 @@ static void sendOnePcmFrame(const SampleOptions& options,
   }
 
   // 每 10ms 帧的样本数与字节数
-  int samplesPer10ms = wav.sampleRate / 100;
-  int originalSampleBytes = wav.bitsPerSample / 8;  // 24bit=3 字节，16bit=2 字节
-  int originalFrameBytes = originalSampleBytes * wav.channels * samplesPer10ms;
-  int outputFrameBytes = sizeof(int16_t) * wav.channels * samplesPer10ms;  // 输出恒为 16bit
+  const int samplesPer10ms = static_cast<int>(wav.sampleRate / 100);
+  const size_t originalSampleBytes = wav.bitsPerSample / 8;  // 24bit=3 字节，16bit=2 字节
+  const size_t samplesPerFrame = static_cast<size_t>(wav.channels) * samplesPer10ms;
+  const size_t originalFrameBytes = originalSampleBytes * samplesPerFrame;
+  const size_t outputFrameBytes = sizeof(int16_t) * samplesPerFrame;  // 输出恒为 16bit
 
-  uint8_t* inputBuf = new uint8_t[originalFrameBytes];
-  uint8_t* outputBuf = new uint8_t[outputFrameBytes];
+  // Keep the input and output buffers frame-aligned. This is important for
+  // odd channel counts: a partial final WAV frame must be padded as samples,
+  // never as an arbitrary byte count that can shift the next interleaved
+  // channel.
+  std::vector<uint8_t> inputBuf(originalFrameBytes, 0);
+  std::vector<uint8_t> outputBuf(outputFrameBytes, 0);
 
   if (dataBytesRead == wav.dataSize) {
     clearerr(file);
@@ -123,57 +128,50 @@ static void sendOnePcmFrame(const SampleOptions& options,
       file = nullptr;
     }
     dataBytesRead = 0;
-    delete[] inputBuf;
-    delete[] outputBuf;
     return;
   }
 
   const uint64_t remaining = wav.dataSize - dataBytesRead;
   const size_t bytesToRead = static_cast<size_t>(
       std::min<uint64_t>(remaining, static_cast<uint64_t>(originalFrameBytes)));
-  const size_t bytesRead = fread(inputBuf, 1, bytesToRead, file);
+  if (bytesToRead % originalSampleBytes != 0) {
+    AG_LOG(ERROR, "WAV data ended in a partial %zu-byte sample", originalSampleBytes);
+    fclose(file);
+    file = nullptr;
+    return;
+  }
+  const size_t bytesRead = fread(inputBuf.data(), 1, bytesToRead, file);
   if (bytesRead != bytesToRead) {
     AG_LOG(ERROR, "Error reading WAV data: %s", std::strerror(errno));
     fclose(file);
     file = nullptr;
-    delete[] inputBuf;
-    delete[] outputBuf;
     return;
   }
   dataBytesRead += bytesRead;
   if (bytesRead < static_cast<size_t>(originalFrameBytes)) {
     // The final PCM frame is allowed to be short; pad samples with silence.
-    std::memset(inputBuf + bytesRead, 0,
+    std::memset(inputBuf.data() + bytesRead, 0,
                 static_cast<size_t>(originalFrameBytes) - bytesRead);
   }
 
   if (wav.bitsPerSample == 24) {
     // 24bit -> 16bit：小端读取、符号扩展、右移 8bit（spec 场景2.2）
-    int totalSamples = wav.channels * samplesPer10ms;
-    for (int i = 0; i < totalSamples; i++) {
-      const uint8_t* sample24 = &inputBuf[i * 3];
-      int32_t sample32 = sample24[0] | (sample24[1] << 8) | (sample24[2] << 16);
-      if (sample32 & 0x800000) {
-        sample32 |= (int32_t)0xFF000000;  // 符号扩展
-      }
-      int16_t sample16 = static_cast<int16_t>(sample32 >> 8);
-      outputBuf[i * 2] = static_cast<uint8_t>(sample16 & 0xFF);
-      outputBuf[i * 2 + 1] = static_cast<uint8_t>((sample16 >> 8) & 0xFF);
+    for (size_t i = 0; i < samplesPerFrame; ++i) {
+      const int16_t sample16 = agora_demo::decodePcm24LeToS16(inputBuf.data() + i * 3);
+      outputBuf[i * 2] = static_cast<uint8_t>(sample16 & 0xff);
+      outputBuf[i * 2 + 1] = static_cast<uint8_t>((sample16 >> 8) & 0xff);
     }
   } else {
     // 16bit 直接发送（spec 场景2.1）
-    memcpy(outputBuf, inputBuf, outputFrameBytes);
+    std::memcpy(outputBuf.data(), inputBuf.data(), outputFrameBytes);
   }
 
   // 输出给 SDK 的位深恒为 16bit（TWO_BYTES_PER_SAMPLE）
-  if (audioFrameSender->sendAudioPcmData(outputBuf, 0, 0, samplesPer10ms,
+  if (audioFrameSender->sendAudioPcmData(outputBuf.data(), 0, 0, samplesPer10ms,
                                          agora::rtc::TWO_BYTES_PER_SAMPLE, wav.channels,
                                          wav.sampleRate) < 0) {
     AG_LOG(ERROR, "Failed to send audio frame!");
   }
-
-  delete[] inputBuf;
-  delete[] outputBuf;
 }
 
 static void SampleSendAudioTask(

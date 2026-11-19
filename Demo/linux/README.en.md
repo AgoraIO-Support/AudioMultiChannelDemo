@@ -107,6 +107,24 @@ Use `X86_64` instead of `Aarch64` for that architecture. The test uses an invali
 checks the connection wait timeout and exit status, and prints the directory containing its logs;
 no real App ID or token is required.
 
+### Lifecycle and subscription regression
+
+After rebuilding, run `APP_TOKEN='<credential>' bash tests/lifecycle_regression.sh` on Linux
+with RTC network access. The credential is the value accepted by the samples' `--token` option;
+use an App ID for a project without certificate authentication. The script cycles publication
+and subscription on the same connections, restarts each participant with the same UID, and
+tests rapid signal-driven exit. It checks API results, callbacks, PCM growth, process exit and
+application or fatal SDK logging errors. Separate SDK logs, application logs, and PCM are retained
+in the printed temporary directory. Configure `CYCLES`, `TIMEOUT_SEC`,
+`SETTLE_SEC`, `OBSERVE_SEC`, `MIN_GROWTH_BYTES` (default 38400), `CHANNEL_ID`, `SENDER_UID`, `RECEIVER_UID`, and `PCM_INPUT` as
+needed. Credentials must be valid for the chosen channel and both UIDs.
+
+The opt-in `--lifecycleControl 1` uses SIGUSR1 to toggle publication or subscription; wait for
+each operation's log before sending another signal. The receiver flushes each frame in this
+mode. This checks file growth, not channel content, and does not replace long-duration, token
+renewal, or network recovery testing. Run `python3 tests/lifecycle_harness_test.py` for the
+offline positive and negative tests of the script itself.
+
 ### Per-channel PCM content analysis
 
 The build also produces `out/pcm_channel_analyzer`. It reads a source WAV (16/24-bit integer PCM)

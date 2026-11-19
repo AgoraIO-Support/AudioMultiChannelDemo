@@ -297,6 +297,22 @@ bool validateOpusRawFile(const std::string& path, size_t frameBytes, std::string
   return true;
 }
 
+int16_t decodePcm24LeToS16(const uint8_t* bytes) {
+  if (!bytes) return 0;
+  const uint32_t raw = static_cast<uint32_t>(bytes[0]) |
+                       (static_cast<uint32_t>(bytes[1]) << 8) |
+                       (static_cast<uint32_t>(bytes[2]) << 16);
+  const int64_t signedValue = (raw & 0x00800000u)
+                                  ? static_cast<int64_t>(raw) - 0x01000000ll
+                                  : static_cast<int64_t>(raw);
+  // C++11 leaves right-shift of a negative signed integer implementation
+  // defined. Spell out arithmetic shift (floor(value / 256)) instead.
+  const int64_t shifted = signedValue >= 0
+                              ? signedValue / 256
+                              : -(((-signedValue) + 255) / 256);
+  return static_cast<int16_t>(shifted);
+}
+
 FrameReadResult readFrameWithPadding(FILE* file, void* buffer, size_t frameBytes,
                                      size_t* bytesRead, std::string* error) {
   if (bytesRead) *bytesRead = 0;

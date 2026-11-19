@@ -12,6 +12,10 @@ public:
 	{
 		return connect_ready_.Wait(waitMs);
 	}
+	int waitUntilDisconnected(int waitMs)
+	{
+		return disconnect_ready_.Wait(waitMs);
+	}
 
 public: // IRtcConnectionObserver
 	void onConnected(const agora::rtc::TConnectionInfo &connectionInfo,

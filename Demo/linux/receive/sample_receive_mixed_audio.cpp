@@ -15,6 +15,7 @@
 //
 
 #include <csignal>
+#include <atomic>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -54,11 +55,14 @@ struct SampleOptions {
 
 class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
  public:
-  PcmFrameObserver(const std::string& outputFilePath)
+  PcmFrameObserver(const std::string& outputFilePath, int expectedChannels,
+                   int expectedSampleRate)
       : outputFilePath_(outputFilePath),
         pcmFile_(nullptr),
         fileCount(0),
-        fileSize_(0) {}
+        fileSize_(0),
+        expectedChannels_(expectedChannels),
+        expectedSampleRate_(expectedSampleRate) {}
 
   ~PcmFrameObserver() {
     if (pcmFile_) fclose(pcmFile_);
@@ -90,11 +94,25 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
 
   AudioParams getMixedAudioParams() override { return AudioParams(); };
 
+  bool hasMetadataMismatch() const {
+    return metadataMismatch_.load(std::memory_order_relaxed);
+  }
+
+  bool hasTimestampRegression() const {
+    return timestampRegression_.load(std::memory_order_relaxed);
+  }
+
  private:
   std::string outputFilePath_;
   FILE* pcmFile_;
   int fileCount;
   int fileSize_;
+  int expectedChannels_;
+  int expectedSampleRate_;
+  uint64_t frameCount_{0};
+  int64_t lastRenderTimeMs_{0};
+  std::atomic<bool> metadataMismatch_{false};
+  std::atomic<bool> timestampRegression_{false};
 };
 
 bool PcmFrameObserver::onPlaybackAudioFrame(const char* channelId, AudioFrame& audioFrame) {
@@ -109,8 +127,24 @@ bool PcmFrameObserver::onPlaybackAudioFrame(const char* channelId, AudioFrame& a
     AG_LOG(INFO, "Created file %s to save received mixed PCM samples", fileName.c_str());
   }
 
-  // Write PCM samples（混音后 PCM，16bit 交错，声道数恒为 2）
-  size_t writeBytes = audioFrame.samplesPerChannel * audioFrame.channels * sizeof(int16_t);
+  if (audioFrame.channels != expectedChannels_ || audioFrame.samplesPerSec != expectedSampleRate_) {
+    metadataMismatch_.store(true, std::memory_order_relaxed);
+    AG_LOG(ERROR,
+           "MIXED_FRAME_METADATA_MISMATCH gotChannels=%d expectedChannels=%d "
+           "gotSampleRate=%d expectedSampleRate=%d",
+           audioFrame.channels, expectedChannels_, audioFrame.samplesPerSec,
+           expectedSampleRate_);
+    return false;
+  }
+  if (frameCount_ > 0 && audioFrame.renderTimeMs < lastRenderTimeMs_) {
+    timestampRegression_.store(true, std::memory_order_relaxed);
+    AG_LOG(ERROR, "MIXED_TIMESTAMP_REGRESSION previous=%lld current=%lld",
+           static_cast<long long>(lastRenderTimeMs_),
+           static_cast<long long>(audioFrame.renderTimeMs));
+  }
+
+  // Write complete mixed frames using the requested output channel count.
+  size_t writeBytes = audioFrame.samplesPerChannel * expectedChannels_ * sizeof(int16_t);
   if (!audioFrame.buffer || writeBytes == 0) {
     AG_LOG(WARNING, "Empty audio frame received, skip writing");
     return true;
@@ -120,6 +154,15 @@ bool PcmFrameObserver::onPlaybackAudioFrame(const char* channelId, AudioFrame& a
     return false;
   }
   fileSize_ += writeBytes;
+  ++frameCount_;
+  lastRenderTimeMs_ = audioFrame.renderTimeMs;
+  if (frameCount_ == 1) {
+    AG_LOG(INFO,
+           "MIXED_FRAME_METADATA channels=%d samplesPerChannel=%d sampleRate=%d "
+           "renderTimeMs=%lld",
+           audioFrame.channels, audioFrame.samplesPerChannel, audioFrame.samplesPerSec,
+           static_cast<long long>(audioFrame.renderTimeMs));
+  }
 
   // Close the file if size limit is reached
   if (fileSize_ >= DEFAULT_FILE_LIMIT) {
@@ -221,7 +264,8 @@ int main(int argc, char* argv[]) {
 
   // Register audio frame observer to receive the mixed audio stream.
   // 多声道流混音输出恒为 2 声道（奇数声道混一路、偶数声道混一路，spec 场景7.1）
-  auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(options.audioFile);
+  auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(
+      options.audioFile, options.audio.numOfChannels, options.audio.sampleRate);
   if (connection->getLocalUser()->setPlaybackAudioFrameParameters(
           options.audio.numOfChannels, options.audio.sampleRate,
           agora::rtc::RAW_AUDIO_FRAME_OP_MODE_TYPE::RAW_AUDIO_FRAME_OP_MODE_READ_ONLY,
@@ -268,6 +312,8 @@ int main(int argc, char* argv[]) {
 
   // Destroy Agora connection and related resources
   localUserObserver.reset();
+  const bool metadataMismatch = pcmFrameObserver->hasMetadataMismatch();
+  const bool timestampRegression = pcmFrameObserver->hasTimestampRegression();
   pcmFrameObserver.reset();
   connection = nullptr;
 
@@ -275,5 +321,5 @@ int main(int argc, char* argv[]) {
   service->release();
   service = nullptr;
 
-  return 0;
+  return (metadataMismatch || timestampRegression) ? 1 : 0;
 }

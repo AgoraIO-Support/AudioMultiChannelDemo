@@ -7,6 +7,13 @@ file(GLOB SAMPLE_SEND_PCM_MULTIOPUS_CPP_FILES
      "${PROJECT_SOURCE_DIR}/../common/*.cpp")
 add_executable(sample_send_pcm_multiopus ${SAMPLE_SEND_PCM_MULTIOPUS_CPP_FILES})
 
+# Ordinary Opus peer used by codec fallback/unfallback regression. It does
+# not set multi-channel private parameters.
+file(GLOB SAMPLE_SEND_PCM_OPUS_CPP_FILES
+     "${PROJECT_SOURCE_DIR}/sample_send_pcm_opus.cpp"
+     "${PROJECT_SOURCE_DIR}/../common/*.cpp")
+add_executable(sample_send_pcm_opus ${SAMPLE_SEND_PCM_OPUS_CPP_FILES})
+
 # Build sample_send_wav_multiopus (multi-channel WAV sender)
 file(GLOB SAMPLE_SEND_WAV_MULTIOPUS_CPP_FILES
      "${PROJECT_SOURCE_DIR}/sample_send_wav_multiopus.cpp"

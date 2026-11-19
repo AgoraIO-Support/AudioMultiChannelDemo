@@ -64,8 +64,11 @@ struct SampleOptions {
 
 class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
  public:
-  PcmFrameObserver(const std::string& outputFilePath)
-      : outputFilePath_(outputFilePath) {}
+  PcmFrameObserver(const std::string& outputFilePath, int expectedChannels,
+                   int expectedSampleRate)
+      : outputFilePath_(outputFilePath),
+        expectedChannels_(expectedChannels),
+        expectedSampleRate_(expectedSampleRate) {}
 
   ~PcmFrameObserver() {
     std::lock_guard<std::mutex> lock(file_mutex_);
@@ -100,6 +103,10 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
 
   AudioParams getMixedAudioParams() override { return AudioParams(); };
 
+  bool hasMetadataMismatch() const {
+    return metadataMismatch_.load(std::memory_order_relaxed);
+  }
+
  private:
   struct UserFileState {
     FILE* file = nullptr;
@@ -113,6 +120,9 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
   };
 
   std::string outputFilePath_;
+  int expectedChannels_;
+  int expectedSampleRate_;
+  std::atomic<bool> metadataMismatch_{false};
   std::map<std::string, UserFileState> files_;
   std::mutex file_mutex_;
 };
@@ -132,6 +142,10 @@ class YuvFrameObserver : public agora::rtc::IVideoFrameObserver2 {
   void onFrame(const char* channelId, agora::user_id_t remoteUid,
                const agora::media::base::VideoFrame* frame) override;
 
+  bool hasTimestampRegression() const {
+    return timestampRegression_.load(std::memory_order_relaxed);
+  }
+
  private:
   struct UserFileState {
     FILE* file = nullptr;
@@ -142,6 +156,7 @@ class YuvFrameObserver : public agora::rtc::IVideoFrameObserver2 {
   };
 
   std::string outputFilePath_;
+  std::atomic<bool> timestampRegression_{false};
   std::map<std::string, UserFileState> files_;
   std::mutex file_mutex_;
 };
@@ -163,8 +178,18 @@ bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
     AG_LOG(INFO, "Created file %s for remote user %s", fileName.c_str(), uid.c_str());
   }
 
-  // Write PCM samples（16bit 交错，声道数与 setPlaybackAudioFrameBeforeMixingParameters 一致）
-  size_t writeBytes = audioFrame.samplesPerChannel * audioFrame.channels * sizeof(int16_t);
+  if (audioFrame.channels != expectedChannels_ || audioFrame.samplesPerSec != expectedSampleRate_) {
+    metadataMismatch_.store(true, std::memory_order_relaxed);
+    AG_LOG(ERROR,
+           "PCM_FRAME_METADATA_MISMATCH user=%s gotChannels=%d expectedChannels=%d "
+           "gotSampleRate=%d expectedSampleRate=%d",
+           uid.c_str(), audioFrame.channels, expectedChannels_, audioFrame.samplesPerSec,
+           expectedSampleRate_);
+    return false;
+  }
+
+  // Write complete interleaved PCM frames after checking callback metadata.
+  size_t writeBytes = audioFrame.samplesPerChannel * expectedChannels_ * sizeof(int16_t);
   if (!audioFrame.buffer || writeBytes == 0) {
     AG_LOG(WARNING, "Empty audio frame received, skip writing");
     return true;
@@ -179,6 +204,15 @@ bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
   state.lastRtpTimestamp = audioFrame.rtpTimestamp;
   state.channels = audioFrame.channels;
   state.sampleRate = audioFrame.samplesPerSec;
+
+  if (state.frameCount == 1) {
+    AG_LOG(INFO,
+           "PCM_FRAME_METADATA user=%s channels=%d samplesPerChannel=%d sampleRate=%d "
+           "rtpTimestamp=%u renderTimeMs=%lld",
+           uid.c_str(), audioFrame.channels, audioFrame.samplesPerChannel,
+           audioFrame.samplesPerSec, audioFrame.rtpTimestamp,
+           static_cast<long long>(audioFrame.renderTimeMs));
+  }
 
   // 每 500 帧（10ms/帧，~5s）打一次进度日志
   if (state.frameCount % 500 == 0) {
@@ -227,6 +261,16 @@ void YuvFrameObserver::onFrame(const char* channelId, agora::user_id_t remoteUid
   // 逐行写 Y/U/V 平面（stride 可能大于 width）
   const int width = videoFrame->width;
   const int height = videoFrame->height;
+  if (width <= 0 || height <= 0 || (width & 1) || (height & 1)) {
+    AG_LOG(ERROR, "Invalid video frame dimensions %dx%d", width, height);
+    return;
+  }
+  if (state.frameCount > 0 && videoFrame->renderTimeMs < state.lastRenderTimeMs) {
+    timestampRegression_.store(true, std::memory_order_relaxed);
+    AG_LOG(ERROR, "VIDEO_TIMESTAMP_REGRESSION uid=%s previous=%lld current=%lld", uid.c_str(),
+           static_cast<long long>(state.lastRenderTimeMs),
+           static_cast<long long>(videoFrame->renderTimeMs));
+  }
   for (int r = 0; r < height; r++) {
     fwrite(videoFrame->yBuffer + r * videoFrame->yStride, 1, width, state.file);
   }
@@ -239,6 +283,15 @@ void YuvFrameObserver::onFrame(const char* channelId, agora::user_id_t remoteUid
   state.fileSize += (uint64_t)width * height * 3 / 2;
   state.frameCount++;
   state.lastRenderTimeMs = videoFrame->renderTimeMs;
+
+  if (state.frameCount <= 5) {
+    AG_LOG(INFO,
+           "VIDEO_FRAME_METADATA uid=%s frame=%llu width=%d height=%d renderTimeMs=%lld "
+           "bytes=%llu",
+           uid.c_str(), static_cast<unsigned long long>(state.frameCount), width, height,
+           static_cast<long long>(videoFrame->renderTimeMs),
+           static_cast<unsigned long long>(state.fileSize));
+  }
 
   // 每 100 帧打一次进度日志
   if (state.frameCount % 100 == 0) {
@@ -344,7 +397,8 @@ int main(int argc, char* argv[]) {
   auto localUserObserver =
       std::make_shared<SampleLocalUserObserver>(connection->getLocalUser());
 
-  auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(options.audioFile);
+  auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(
+      options.audioFile, options.audio.numOfChannels, options.audio.sampleRate);
   auto yuvFrameObserver = std::make_shared<YuvFrameObserver>(options.videoFile);
   bool connectStarted = false;
   auto cleanup = [&]() {
@@ -441,8 +495,10 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  const bool pcmMetadataMismatch = pcmFrameObserver->hasMetadataMismatch();
+  const bool videoTimestampRegression = yuvFrameObserver->hasTimestampRegression();
   cleanup();
   AG_LOG(INFO, "Disconnected from Agora channel successfully");
 
-  return 0;
+  return (pcmMetadataMismatch || videoTimestampRegression) ? 1 : 0;
 }

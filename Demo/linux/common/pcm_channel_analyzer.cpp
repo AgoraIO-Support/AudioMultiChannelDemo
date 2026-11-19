@@ -27,14 +27,6 @@ int16_t readS16(const uint8_t* bytes) {
   return static_cast<int16_t>(value);
 }
 
-int16_t readS24AsS16(const uint8_t* bytes) {
-  int32_t value = static_cast<int32_t>(bytes[0]) |
-                  (static_cast<int32_t>(bytes[1]) << 8) |
-                  (static_cast<int32_t>(bytes[2]) << 16);
-  if (value & 0x800000) value |= static_cast<int32_t>(0xff000000);
-  return static_cast<int16_t>(value >> 8);
-}
-
 bool isRiffFile(const std::string& path, bool& isRiff, std::string* error) {
   FILE* file = std::fopen(path.c_str(), "rb");
   if (!file) {
@@ -80,7 +72,7 @@ bool readPcmBytes(FILE* file, uint64_t bytes, int bytesPerSample, int channels,
   }
   for (size_t i = 0; i < sampleCount; ++i) {
     const uint8_t* source = bytesBuffer.data() + i * bytesPerSample;
-    samples[i] = bytesPerSample == 2 ? readS16(source) : readS24AsS16(source);
+    samples[i] = bytesPerSample == 2 ? readS16(source) : decodePcm24LeToS16(source);
   }
   return true;
 }
