@@ -27,16 +27,21 @@
 //
 
 #include <csignal>
+#include <atomic>
+#include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
 #include <thread>
+#include <vector>
 
 #include "IAgoraService.h"
 #include "NGIAgoraRtcConnection.h"
 #include "common/helper.h"
 #include "common/log.h"
+#include "common/multichannel_input_validation.h"
 #include "common/opt_parser.h"
 #include "common/sample_common.h"
 #include "common/sample_connection_observer.h"
@@ -70,11 +75,7 @@ struct SampleOptions {
 
 // payload type 与声道数映射（spec 场景4.1）：
 //   123 -> 3/4 声道（默认 4），124 -> 5/6 声道（默认 6），125 -> 7/8 声道（默认 8）
-static int payloadTypeForChannels(int numOfChannels) {
-  if (numOfChannels <= 4) return 123;
-  if (numOfChannels <= 6) return 124;
-  return 125;
-}
+static FILE* pcmInputFile = nullptr;
 
 // 需求点10（4×双声道音轨 -> 8 声道流布局映射）说明：
 // sendAudioPcmData 要求的输入是 N 声道逐样本交错（interleaved）PCM。
@@ -85,9 +86,9 @@ static int payloadTypeForChannels(int numOfChannels) {
 // 声道对 (0,1)(2,3)(4,5)(6,7) 分别对应轨 1~4，与 8 声道 OPUSMC 4 个 coupled stream 配对一致。
 // 44.1 kHz 源须先重采样到 48 kHz。详见 README「4×stereo 布局映射」一节。
 
-static void sendOnePcmFrame(const SampleOptions& options,
-                            agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender) {
-  static FILE* file = nullptr;
+static bool sendOnePcmFrame(
+    const SampleOptions& options,
+    agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender) {
   const char* fileName = options.audioFile.c_str();
 
   // Calculate byte size for 10ms audio samples
@@ -95,50 +96,68 @@ static void sendOnePcmFrame(const SampleOptions& options,
   int samplesPer10ms = options.audio.sampleRate / 100;
   int sendBytes = sampleSize * samplesPer10ms;
 
-  if (!file) {
-    if (!(file = fopen(fileName, "rb"))) {
+  if (!pcmInputFile) {
+    if (!(pcmInputFile = fopen(fileName, "rb"))) {
       AG_LOG(ERROR, "Failed to open audio file %s", fileName);
-      return;
+      return false;
     }
     AG_LOG(INFO, "Open audio file %s successfully", fileName);
   }
 
-  uint8_t frameBuf[sendBytes];
-
-  if (fread(frameBuf, 1, sizeof(frameBuf), file) != sizeof(frameBuf)) {
-    if (feof(file)) {
-      AG_LOG(INFO, "End of audio file");
-    } else {
-      // 读错误时同样关闭文件，让下一帧走重开路径（否则 error indicator 置位后永久刷错）
-      AG_LOG(ERROR, "Error reading audio data: %s", std::strerror(errno));
+  std::vector<uint8_t> frameBuf(static_cast<size_t>(sendBytes));
+  size_t bytesRead = 0;
+  std::string error;
+  const agora_demo::FrameReadResult readResult = agora_demo::readFrameWithPadding(
+      pcmInputFile, frameBuf.data(), frameBuf.size(), &bytesRead, &error);
+  if (readResult == agora_demo::FrameReadResult::kEof) {
+    clearerr(pcmInputFile);
+    if (fseeko(pcmInputFile, 0, SEEK_SET) != 0) {
+      AG_LOG(ERROR, "Failed to rewind audio file %s: %s", fileName, std::strerror(errno));
+      fclose(pcmInputFile);
+      pcmInputFile = nullptr;
+      return false;
     }
-    fclose(file);
-    file = nullptr;
-    return;
+    return true;
+  }
+  if (readResult == agora_demo::FrameReadResult::kError) {
+    AG_LOG(ERROR, "Error reading audio data: %s", error.c_str());
+    fclose(pcmInputFile);
+    pcmInputFile = nullptr;
+    return false;
   }
 
-  if (audioFrameSender->sendAudioPcmData(frameBuf, 0, 0, samplesPer10ms,
+  if (audioFrameSender->sendAudioPcmData(frameBuf.data(), 0, 0, samplesPer10ms,
                                          agora::rtc::TWO_BYTES_PER_SAMPLE,
                                          options.audio.numOfChannels,
                                          options.audio.sampleRate) < 0) {
     AG_LOG(ERROR, "Failed to send audio frame!");
+    return false;
   }
+  return true;
 }
 
 static void SampleSendAudioTask(
     const SampleOptions& options,
-    agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender, bool& exitFlag) {
+    agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender,
+    std::atomic<bool>& exitFlag) {
   // Currently only 10 ms PCM frame is supported. So PCM frames are sent at 10 ms interval
   PacerInfo pacer = {0, 10, 0, std::chrono::steady_clock::now()};
 
-  while (!exitFlag) {
-    sendOnePcmFrame(options, audioFrameSender);
+  while (!exitFlag.load(std::memory_order_relaxed)) {
+    if (!sendOnePcmFrame(options, audioFrameSender)) {
+      exitFlag.store(true, std::memory_order_relaxed);
+      break;
+    }
     waitBeforeNextSend(pacer);  // sleep for a while before sending next frame
+  }
+  if (pcmInputFile) {
+    fclose(pcmInputFile);
+    pcmInputFile = nullptr;
   }
 }
 
-static bool exitFlag = false;
-static void SignalHandler(int sigNo) { exitFlag = true; }
+static std::atomic<bool> exitFlag(false);
+static void SignalHandler(int /*sigNo*/) { exitFlag.store(true, std::memory_order_relaxed); }
 
 int main(int argc, char* argv[]) {
   SampleOptions options;
@@ -184,26 +203,6 @@ int main(int argc, char* argv[]) {
     AG_LOG(ERROR, "Must provide audio file path!");
     return -1;
   }
-  // 连接前预检素材：可读、为常规文件且至少包含一帧，避免启动后发送线程空转刷错误日志
-  {
-    FILE* f = fopen(options.audioFile.c_str(), "rb");
-    if (!f) {
-      AG_LOG(ERROR, "Cannot open audio file %s: %s", options.audioFile.c_str(),
-             std::strerror(errno));
-      return -1;
-    }
-    struct stat st;
-    int frameBytes =
-        options.audio.sampleRate / 100 * options.audio.numOfChannels * (int)sizeof(int16_t);
-    if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode) || st.st_size < frameBytes) {
-      AG_LOG(ERROR,
-             "Audio file %s must be a regular file containing at least one %d-byte frame",
-             options.audioFile.c_str(), frameBytes);
-      fclose(f);
-      return -1;
-    }
-    fclose(f);
-  }
   AG_LOG(INFO, "input audio file location: %s", options.audioFile.c_str());
 
   if (options.audio.numOfChannels < 3 || options.audio.numOfChannels > 8) {
@@ -217,7 +216,7 @@ int main(int argc, char* argv[]) {
 
   // 未显式指定时按声道数推导 payload type（123->3/4, 124->5/6, 125->7/8）
   if (options.customPayloadType == 0) {
-    options.customPayloadType = payloadTypeForChannels(options.audio.numOfChannels);
+    options.customPayloadType = agora_demo::payloadTypeForChannels(options.audio.numOfChannels);
     AG_LOG(INFO, "custom_payload_type not set, derived %d from numOfChannels=%d",
            options.customPayloadType, options.audio.numOfChannels);
   }
@@ -228,7 +227,7 @@ int main(int argc, char* argv[]) {
            options.customPayloadType);
     return -1;
   }
-  if (options.customPayloadType != payloadTypeForChannels(options.audio.numOfChannels)) {
+  if (options.customPayloadType != agora_demo::payloadTypeForChannels(options.audio.numOfChannels)) {
     AG_LOG(ERROR, "custom_payload_type %d is incompatible with numOfChannels=%d",
            options.customPayloadType, options.audio.numOfChannels);
     return -1;
@@ -247,9 +246,17 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
+  std::string inputError;
+  if (!agora_demo::validateRawPcmFile(options.audioFile, options.audio.sampleRate,
+                                      options.audio.numOfChannels, &inputError)) {
+    AG_LOG(ERROR, "Invalid raw PCM input: %s", inputError.c_str());
+    return -1;
+  }
+
   std::signal(SIGQUIT, SignalHandler);
   std::signal(SIGABRT, SignalHandler);
   std::signal(SIGINT, SignalHandler);
+  std::signal(SIGTERM, SignalHandler);
 
   // Create Agora service
   auto service = createAndInitAgoraService(false, true, true);
@@ -262,7 +269,13 @@ int main(int argc, char* argv[]) {
   // createRtcConnection() 之前设置；设置在 connection 级不生效（spec 场景4.4）
   if (options.codecUnfallback) {
     auto sp = service->getAgoraParameter();
-    sp->setArray("che.audio.codec_unfallback", "[123,124,125]");
+    const int result = sp->setArray("che.audio.codec_unfallback", "[123,124,125]");
+    if (result != 0) {
+      AG_LOG(ERROR, "Failed to set che.audio.codec_unfallback, ret=%d", result);
+      service->release();
+      service = nullptr;
+      return -1;
+    }
     AG_LOG(INFO, "Set che.audio.codec_unfallback=[123,124,125] on service level");
   }
 
@@ -274,15 +287,25 @@ int main(int argc, char* argv[]) {
   agora::agora_refptr<agora::rtc::IRtcConnection> connection = service->createRtcConnection(ccfg);
   if (!connection) {
     AG_LOG(ERROR, "Failed to creating Agora connection!");
+    service->release();
+    service = nullptr;
     return -1;
   }
 
   // 多声道私参：必须在 createRtcConnection 之后、connect 之前
   // 对 connection->getAgoraParameter() 设置（spec 场景4.2）
   auto p = connection->getAgoraParameter();
-  p->setInt("che.audio.custom_payload_type", options.customPayloadType);
-  p->setInt("che.audio.custom_channel_num", options.customChannelNum);
-  p->setInt("che.audio.custom_sample_rate", options.customSampleRate);
+  const int payloadResult = p->setInt("che.audio.custom_payload_type", options.customPayloadType);
+  const int channelResult = p->setInt("che.audio.custom_channel_num", options.customChannelNum);
+  const int rateResult = p->setInt("che.audio.custom_sample_rate", options.customSampleRate);
+  if (payloadResult != 0 || channelResult != 0 || rateResult != 0) {
+    AG_LOG(ERROR, "Failed to set multi-channel connection params: payload=%d channel=%d rate=%d",
+           payloadResult, channelResult, rateResult);
+    connection = nullptr;
+    service->release();
+    service = nullptr;
+    return -1;
+  }
   AG_LOG(INFO, "Set connection params: payload_type=%d channel_num=%d sample_rate=%d",
          options.customPayloadType, options.customChannelNum, options.customSampleRate);
 

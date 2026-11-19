@@ -15,6 +15,8 @@
 //
 
 #include <csignal>
+#include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <cerrno>
 #include <cstdint>
@@ -22,11 +24,13 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "IAgoraService.h"
 #include "NGIAgoraRtcConnection.h"
 #include "common/helper.h"
 #include "common/log.h"
+#include "common/multichannel_input_validation.h"
 #include "common/opt_parser.h"
 #include "common/sample_common.h"
 #include "common/sample_connection_observer.h"
@@ -58,170 +62,17 @@ struct SampleOptions {
   } audio;
 };
 
-// WAV 文件格式信息（由 RIFF chunk 解析得到）
-struct WavFormat {
-  uint16_t channels = 0;
-  uint32_t sampleRate = 0;
-  uint16_t bitsPerSample = 0;
-  long dataOffset = 0;     // "data" chunk 数据区在文件中的偏移
-  uint32_t dataSize = 0;   // "data" chunk 数据区字节数
-};
+using agora_demo::WavFormat;
 
 // payload type 与声道数映射（spec 场景4.1）：
 //   123 -> 3/4 声道（默认 4），124 -> 5/6 声道（默认 6），125 -> 7/8 声道（默认 8）
-static int payloadTypeForChannels(int numOfChannels) {
-  if (numOfChannels <= 4) return 123;
-  if (numOfChannels <= 6) return 124;
-  return 125;
-}
-
-static bool readChunkId(FILE* file, char id[4]) { return fread(id, 1, 4, file) == 4; }
-
-static bool readU32LE(FILE* file, uint32_t& value) {
-  uint8_t buf[4];
-  if (fread(buf, 1, 4, file) != 4) return false;
-  value = (uint32_t)buf[0] | ((uint32_t)buf[1] << 8) | ((uint32_t)buf[2] << 16) |
-          ((uint32_t)buf[3] << 24);
-  return true;
-}
-
-static bool readU16LE(FILE* file, uint16_t& value) {
-  uint8_t buf[2];
-  if (fread(buf, 1, 2, file) != 2) return false;
-  value = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
-  return true;
-}
-
-// 按 RIFF chunk 逐个扫描解析 WAV 头（兼容 fmt chunk 长度 >16 的 WAVE_FORMAT_EXTENSIBLE）
-static bool parseWavHeader(FILE* file, WavFormat& format) {
-  char chunkId[4];
-  uint32_t chunkSize = 0;
-
-  if (!readChunkId(file, chunkId) || memcmp(chunkId, "RIFF", 4) != 0) {
-    AG_LOG(ERROR, "Not a RIFF file");
-    return false;
-  }
-  if (!readU32LE(file, chunkSize)) return false;  // RIFF size，不使用
-  if (!readChunkId(file, chunkId) || memcmp(chunkId, "WAVE", 4) != 0) {
-    AG_LOG(ERROR, "Not a WAVE file");
-    return false;
-  }
-
-  bool fmtFound = false;
-  bool dataFound = false;
-  while (!dataFound && readChunkId(file, chunkId) && readU32LE(file, chunkSize)) {
-    if (memcmp(chunkId, "fmt ", 4) == 0) {
-      if (chunkSize < 16) {
-        AG_LOG(ERROR, "Invalid fmt chunk size: %u", chunkSize);
-        return false;
-      }
-      uint16_t formatType = 0;
-      uint32_t byteRate = 0;
-      uint16_t blockAlign = 0;
-      if (!readU16LE(file, formatType) || !readU16LE(file, format.channels) ||
-          !readU32LE(file, format.sampleRate) || !readU32LE(file, byteRate) ||
-          !readU16LE(file, blockAlign) || !readU16LE(file, format.bitsPerSample)) {
-        AG_LOG(ERROR, "Failed to parse fmt chunk");
-        return false;
-      }
-      if (formatType != 1 && formatType != 0xFFFE /* WAVE_FORMAT_EXTENSIBLE */) {
-        AG_LOG(ERROR, "Unsupported WAV format type: %d (only PCM is supported)", formatType);
-        return false;
-      }
-      if (formatType == 0xFFFE /* WAVE_FORMAT_EXTENSIBLE */) {
-        // 校验 SubFormat 为 PCM（GUID 前两字节 0x0001）；float(0x0003) 等按整型转换会发出垃圾音频
-        if (chunkSize < 40) {
-          AG_LOG(ERROR, "Invalid extensible fmt chunk size: %u", chunkSize);
-          return false;
-        }
-        uint16_t cbSize = 0;
-        uint16_t validBitsPerSample = 0;
-        uint32_t channelMask = 0;
-        uint16_t subFormatTag = 0;
-        if (!readU16LE(file, cbSize) || !readU16LE(file, validBitsPerSample) ||
-            !readU32LE(file, channelMask) || !readU16LE(file, subFormatTag)) {
-          AG_LOG(ERROR, "Failed to parse extensible fmt chunk");
-          return false;
-        }
-        if (subFormatTag != 1 /* WAVE_FORMAT_PCM */) {
-          AG_LOG(ERROR,
-                 "Unsupported extensible sub-format: 0x%04x (only PCM is supported, "
-                 "float/other encodings are rejected)",
-                 subFormatTag);
-          return false;
-        }
-        // 已读 16 + 10 字节，跳过 GUID 剩余 14 字节及 fmt 扩展的其余部分
-        if (chunkSize > 26 && fseek(file, chunkSize - 26, SEEK_CUR) != 0) return false;
-      } else if (chunkSize > 16 && fseek(file, chunkSize - 16, SEEK_CUR) != 0) {
-        // fmt chunk may be larger than 16 bytes
-        return false;
-      }
-      // RIFF chunks are word-aligned.
-      if ((chunkSize & 1) && fseek(file, 1, SEEK_CUR) != 0) return false;
-      fmtFound = true;
-    } else if (memcmp(chunkId, "data", 4) == 0) {
-      format.dataOffset = ftell(file);
-      format.dataSize = chunkSize;
-      dataFound = true;
-    } else {
-      // 跳过其他 chunk（LIST、fact 等），先校验 chunkSize 不超过文件剩余长度
-      long currentPos = ftell(file);
-      fseek(file, 0, SEEK_END);
-      long fileSize = ftell(file);
-      fseek(file, currentPos, SEEK_SET);
-      if (chunkSize > static_cast<uint32_t>(fileSize - currentPos)) {
-        AG_LOG(ERROR, "Invalid chunk size %u at offset %ld (exceeds file remaining %ld)",
-               chunkSize, currentPos, fileSize - currentPos);
-        return false;
-      }
-      if (fseek(file, chunkSize + (chunkSize & 1), SEEK_CUR) != 0) return false;
-    }
-  }
-
-  if (!fmtFound || !dataFound) {
-    AG_LOG(ERROR, "Invalid WAV file: fmt or data chunk not found");
-    return false;
-  }
-  return true;
-}
-
 static bool validateWavOptions(const SampleOptions& options) {
-  FILE* file = fopen(options.audioFile.c_str(), "rb");
-  if (!file) {
-    AG_LOG(ERROR, "Failed to open audio file %s", options.audioFile.c_str());
-    return false;
-  }
-
-  WavFormat wav;
-  bool parsed = parseWavHeader(file, wav);
-  fclose(file);
-  if (!parsed) return false;
-
-  if (wav.bitsPerSample != 16 && wav.bitsPerSample != 24) {
-    AG_LOG(ERROR, "Unsupported bit depth: %d. Only 16-bit and 24-bit PCM are supported.",
-           wav.bitsPerSample);
-    return false;
-  }
-  if (wav.sampleRate != 48000) {
-    AG_LOG(ERROR, "WAV sample rate must be 48000 for multi-channel OPUSMC, got %d.",
-           wav.sampleRate);
-    return false;
-  }
-  if (wav.channels < 3 || wav.channels > 8) {
-    AG_LOG(ERROR, "WAV channel count must be in [3, 8], got %d.", wav.channels);
-    return false;
-  }
-  if (wav.sampleRate != options.audio.sampleRate || wav.channels != options.audio.numOfChannels) {
-    AG_LOG(ERROR,
-           "WAV header (%d Hz, %d channels) must match --sampleRate (%d) and --numOfChannels (%d).",
-           wav.sampleRate, wav.channels, options.audio.sampleRate, options.audio.numOfChannels);
-    return false;
-  }
-  // data chunk 至少包含一帧，否则发送线程会陷入空读-重开循环
-  int frameBytes = (wav.bitsPerSample / 8) * wav.channels * (wav.sampleRate / 100);
-  if (wav.dataSize < (uint32_t)frameBytes) {
-    AG_LOG(ERROR, "WAV data chunk too small: %u bytes, need at least one %d-byte frame.",
-           wav.dataSize, frameBytes);
+  std::string error;
+  if (!agora_demo::validateWavFile(
+          options.audioFile, options.audio.sampleRate, options.audio.numOfChannels,
+          options.customPayloadType, options.customChannelNum, options.customSampleRate,
+          &error)) {
+    AG_LOG(ERROR, "Invalid WAV input: %s", error.c_str());
     return false;
   }
   return true;
@@ -231,6 +82,7 @@ static void sendOnePcmFrame(const SampleOptions& options,
                             agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender) {
   static FILE* file = nullptr;
   static WavFormat wav;
+  static uint64_t dataBytesRead = 0;
   const char* fileName = options.audioFile.c_str();
 
   // 打开文件并解析 WAV 头（每个文件只解析一次）
@@ -239,11 +91,14 @@ static void sendOnePcmFrame(const SampleOptions& options,
       AG_LOG(ERROR, "Failed to open audio file %s", fileName);
       return;
     }
-    if (!parseWavHeader(file, wav)) {
+    std::string error;
+    if (!agora_demo::parseWavHeader(file, wav, &error)) {
+      AG_LOG(ERROR, "Invalid WAV header: %s", error.c_str());
       fclose(file);
       file = nullptr;
       return;
     }
+    dataBytesRead = 0;
 
     AG_LOG(INFO, "Opened WAV file: %s", fileName);
     AG_LOG(INFO, "Sample Rate: %d, Channels: %d, Bits Per Sample: %d", wav.sampleRate,
@@ -260,18 +115,36 @@ static void sendOnePcmFrame(const SampleOptions& options,
   uint8_t* inputBuf = new uint8_t[originalFrameBytes];
   uint8_t* outputBuf = new uint8_t[outputFrameBytes];
 
-  if (fread(inputBuf, 1, originalFrameBytes, file) != (size_t)originalFrameBytes) {
-    if (feof(file)) {
-      AG_LOG(INFO, "End of audio file");
-    } else {
-      // 读错误时同样关闭文件，让下一帧走重开路径（否则 error indicator 置位后永久刷错）
-      AG_LOG(ERROR, "Error reading audio data: %s", std::strerror(errno));
+  if (dataBytesRead == wav.dataSize) {
+    clearerr(file);
+    if (fseeko(file, static_cast<off_t>(wav.dataOffset), SEEK_SET) != 0) {
+      AG_LOG(ERROR, "Failed to rewind WAV data chunk: %s", std::strerror(errno));
+      fclose(file);
+      file = nullptr;
     }
+    dataBytesRead = 0;
+    delete[] inputBuf;
+    delete[] outputBuf;
+    return;
+  }
+
+  const uint64_t remaining = wav.dataSize - dataBytesRead;
+  const size_t bytesToRead = static_cast<size_t>(
+      std::min<uint64_t>(remaining, static_cast<uint64_t>(originalFrameBytes)));
+  const size_t bytesRead = fread(inputBuf, 1, bytesToRead, file);
+  if (bytesRead != bytesToRead) {
+    AG_LOG(ERROR, "Error reading WAV data: %s", std::strerror(errno));
     fclose(file);
     file = nullptr;
     delete[] inputBuf;
     delete[] outputBuf;
     return;
+  }
+  dataBytesRead += bytesRead;
+  if (bytesRead < static_cast<size_t>(originalFrameBytes)) {
+    // The final PCM frame is allowed to be short; pad samples with silence.
+    std::memset(inputBuf + bytesRead, 0,
+                static_cast<size_t>(originalFrameBytes) - bytesRead);
   }
 
   if (wav.bitsPerSample == 24) {
@@ -305,18 +178,19 @@ static void sendOnePcmFrame(const SampleOptions& options,
 
 static void SampleSendAudioTask(
     const SampleOptions& options,
-    agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender, bool& exitFlag) {
+    agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender,
+    std::atomic<bool>& exitFlag) {
   // Currently only 10 ms PCM frame is supported. So PCM frames are sent at 10 ms interval
   PacerInfo pacer = {0, 10, 0, std::chrono::steady_clock::now()};
 
-  while (!exitFlag) {
+  while (!exitFlag.load(std::memory_order_relaxed)) {
     sendOnePcmFrame(options, audioFrameSender);
     waitBeforeNextSend(pacer);  // sleep for a while before sending next frame
   }
 }
 
-static bool exitFlag = false;
-static void SignalHandler(int sigNo) { exitFlag = true; }
+static std::atomic<bool> exitFlag(false);
+static void SignalHandler(int /*sigNo*/) { exitFlag.store(true, std::memory_order_relaxed); }
 
 int main(int argc, char* argv[]) {
   SampleOptions options;
@@ -372,7 +246,7 @@ int main(int argc, char* argv[]) {
 
   // 未显式指定时按声道数推导 payload type（123->3/4, 124->5/6, 125->7/8）
   if (options.customPayloadType == 0) {
-    options.customPayloadType = payloadTypeForChannels(options.audio.numOfChannels);
+    options.customPayloadType = agora_demo::payloadTypeForChannels(options.audio.numOfChannels);
     AG_LOG(INFO, "custom_payload_type not set, derived %d from numOfChannels=%d",
            options.customPayloadType, options.audio.numOfChannels);
   }
@@ -383,7 +257,7 @@ int main(int argc, char* argv[]) {
            options.customPayloadType);
     return -1;
   }
-  if (options.customPayloadType != payloadTypeForChannels(options.audio.numOfChannels)) {
+  if (options.customPayloadType != agora_demo::payloadTypeForChannels(options.audio.numOfChannels)) {
     AG_LOG(ERROR, "custom_payload_type %d is incompatible with numOfChannels=%d",
            options.customPayloadType, options.audio.numOfChannels);
     return -1;
@@ -405,6 +279,7 @@ int main(int argc, char* argv[]) {
   std::signal(SIGQUIT, SignalHandler);
   std::signal(SIGABRT, SignalHandler);
   std::signal(SIGINT, SignalHandler);
+  std::signal(SIGTERM, SignalHandler);
 
   // Create Agora service
   auto service = createAndInitAgoraService(false, true, true);
@@ -417,7 +292,13 @@ int main(int argc, char* argv[]) {
   // createRtcConnection() 之前设置；设置在 connection 级不生效（spec 场景4.4）
   if (options.codecUnfallback) {
     auto sp = service->getAgoraParameter();
-    sp->setArray("che.audio.codec_unfallback", "[123,124,125]");
+    const int result = sp->setArray("che.audio.codec_unfallback", "[123,124,125]");
+    if (result != 0) {
+      AG_LOG(ERROR, "Failed to set che.audio.codec_unfallback, ret=%d", result);
+      service->release();
+      service = nullptr;
+      return -1;
+    }
     AG_LOG(INFO, "Set che.audio.codec_unfallback=[123,124,125] on service level");
   }
 
@@ -429,15 +310,25 @@ int main(int argc, char* argv[]) {
   agora::agora_refptr<agora::rtc::IRtcConnection> connection = service->createRtcConnection(ccfg);
   if (!connection) {
     AG_LOG(ERROR, "Failed to creating Agora connection!");
+    service->release();
+    service = nullptr;
     return -1;
   }
 
   // 多声道私参：必须在 createRtcConnection 之后、connect 之前
   // 对 connection->getAgoraParameter() 设置（spec 场景4.2）
   auto p = connection->getAgoraParameter();
-  p->setInt("che.audio.custom_payload_type", options.customPayloadType);
-  p->setInt("che.audio.custom_channel_num", options.customChannelNum);
-  p->setInt("che.audio.custom_sample_rate", options.customSampleRate);
+  const int payloadResult = p->setInt("che.audio.custom_payload_type", options.customPayloadType);
+  const int channelResult = p->setInt("che.audio.custom_channel_num", options.customChannelNum);
+  const int rateResult = p->setInt("che.audio.custom_sample_rate", options.customSampleRate);
+  if (payloadResult != 0 || channelResult != 0 || rateResult != 0) {
+    AG_LOG(ERROR, "Failed to set multi-channel connection params: payload=%d channel=%d rate=%d",
+           payloadResult, channelResult, rateResult);
+    connection = nullptr;
+    service->release();
+    service = nullptr;
+    return -1;
+  }
   AG_LOG(INFO, "Set connection params: payload_type=%d channel_num=%d sample_rate=%d",
          options.customPayloadType, options.customChannelNum, options.customSampleRate);
 

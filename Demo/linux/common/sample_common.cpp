@@ -176,6 +176,10 @@ int32_t setLocalIP(agora::agora_refptr<agora::rtc::IRtcConnection>& connection, 
 }
 
 std::string makePerUserOutputPath(const std::string& basePath, const char* userId) {
+  // /dev/null is commonly used by headless regression tests. Keep it as the
+  // sink path instead of appending a UID suffix that would create a regular
+  // file beside the device node.
+  if (basePath == "/dev/null") return basePath;
   std::string safeUid = (userId && *userId) ? userId : "unknown";
   for (char& ch : safeUid) {
     unsigned char value = static_cast<unsigned char>(ch);

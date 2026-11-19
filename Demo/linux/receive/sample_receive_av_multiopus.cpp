@@ -15,6 +15,7 @@
 //
 
 #include <csignal>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <map>
@@ -23,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <unistd.h>
 
 #include "AgoraRefCountedObject.h"
 #include "IAgoraService.h"
@@ -253,8 +255,8 @@ void YuvFrameObserver::onFrame(const char* channelId, agora::user_id_t remoteUid
   }
 }
 
-static bool exitFlag = false;
-static void SignalHandler(int sigNo) { exitFlag = true; }
+static std::atomic<bool> exitFlag(false);
+static void SignalHandler(int /*sigNo*/) { exitFlag.store(true, std::memory_order_relaxed); }
 
 int main(int argc, char* argv[]) {
   SampleOptions options;
@@ -301,6 +303,7 @@ int main(int argc, char* argv[]) {
   std::signal(SIGQUIT, SignalHandler);
   std::signal(SIGABRT, SignalHandler);
   std::signal(SIGINT, SignalHandler);
+  std::signal(SIGTERM, SignalHandler);
 
   // Create Agora service
   auto service = createAndInitAgoraService(false, true, true);
@@ -320,60 +323,105 @@ int main(int argc, char* argv[]) {
       service->createRtcConnection(ccfg);
   if (!connection) {
     AG_LOG(ERROR, "Failed to creating Agora connection!");
+    service->release();
+    service = nullptr;
     return -1;
-  }
-
-  // Subscribe audio & video from all remote users or a specific remote user
-  agora::rtc::VideoSubscriptionOptions subscriptionOptions;  // 默认大流、解码后帧
-  if (options.remoteUserId.empty()) {
-    AG_LOG(INFO, "Subscribe audio & video from all remote users");
-    if (connection->getLocalUser()->subscribeAllAudio()) {
-      AG_LOG(ERROR, "Failed to subscribe audio from all remote users!");
-      return -1;
-    }
-    if (connection->getLocalUser()->subscribeAllVideo(subscriptionOptions)) {
-      AG_LOG(ERROR, "Failed to subscribe video from all remote users!");
-      return -1;
-    }
-  } else {
-    if (connection->getLocalUser()->subscribeAudio(options.remoteUserId.c_str())) {
-      AG_LOG(ERROR, "Failed to subscribe audio from user %s!", options.remoteUserId.c_str());
-      return -1;
-    }
-    if (connection->getLocalUser()->subscribeVideo(options.remoteUserId.c_str(),
-                                                   subscriptionOptions)) {
-      AG_LOG(ERROR, "Failed to subscribe video from user %s!", options.remoteUserId.c_str());
-      return -1;
-    }
   }
 
   // Register connection observer to monitor connection event
   auto connObserver = std::make_shared<SampleConnectionObserver>();
-  connection->registerObserver(connObserver.get());
+  bool observerRegistered = connection->registerObserver(connObserver.get()) == 0;
+  if (!observerRegistered) {
+    AG_LOG(ERROR, "Failed to register connection observer");
+    connObserver.reset();
+    connection = nullptr;
+    service->release();
+    service = nullptr;
+    return -1;
+  }
 
   // Create local user observer
   auto localUserObserver =
       std::make_shared<SampleLocalUserObserver>(connection->getLocalUser());
 
+  auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(options.audioFile);
+  auto yuvFrameObserver = std::make_shared<YuvFrameObserver>(options.videoFile);
+  bool connectStarted = false;
+  auto cleanup = [&]() {
+    exitFlag.store(true, std::memory_order_relaxed);
+    if (localUserObserver) {
+      localUserObserver->unsetAudioFrameObserver();
+      localUserObserver->unsetVideoFrameObserver();
+    }
+    if (connection && observerRegistered) {
+      connection->unregisterObserver(connObserver.get());
+      observerRegistered = false;
+    }
+    if (connection && connectStarted) {
+      const int result = connection->disconnect();
+      if (result) AG_LOG(ERROR, "Failed to disconnect from Agora channel, ret=%d", result);
+      connectStarted = false;
+    }
+    localUserObserver.reset();
+    pcmFrameObserver.reset();
+    yuvFrameObserver.reset();
+    connObserver.reset();
+    connection = nullptr;
+    if (service) {
+      service->release();
+      service = nullptr;
+    }
+  };
+
   // Register audio frame observer to receive audio stream.
   // 回调声道数必须与发送端一致才能拿到完整多声道（spec 场景5.1）
-  auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(options.audioFile);
   if (connection->getLocalUser()->setPlaybackAudioFrameBeforeMixingParameters(
           options.audio.numOfChannels, options.audio.sampleRate)) {
     AG_LOG(ERROR, "Failed to set audio frame parameters!");
+    cleanup();
     return -1;
   }
   localUserObserver->setAudioFrameObserver(pcmFrameObserver.get());
 
   // Register video frame observer to receive video stream（须在订阅回调触发前设置，
   // onUserVideoTrackSubscribed 里才会向 SDK 注册）
-  auto yuvFrameObserver = std::make_shared<YuvFrameObserver>(options.videoFile);
   localUserObserver->setVideoFrameObserver(yuvFrameObserver.get());
 
+  // Subscribe only after all observers are installed. This avoids losing the
+  // first audio/video callback when a subscription is fulfilled immediately.
+  agora::rtc::VideoSubscriptionOptions subscriptionOptions;
+  if (options.remoteUserId.empty()) {
+    AG_LOG(INFO, "Subscribe audio & video from all remote users");
+    if (connection->getLocalUser()->subscribeAllAudio()) {
+      AG_LOG(ERROR, "Failed to subscribe audio from all remote users!");
+      cleanup();
+      return -1;
+    }
+    if (connection->getLocalUser()->subscribeAllVideo(subscriptionOptions)) {
+      AG_LOG(ERROR, "Failed to subscribe video from all remote users!");
+      cleanup();
+      return -1;
+    }
+  } else {
+    if (connection->getLocalUser()->subscribeAudio(options.remoteUserId.c_str())) {
+      AG_LOG(ERROR, "Failed to subscribe audio from user %s!", options.remoteUserId.c_str());
+      cleanup();
+      return -1;
+    }
+    if (connection->getLocalUser()->subscribeVideo(options.remoteUserId.c_str(),
+                                                   subscriptionOptions)) {
+      AG_LOG(ERROR, "Failed to subscribe video from user %s!", options.remoteUserId.c_str());
+      cleanup();
+      return -1;
+    }
+  }
+
   // Connect to Agora channel
+  connectStarted = true;
   if (connection->connect(options.appId.c_str(), options.channelId.c_str(),
                           options.userId.c_str())) {
     AG_LOG(ERROR, "Failed to connect to Agora channel!");
+    cleanup();
     return -1;
   }
 
@@ -388,34 +436,13 @@ int main(int argc, char* argv[]) {
            options.audio.numOfChannels, options.audio.sampleRate);
 
     // Periodically check exit flag
-    while (!exitFlag) {
+    while (!exitFlag.load(std::memory_order_relaxed)) {
       usleep(10000);
     }
   }
 
-  // Unregister audio & video frame observers
-  localUserObserver->unsetAudioFrameObserver();
-  localUserObserver->unsetVideoFrameObserver();
-
-  // Unregister connection observer
-  connection->unregisterObserver(connObserver.get());
-
-  // Disconnect from Agora channel
-  if (connection->disconnect()) {
-    AG_LOG(ERROR, "Failed to disconnect from Agora channel!");
-    return -1;
-  }
+  cleanup();
   AG_LOG(INFO, "Disconnected from Agora channel successfully");
-
-  // Destroy Agora connection and related resources
-  localUserObserver.reset();
-  pcmFrameObserver.reset();
-  yuvFrameObserver.reset();
-  connection = nullptr;
-
-  // Destroy Agora Service
-  service->release();
-  service = nullptr;
 
   return 0;
 }

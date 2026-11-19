@@ -18,16 +18,19 @@
 //
 
 #include <csignal>
+#include <atomic>
+#include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <sstream>
 #include <string>
-#include <sys/stat.h>
 #include <thread>
 
 #include "IAgoraService.h"
 #include "NGIAgoraRtcConnection.h"
 #include "common/helper.h"
 #include "common/log.h"
+#include "common/multichannel_input_validation.h"
 #include "common/opt_parser.h"
 #include "common/sample_common.h"
 #include "common/sample_connection_observer.h"
@@ -60,31 +63,43 @@ struct SampleOptions {
 
 static void SampleSendAudioTask(
     const SampleOptions& options,
-    agora::agora_refptr<agora::rtc::IAudioEncodedFrameSender> audioFrameSender, bool& exitFlag) {
+    agora::agora_refptr<agora::rtc::IAudioEncodedFrameSender> audioFrameSender,
+    std::atomic<bool>& exitFlag) {
   static FILE* file = nullptr;
   uint8_t frameBuf[OPUS8_FRAME_BYTES];
 
   // Opus frames are sent at 20 ms interval
   PacerInfo pacer = {0, options.audio.frameSizeDuration, 0, std::chrono::steady_clock::now()};
 
-  while (!exitFlag) {
+  while (!exitFlag.load(std::memory_order_relaxed)) {
     if (!file) {
       if (!(file = fopen(options.audioFile.c_str(), "rb"))) {
         AG_LOG(ERROR, "Failed to open audio file %s, stop sending thread", options.audioFile.c_str());
+        exitFlag.store(true, std::memory_order_relaxed);
         return;
       }
       AG_LOG(INFO, "Open audio file %s successfully", options.audioFile.c_str());
     }
 
-    if (fread(frameBuf, 1, sizeof(frameBuf), file) != sizeof(frameBuf)) {
+    const size_t bytesRead = fread(frameBuf, 1, sizeof(frameBuf), file);
+    if (bytesRead != sizeof(frameBuf)) {
       if (feof(file)) {
+        if (bytesRead != 0) {
+          AG_LOG(ERROR, "Opus input ended with a partial frame");
+          fclose(file);
+          file = nullptr;
+          exitFlag.store(true, std::memory_order_relaxed);
+          return;
+        }
         AG_LOG(INFO, "End of audio file, loop from the beginning");
       } else {
         // 读错误时同样关闭文件，让下一帧走重开路径（否则 error indicator 置位后永久刷错）
         AG_LOG(ERROR, "Error reading audio data: %s", std::strerror(errno));
+        exitFlag.store(true, std::memory_order_relaxed);
       }
       fclose(file);
       file = nullptr;
+      if (exitFlag.load(std::memory_order_relaxed)) return;
       continue;
     }
 
@@ -96,14 +111,16 @@ static void SampleSendAudioTask(
 
     if (!audioFrameSender->sendEncodedAudioFrame(frameBuf, sizeof(frameBuf), info)) {
       AG_LOG(ERROR, "Failed to send encoded audio frame!");
+      exitFlag.store(true, std::memory_order_relaxed);
+      break;
     }
 
     waitBeforeNextSend(pacer);  // sleep for a while before sending next frame
   }
 }
 
-static bool exitFlag = false;
-static void SignalHandler(int sigNo) { exitFlag = true; }
+static std::atomic<bool> exitFlag(false);
+static void SignalHandler(int /*sigNo*/) { exitFlag.store(true, std::memory_order_relaxed); }
 
 int main(int argc, char* argv[]) {
   SampleOptions options;
@@ -149,29 +166,16 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  // 连接前预检素材：可读、为常规文件且至少包含一帧，避免启动后发送线程静默退出或空转
-  {
-    FILE* f = fopen(options.audioFile.c_str(), "rb");
-    if (!f) {
-      AG_LOG(ERROR, "Cannot open audio file %s: %s", options.audioFile.c_str(),
-             std::strerror(errno));
-      return -1;
-    }
-    struct stat st;
-    if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode) ||
-        st.st_size < OPUS8_FRAME_BYTES) {
-      AG_LOG(ERROR,
-             "Audio file %s must be a regular file containing at least one %d-byte frame",
-             options.audioFile.c_str(), OPUS8_FRAME_BYTES);
-      fclose(f);
-      return -1;
-    }
-    fclose(f);
+  std::string inputError;
+  if (!agora_demo::validateOpusRawFile(options.audioFile, OPUS8_FRAME_BYTES, &inputError)) {
+    AG_LOG(ERROR, "Invalid raw Opus input: %s", inputError.c_str());
+    return -1;
   }
 
   std::signal(SIGQUIT, SignalHandler);
   std::signal(SIGABRT, SignalHandler);
   std::signal(SIGINT, SignalHandler);
+  std::signal(SIGTERM, SignalHandler);
 
   // Create Agora service
   auto service = createAndInitAgoraService(false, true, true);
@@ -184,7 +188,13 @@ int main(int argc, char* argv[]) {
   // createRtcConnection() 之前设置；设置在 connection 级不生效（spec 场景4.4）
   if (options.codecUnfallback) {
     auto sp = service->getAgoraParameter();
-    sp->setArray("che.audio.codec_unfallback", "[123,124,125]");
+    const int result = sp->setArray("che.audio.codec_unfallback", "[123,124,125]");
+    if (result != 0) {
+      AG_LOG(ERROR, "Failed to set che.audio.codec_unfallback, ret=%d", result);
+      service->release();
+      service = nullptr;
+      return -1;
+    }
     AG_LOG(INFO, "Set che.audio.codec_unfallback=[123,124,125] on service level");
   }
 
@@ -196,14 +206,24 @@ int main(int argc, char* argv[]) {
   agora::agora_refptr<agora::rtc::IRtcConnection> connection = service->createRtcConnection(ccfg);
   if (!connection) {
     AG_LOG(ERROR, "Failed to creating Agora connection!");
+    service->release();
+    service = nullptr;
     return -1;
   }
 
   // 多声道私参：connection 级、connect 之前设置（spec 场景4.2）
   auto p = connection->getAgoraParameter();
-  p->setInt("che.audio.custom_payload_type", OPUS8_PAYLOAD_TYPE);
-  p->setInt("che.audio.custom_channel_num", OPUS8_NUM_OF_CHANNELS);
-  p->setInt("che.audio.custom_sample_rate", OPUS8_SAMPLE_RATE);
+  const int payloadResult = p->setInt("che.audio.custom_payload_type", OPUS8_PAYLOAD_TYPE);
+  const int channelResult = p->setInt("che.audio.custom_channel_num", OPUS8_NUM_OF_CHANNELS);
+  const int rateResult = p->setInt("che.audio.custom_sample_rate", OPUS8_SAMPLE_RATE);
+  if (payloadResult != 0 || channelResult != 0 || rateResult != 0) {
+    AG_LOG(ERROR, "Failed to set multi-channel connection params: payload=%d channel=%d rate=%d",
+           payloadResult, channelResult, rateResult);
+    connection = nullptr;
+    service->release();
+    service = nullptr;
+    return -1;
+  }
 
   // Register connection observer to monitor connection event
   auto connObserver = std::make_shared<SampleConnectionObserver>();

@@ -19,6 +19,7 @@
 //
 
 #include <csignal>
+#include <atomic>
 #include <cstring>
 #include <cerrno>
 #include <cstdint>
@@ -244,23 +245,44 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
 
   AVPacket* pkt = av_packet_alloc();
   AVFrame* frame = av_frame_alloc();
+  if (!pkt || !frame) {
+    AG_LOG(ERROR, "Failed to allocate audio packet/frame");
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    cleanupTracks();
+    avformat_close_input(&fmt);
+    return false;
+  }
   bool ok = true;
-  while (ok && av_read_frame(fmt, pkt) >= 0) {
+  int readResult = 0;
+  while (ok && (readResult = av_read_frame(fmt, pkt)) >= 0) {
     for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) {
       if (pkt->stream_index != audioIdx[t]) continue;
-      if (avcodec_send_packet(tracks[t].dec, pkt) == 0) {
+      const int sendResult = avcodec_send_packet(tracks[t].dec, pkt);
+      if (sendResult == 0) {
         while (avcodec_receive_frame(tracks[t].dec, frame) == 0) {
           if (!decodeResampleWrite(tracks[t], frame)) { ok = false; break; }
         }
+      } else {
+        AG_LOG(ERROR, "Failed to decode audio packet for track %d: %d", t, sendResult);
+        ok = false;
       }
       break;
     }
     av_packet_unref(pkt);
   }
+  if (readResult != AVERROR_EOF && readResult < 0) {
+    AG_LOG(ERROR, "Error reading MKV audio streams: %d", readResult);
+    ok = false;
+  }
 
   // flush 解码器与重采样器残余数据
   for (int t = 0; t < EXPECTED_AUDIO_TRACKS && ok; t++) {
-    avcodec_send_packet(tracks[t].dec, nullptr);
+    if (avcodec_send_packet(tracks[t].dec, nullptr) < 0) {
+      AG_LOG(ERROR, "Failed to flush audio decoder for track %d", t);
+      ok = false;
+      break;
+    }
     while (avcodec_receive_frame(tracks[t].dec, frame) == 0) {
       if (!decodeResampleWrite(tracks[t], frame)) { ok = false; break; }
     }
@@ -278,8 +300,14 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
       }
       got = swr_convert(tracks[t].swr, &outBuf, outMax, nullptr, 0);
       if (got > 0) {
-        fwrite(outBuf, 1, (size_t)got * CHANNELS_PER_TRACK * sizeof(int16_t), tracks[t].out);
-        tracks[t].writtenSamples += got;
+        const size_t bytes = (size_t)got * CHANNELS_PER_TRACK * sizeof(int16_t);
+        if (fwrite(outBuf, 1, bytes, tracks[t].out) != bytes) {
+          AG_LOG(ERROR, "Error writing flushed audio track %d: %s", t,
+                 std::strerror(errno));
+          ok = false;
+        } else {
+          tracks[t].writtenSamples += got;
+        }
       }
       av_freep(&outBuf);
     } while (got > 0);
@@ -301,14 +329,18 @@ static bool decodeAudioTracks(const std::string& path, const std::string tmpFile
 static bool interleaveTo8Ch(const std::string tmpFiles[EXPECTED_AUDIO_TRACKS],
                             const int64_t trackSamples[EXPECTED_AUDIO_TRACKS],
                             const std::string& outPath, int64_t& totalSamples) {
-  totalSamples = 0;
+  int64_t maxSamples = 0;
   for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) {
-    if (trackSamples[t] > totalSamples) totalSamples = trackSamples[t];
+    if (trackSamples[t] > maxSamples) maxSamples = trackSamples[t];
   }
-  if (totalSamples <= 0) {
+  if (maxSamples <= 0) {
     AG_LOG(ERROR, "No audio samples decoded");
     return false;
   }
+  // AudioPcmDataSender accepts 10 ms frames. Pad the interleaved file to a
+  // complete frame so the sender never drops the final partial frame.
+  totalSamples = ((maxSamples + SAMPLES_PER_10MS - 1) / SAMPLES_PER_10MS) *
+                 SAMPLES_PER_10MS;
 
   FILE* in[EXPECTED_AUDIO_TRACKS] = {nullptr};
   for (int t = 0; t < EXPECTED_AUDIO_TRACKS; t++) {
@@ -387,7 +419,8 @@ static bool prepareAudioPcm(const SampleOptions& options, const PrivatePcmFiles&
 // 音频发送线程：10ms/帧读 8 声道临时 PCM，到末尾循环
 static void SampleSendAudioTask(
     const std::string& pcmPath,
-    agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender, bool& exitFlag) {
+    agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender,
+    std::atomic<bool>& exitFlag) {
   // Currently only 10 ms PCM frame is supported. So PCM frames are sent at 10 ms interval
   PacerInfo pacer = {0, 10, 0, std::chrono::steady_clock::now()};
   const int frameBytes = SAMPLES_PER_10MS * TOTAL_CHANNELS * sizeof(int16_t);  // 7680
@@ -397,32 +430,42 @@ static void SampleSendAudioTask(
   FILE* file = fopen(pcmPath.c_str(), "rb");
   if (!file) {
     AG_LOG(ERROR, "Failed to open converted pcm file %s", pcmPath.c_str());
+    exitFlag.store(true, std::memory_order_relaxed);
     return;
   }
   AG_LOG(INFO, "Opened converted pcm file: %s", pcmPath.c_str());
 
-  while (!exitFlag) {
-    if (fread(frameBuf.data(), 1, frameBytes, file) != (size_t)frameBytes) {
+  while (!exitFlag.load(std::memory_order_relaxed)) {
+    const size_t bytesRead = fread(frameBuf.data(), 1, frameBytes, file);
+    if (bytesRead != (size_t)frameBytes) {
       if (feof(file)) {
-        AG_LOG(INFO, "End of audio file, loop from beginning (frames sent: %lld)",
-               (long long)framesSent);
-        fclose(file);
-        file = fopen(pcmPath.c_str(), "rb");
-        if (!file) {
-          AG_LOG(ERROR, "Failed to reopen pcm file %s", pcmPath.c_str());
-          return;
+        if (bytesRead == 0) {
+          AG_LOG(INFO, "End of audio file, loop from beginning (frames sent: %lld)",
+                 (long long)framesSent);
+          clearerr(file);
+          if (fseeko(file, 0, SEEK_SET) != 0) {
+            AG_LOG(ERROR, "Failed to rewind pcm file %s: %s", pcmPath.c_str(),
+                   std::strerror(errno));
+            exitFlag.store(true, std::memory_order_relaxed);
+            break;
+          }
+          continue;
         }
-        continue;
+        // Be defensive if a hand-created file is not frame aligned.
+        std::memset(frameBuf.data() + bytesRead, 0, frameBytes - bytesRead);
+      } else {
+        AG_LOG(ERROR, "Error reading pcm data: %s", std::strerror(errno));
+        exitFlag.store(true, std::memory_order_relaxed);
+        break;
       }
-      AG_LOG(ERROR, "Error reading pcm data: %s", std::strerror(errno));
-      fclose(file);
-      return;
     }
 
     if (audioFrameSender->sendAudioPcmData(frameBuf.data(), 0, 0, SAMPLES_PER_10MS,
                                            agora::rtc::TWO_BYTES_PER_SAMPLE, TOTAL_CHANNELS,
                                            AUDIO_SAMPLE_RATE) < 0) {
       AG_LOG(ERROR, "Failed to send audio frame!");
+      exitFlag.store(true, std::memory_order_relaxed);
+      break;
     }
     framesSent++;
     if (framesSent % 500 == 0) {  // 每 5s 打一次
@@ -438,7 +481,7 @@ static void SampleSendAudioTask(
 // 返回 false 表示解码环境初始化失败（不应重试）；正常到文件末尾返回 true
 static bool sendVideoPass(const std::string& path, int width, int height, double fps,
                           agora::agora_refptr<agora::rtc::IVideoFrameSender> videoFrameSender,
-                          bool& exitFlag, int64_t& totalSent) {
+                          std::atomic<bool>& exitFlag, int64_t& totalSent) {
   AVFormatContext* fmt = nullptr;
   if (avformat_open_input(&fmt, path.c_str(), nullptr, nullptr) < 0) {
     AG_LOG(ERROR, "ffmpeg failed to open video file %s", path.c_str());
@@ -460,7 +503,7 @@ static bool sendVideoPass(const std::string& path, int width, int height, double
 
   AVCodecParameters* cp = fmt->streams[videoIdx]->codecpar;
   const AVCodec* codec = avcodec_find_decoder(cp->codec_id);
-  AVCodecContext* dec = avcodec_alloc_context3(codec);
+  AVCodecContext* dec = codec ? avcodec_alloc_context3(codec) : nullptr;
   if (!codec || !dec || avcodec_parameters_to_context(dec, cp) < 0 ||
       avcodec_open2(dec, codec, nullptr) < 0) {
     AG_LOG(ERROR, "Failed to open video decoder");
@@ -472,6 +515,14 @@ static bool sendVideoPass(const std::string& path, int width, int height, double
   const double timeBaseSec = av_q2d(fmt->streams[videoIdx]->time_base);
   AVPacket* pkt = av_packet_alloc();
   AVFrame* frame = av_frame_alloc();
+  if (!pkt || !frame) {
+    AG_LOG(ERROR, "Failed to allocate video packet/frame");
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    avcodec_free_context(&dec);
+    avformat_close_input(&fmt);
+    return false;
+  }
   SwsContext* sws = nullptr;
   std::vector<uint8_t> i420Buf;
   int64_t firstPts = AV_NOPTS_VALUE;
@@ -481,7 +532,8 @@ static bool sendVideoPass(const std::string& path, int width, int height, double
   std::chrono::steady_clock::time_point wallStart = std::chrono::steady_clock::now();
 
   // 单帧处理：尺寸检查 -> sws 转 I420 -> PTS 节奏 -> sendVideoFrame
-  auto handleFrame = [&]() {
+  auto handleFrame = [&]() -> bool {
+    if (exitFlag.load(std::memory_order_relaxed)) return false;
     if (frame->width != width || frame->height != height) {
       if (!dimWarned) {
         AG_LOG(WARNING, "Decoded frame %dx%d differs from probed %dx%d, send as decoded",
@@ -498,13 +550,16 @@ static bool sendVideoPass(const std::string& path, int width, int height, double
       i420Buf.resize((size_t)width * height * 3 / 2);
       if (!sws) {
         AG_LOG(ERROR, "Failed to create sws context");
-        return;
+        return false;
       }
     }
     uint8_t* dst[4] = {i420Buf.data(), i420Buf.data() + (size_t)width * height,
                        i420Buf.data() + (size_t)width * height * 5 / 4, nullptr};
     int dstStride[4] = {width, width / 2, width / 2, 0};
-    sws_scale(sws, frame->data, frame->linesize, 0, height, dst, dstStride);
+    if (sws_scale(sws, frame->data, frame->linesize, 0, height, dst, dstStride) <= 0) {
+      AG_LOG(ERROR, "Failed to convert decoded video frame to I420");
+      return false;
+    }
 
     // 按帧 PTS 节奏发送：target = 首帧墙钟 + (pts - firstPts) * timebase
     if (frame->pts != AV_NOPTS_VALUE) {
@@ -515,14 +570,30 @@ static bool sendVideoPass(const std::string& path, int width, int height, double
       double offsetMs = (frame->pts - firstPts) * timeBaseSec * 1000.0;
       auto target = wallStart + std::chrono::milliseconds((long long)offsetMs);
       auto now = std::chrono::steady_clock::now();
-      if (target > now) std::this_thread::sleep_until(target);
+      while (target > now && !exitFlag.load(std::memory_order_relaxed)) {
+        const auto remaining = target - now;
+        const auto slice = std::min(
+            remaining, std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                           std::chrono::milliseconds(5)));
+        std::this_thread::sleep_for(slice);
+        now = std::chrono::steady_clock::now();
+      }
     } else {
       // 无 PTS 时按固定帧率节奏
       auto target =
           wallStart + std::chrono::milliseconds((long long)(framesThisPass * 1000.0 / fps));
       auto now = std::chrono::steady_clock::now();
-      if (target > now) std::this_thread::sleep_until(target);
+      while (target > now && !exitFlag.load(std::memory_order_relaxed)) {
+        const auto remaining = target - now;
+        const auto slice = std::min(
+            remaining, std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                           std::chrono::milliseconds(5)));
+        std::this_thread::sleep_for(slice);
+        now = std::chrono::steady_clock::now();
+      }
     }
+
+    if (exitFlag.load(std::memory_order_relaxed)) return false;
 
     agora::media::base::ExternalVideoFrame videoFrame;
     videoFrame.type = agora::media::base::ExternalVideoFrame::VIDEO_BUFFER_RAW_DATA;
@@ -539,6 +610,7 @@ static bool sendVideoPass(const std::string& path, int width, int height, double
 
     if (videoFrameSender->sendVideoFrame(videoFrame) < 0) {
       AG_LOG(ERROR, "Failed to send video frame!");
+      return false;
     }
     framesThisPass++;
     totalSent++;
@@ -546,19 +618,38 @@ static bool sendVideoPass(const std::string& path, int width, int height, double
       AG_LOG(INFO, "Video frames sent: %lld (%dx%d @ %.2f fps)", (long long)totalSent,
              width, height, fps);
     }
+    return true;
   };
 
   // 读到末尾后排空解码器（flush 帧同样发送）
-  while (!exitFlag) {
-    if (av_read_frame(fmt, pkt) < 0) {
-      avcodec_send_packet(dec, nullptr);
-      while (!exitFlag && avcodec_receive_frame(dec, frame) == 0) handleFrame();
+  bool ok = true;
+  while (!exitFlag.load(std::memory_order_relaxed)) {
+    const int readResult = av_read_frame(fmt, pkt);
+    if (readResult < 0) {
+      if (readResult != AVERROR_EOF) {
+        AG_LOG(ERROR, "Error reading video stream: %d", readResult);
+        ok = false;
+      }
+      if (ok && avcodec_send_packet(dec, nullptr) < 0) ok = false;
+      while (ok && !exitFlag.load(std::memory_order_relaxed) &&
+             avcodec_receive_frame(dec, frame) == 0) {
+        if (!handleFrame()) ok = false;
+      }
       break;
     }
-    if (pkt->stream_index == videoIdx && avcodec_send_packet(dec, pkt) == 0) {
-      while (!exitFlag && avcodec_receive_frame(dec, frame) == 0) handleFrame();
+    if (pkt->stream_index == videoIdx) {
+      const int sendResult = avcodec_send_packet(dec, pkt);
+      if (sendResult < 0) {
+        AG_LOG(ERROR, "Error sending video packet to decoder: %d", sendResult);
+        ok = false;
+      }
+      while (ok && !exitFlag.load(std::memory_order_relaxed) &&
+             avcodec_receive_frame(dec, frame) == 0) {
+        if (!handleFrame()) ok = false;
+      }
     }
     av_packet_unref(pkt);
+    if (!ok) break;
   }
 
   if (sws) sws_freeContext(sws);
@@ -567,26 +658,33 @@ static bool sendVideoPass(const std::string& path, int width, int height, double
   avcodec_free_context(&dec);
   avformat_close_input(&fmt);
   AG_LOG(INFO, "End of video pass (%lld frames this pass)", (long long)framesThisPass);
-  return true;
+  return ok;
 }
 
 // 视频发送线程：文件循环，边解边发
 static void SampleSendVideoTask(
     const SampleOptions& options, int width, int height, double fps,
-    agora::agora_refptr<agora::rtc::IVideoFrameSender> videoFrameSender, bool& exitFlag) {
+    agora::agora_refptr<agora::rtc::IVideoFrameSender> videoFrameSender,
+    std::atomic<bool>& exitFlag) {
   int64_t totalSent = 0;
-  while (!exitFlag) {
+  while (!exitFlag.load(std::memory_order_relaxed)) {
     if (!sendVideoPass(options.videoFile, width, height, fps, videoFrameSender, exitFlag,
                        totalSent)) {
-      return;  // 初始化类错误，不再重试
+      if (!exitFlag.load(std::memory_order_relaxed)) {
+        AG_LOG(ERROR, "Video send pass failed; stopping audio/video sender");
+        exitFlag.store(true, std::memory_order_relaxed);
+      }
+      return;
     }
-    if (!exitFlag) AG_LOG(INFO, "Loop video file from beginning (total sent: %lld)",
-                          (long long)totalSent);
+    if (!exitFlag.load(std::memory_order_relaxed)) {
+      AG_LOG(INFO, "Loop video file from beginning (total sent: %lld)",
+             (long long)totalSent);
+    }
   }
 }
 
-static bool exitFlag = false;
-static void SignalHandler(int sigNo) { exitFlag = true; }
+static std::atomic<bool> exitFlag(false);
+static void SignalHandler(int /*sigNo*/) { exitFlag.store(true, std::memory_order_relaxed); }
 
 int main(int argc, char* argv[]) {
   SampleOptions options;
@@ -618,6 +716,11 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
+  std::signal(SIGQUIT, SignalHandler);
+  std::signal(SIGABRT, SignalHandler);
+  std::signal(SIGINT, SignalHandler);
+  std::signal(SIGTERM, SignalHandler);
+
   AG_LOG(INFO, "input video file location: %s", options.videoFile.c_str());
 
   // 前置校验：ffmpeg 打不开 / 无视频流 / 音轨不是 4xstereo -> 报错退出（不连网）
@@ -631,11 +734,8 @@ int main(int argc, char* argv[]) {
     return -1;
   }
   if (!prepareAudioPcm(options, files)) return -1;
+  if (exitFlag.load(std::memory_order_relaxed)) return 0;
   const std::string pcmPath = files.pcmPath();
-
-  std::signal(SIGQUIT, SignalHandler);
-  std::signal(SIGABRT, SignalHandler);
-  std::signal(SIGINT, SignalHandler);
 
   // Create Agora service
   auto service = createAndInitAgoraService(false, true, true);
@@ -648,7 +748,13 @@ int main(int argc, char* argv[]) {
   // createRtcConnection() 之前设置；设置在 connection 级不生效（spec 场景4.4）
   if (options.codecUnfallback) {
     auto sp = service->getAgoraParameter();
-    sp->setArray("che.audio.codec_unfallback", "[123,124,125]");
+    const int result = sp->setArray("che.audio.codec_unfallback", "[123,124,125]");
+    if (result != 0) {
+      AG_LOG(ERROR, "Failed to set che.audio.codec_unfallback, ret=%d", result);
+      service->release();
+      service = nullptr;
+      return -1;
+    }
     AG_LOG(INFO, "Set che.audio.codec_unfallback=[123,124,125] on service level");
   }
 
@@ -660,6 +766,8 @@ int main(int argc, char* argv[]) {
   agora::agora_refptr<agora::rtc::IRtcConnection> connection = service->createRtcConnection(ccfg);
   if (!connection) {
     AG_LOG(ERROR, "Failed to creating Agora connection!");
+    service->release();
+    service = nullptr;
     return -1;
   }
 
@@ -667,62 +775,125 @@ int main(int argc, char* argv[]) {
   // 对 connection->getAgoraParameter() 设置（spec 场景4.2）
   // 8 声道 / payload 125 / 48000 由 4xstereo 布局决定，写死
   auto p = connection->getAgoraParameter();
-  p->setInt("che.audio.custom_payload_type", CUSTOM_PAYLOAD_TYPE);
-  p->setInt("che.audio.custom_channel_num", TOTAL_CHANNELS);
-  p->setInt("che.audio.custom_sample_rate", AUDIO_SAMPLE_RATE);
+  const int payloadResult = p->setInt("che.audio.custom_payload_type", CUSTOM_PAYLOAD_TYPE);
+  const int channelResult = p->setInt("che.audio.custom_channel_num", TOTAL_CHANNELS);
+  const int rateResult = p->setInt("che.audio.custom_sample_rate", AUDIO_SAMPLE_RATE);
+  if (payloadResult != 0 || channelResult != 0 || rateResult != 0) {
+    AG_LOG(ERROR, "Failed to set multi-channel connection params: payload=%d channel=%d rate=%d",
+           payloadResult, channelResult, rateResult);
+    connection = nullptr;
+    service->release();
+    service = nullptr;
+    return -1;
+  }
   AG_LOG(INFO, "Set connection params: payload_type=%d channel_num=%d sample_rate=%d",
          CUSTOM_PAYLOAD_TYPE, TOTAL_CHANNELS, AUDIO_SAMPLE_RATE);
 
   // Register connection observer to monitor connection event
   auto connObserver = std::make_shared<SampleConnectionObserver>();
-  connection->registerObserver(connObserver.get());
+  bool observerRegistered = connection->registerObserver(connObserver.get()) == 0;
+  if (!observerRegistered) {
+    AG_LOG(ERROR, "Failed to register connection observer");
+    connObserver.reset();
+    connection = nullptr;
+    service->release();
+    service = nullptr;
+    return -1;
+  }
 
   // Create local user observer
   auto localUserObserver = std::make_shared<SampleLocalUserObserver>(connection->getLocalUser());
 
+  agora::agora_refptr<agora::rtc::IMediaNodeFactory> factory;
+  agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender;
+  agora::agora_refptr<agora::rtc::ILocalAudioTrack> customAudioTrack;
+  agora::agora_refptr<agora::rtc::IVideoFrameSender> videoFrameSender;
+  agora::agora_refptr<agora::rtc::ILocalVideoTrack> customVideoTrack;
+  bool connectStarted = false;
+  bool audioPublished = false;
+  bool videoPublished = false;
+
+  // All paths after connection creation use this teardown. Keeping the
+  // order explicit prevents SDK callbacks and worker threads from outliving
+  // the observer/track objects during normal exit and signal-driven exit.
+  auto cleanup = [&]() {
+    exitFlag.store(true, std::memory_order_relaxed);
+    if (connection && audioPublished) {
+      connection->getLocalUser()->unpublishAudio(customAudioTrack);
+      audioPublished = false;
+    }
+    if (connection && videoPublished) {
+      connection->getLocalUser()->unpublishVideo(customVideoTrack);
+      videoPublished = false;
+    }
+    if (connection && observerRegistered) {
+      connection->unregisterObserver(connObserver.get());
+      observerRegistered = false;
+    }
+    if (connection && connectStarted) {
+      const int result = connection->disconnect();
+      if (result) AG_LOG(ERROR, "Failed to disconnect from Agora channel, ret=%d", result);
+      connectStarted = false;
+    }
+    connObserver.reset();
+    localUserObserver.reset();
+    audioFrameSender = nullptr;
+    customAudioTrack = nullptr;
+    videoFrameSender = nullptr;
+    customVideoTrack = nullptr;
+    factory = nullptr;
+    connection = nullptr;
+    if (service) {
+      service->release();
+      service = nullptr;
+    }
+  };
+
   // Connect to Agora channel
+  connectStarted = true;
   if (connection->connect(options.appId.c_str(), options.channelId.c_str(),
                           options.userId.c_str())) {
     AG_LOG(ERROR, "Failed to connect to Agora channel!");
+    cleanup();
     return -1;
   }
-
   // Create media node factory
-  agora::agora_refptr<agora::rtc::IMediaNodeFactory> factory = service->createMediaNodeFactory();
+  factory = service->createMediaNodeFactory();
   if (!factory) {
     AG_LOG(ERROR, "Failed to create media node factory!");
+    cleanup();
     return -1;
   }
 
   // Create audio data sender
-  agora::agora_refptr<agora::rtc::IAudioPcmDataSender> audioFrameSender =
-      factory->createAudioPcmDataSender();
+  audioFrameSender = factory->createAudioPcmDataSender();
   if (!audioFrameSender) {
     AG_LOG(ERROR, "Failed to create audio data sender!");
+    cleanup();
     return -1;
   }
 
   // Create audio track
-  agora::agora_refptr<agora::rtc::ILocalAudioTrack> customAudioTrack =
-      service->createCustomAudioTrack(audioFrameSender);
+  customAudioTrack = service->createCustomAudioTrack(audioFrameSender);
   if (!customAudioTrack) {
     AG_LOG(ERROR, "Failed to create audio track!");
+    cleanup();
     return -1;
   }
 
   // Create video frame sender
-  agora::agora_refptr<agora::rtc::IVideoFrameSender> videoFrameSender =
-      factory->createVideoFrameSender();
+  videoFrameSender = factory->createVideoFrameSender();
   if (!videoFrameSender) {
     AG_LOG(ERROR, "Failed to create video frame sender!");
+    cleanup();
     return -1;
   }
 
   // Create video track
-  agora::agora_refptr<agora::rtc::ILocalVideoTrack> customVideoTrack =
-      service->createCustomVideoTrack(videoFrameSender);
+  customVideoTrack = service->createCustomVideoTrack(videoFrameSender);
   if (!customVideoTrack) {
     AG_LOG(ERROR, "Failed to create video track!");
+    cleanup();
     return -1;
   }
 
@@ -739,35 +910,22 @@ int main(int argc, char* argv[]) {
   customAudioTrack->setEnabled(true);
   if (connection->getLocalUser()->publishAudio(customAudioTrack)) {
     AG_LOG(ERROR, "Failed to publish audio track!");
+    cleanup();
     return -1;
   }
+  audioPublished = true;
   customVideoTrack->setEnabled(true);
   if (connection->getLocalUser()->publishVideo(customVideoTrack)) {
     AG_LOG(ERROR, "Failed to publish video track!");
+    cleanup();
     return -1;
   }
+  videoPublished = true;
 
   // Wait until connected before sending media stream
   if (connObserver->waitUntilConnected(DEFAULT_CONNECT_TIMEOUT_MS) != 0) {
     AG_LOG(ERROR, "Wait for connection timeout or failure!");
-    // Both tracks have been published before the wait. Perform the same
-    // teardown as the normal exit path before returning from the failure path.
-    connection->getLocalUser()->unpublishAudio(customAudioTrack);
-    connection->getLocalUser()->unpublishVideo(customVideoTrack);
-    connection->unregisterObserver(connObserver.get());
-    if (connection->disconnect()) {
-      AG_LOG(ERROR, "Failed to disconnect from Agora channel after connection failure!");
-    }
-    connObserver.reset();
-    localUserObserver.reset();
-    audioFrameSender = nullptr;
-    customAudioTrack = nullptr;
-    videoFrameSender = nullptr;
-    customVideoTrack = nullptr;
-    factory = nullptr;
-    connection = nullptr;
-    service->release();
-    service = nullptr;
+    cleanup();
     return -1;
   }
 
@@ -781,33 +939,8 @@ int main(int argc, char* argv[]) {
   sendAudioThread.join();
   sendVideoThread.join();
 
-  // Unpublish audio & video track
-  connection->getLocalUser()->unpublishAudio(customAudioTrack);
-  connection->getLocalUser()->unpublishVideo(customVideoTrack);
-
-  // Unregister connection observer
-  connection->unregisterObserver(connObserver.get());
-
-  // Disconnect from Agora channel
-  if (connection->disconnect()) {
-    AG_LOG(ERROR, "Failed to disconnect from Agora channel!");
-    return -1;
-  }
+  cleanup();
   AG_LOG(INFO, "Disconnected from Agora channel successfully");
-
-  // Destroy Agora connection and related resources
-  connObserver.reset();
-  localUserObserver.reset();
-  audioFrameSender = nullptr;
-  customAudioTrack = nullptr;
-  videoFrameSender = nullptr;
-  customVideoTrack = nullptr;
-  factory = nullptr;
-  connection = nullptr;
-
-  // Destroy Agora Service
-  service->release();
-  service = nullptr;
 
   return 0;
 }
