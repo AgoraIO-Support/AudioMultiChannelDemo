@@ -13,11 +13,12 @@ cycles=${CYCLES:-3}
 timeout_sec=${TIMEOUT_SEC:-20}
 settle_sec=${SETTLE_SEC:-4}
 observe_sec=${OBSERVE_SEC:-2}
+recovery_media_sec=${RECOVERY_MEDIA_SEC:-2}
 min_growth_bytes=${MIN_GROWTH_BYTES:-38400}
 pcm_input=${PCM_INPUT:-"$sample_dir/public/8_Channel_ID_signed_16_bit_pcm.raw.pcm"}
 
 if [ -z "$app_token" ]; then echo 'Set APP_TOKEN before running the regression' >&2; exit 2; fi
-for n in "$sender_uid" "$receiver_uid" "$cycles" "$timeout_sec" "$settle_sec" "$observe_sec" "$min_growth_bytes"; do
+for n in "$sender_uid" "$receiver_uid" "$cycles" "$timeout_sec" "$settle_sec" "$observe_sec" "$recovery_media_sec" "$min_growth_bytes"; do
   case "$n" in ''|*[!0-9]*) echo 'UIDs and timing/cycle options must be positive integers' >&2; exit 2;; esac
   if [ "$n" -eq 0 ]; then echo 'UIDs and timing/cycle options must be positive integers' >&2; exit 2; fi
 done
@@ -28,6 +29,8 @@ done
 if [ ! -r "$pcm_input" ]; then echo "Missing PCM input: $pcm_input" >&2; exit 2; fi
 sample_dir=$(cd "$sample_dir" && pwd)
 work_dir=$(mktemp -d "${TMPDIR:-/tmp}/agora-lifecycle.XXXXXX")
+recovery_log=${RECOVERY_LOG:-"$work_dir/recovery-offsets.txt"}
+: >"$recovery_log"
 sender_pid='' receiver_pid=''
 echo "Artifacts: $work_dir"
 
@@ -63,6 +66,7 @@ wait_log() {
   done
 }
 size() { if [ -f "$1" ]; then wc -c < "$1" | tr -d ' '; else printf '0'; fi; }
+mark_recovery() { printf '%s %s\n' "$1" "$2" >>"$recovery_log"; }
 wait_growth() {
   local file=$1 before=$2 start=$SECONDS
   while [ "$(size "$file")" -lt $((before + min_growth_bytes)) ]; do
@@ -117,18 +121,25 @@ toggle() {
 start_receiver 1
 start_sender 1
 wait_log "$receiver_log" "onUserAudioTrackSubscribed: userId $sender_uid" 1 "$receiver_pid"
-wait_growth "$pcm" 0
+before=0
+wait_growth "$pcm" "$before"
+sleep "$recovery_media_sec"
+mark_recovery initial "$before"
 for ((i=1; i<=cycles; i++)); do
   toggle "$sender_pid" "$sender_log" 'LIFECYCLE publish=0 ret=0' "$i"
   assert_stopped "$pcm"
   before=$(size "$pcm")
   toggle "$sender_pid" "$sender_log" 'LIFECYCLE publish=1 ret=0' "$i"
   wait_growth "$pcm" "$before"
+  sleep "$recovery_media_sec"
+  mark_recovery "republish-$i" "$before"
   toggle "$receiver_pid" "$receiver_log" 'LIFECYCLE subscribe=0 ret=0' "$i"
   assert_stopped "$pcm"
   before=$(size "$pcm")
   toggle "$receiver_pid" "$receiver_log" 'LIFECYCLE subscribe=1 ret=0' "$i"
   wait_growth "$pcm" "$before"
+  sleep "$recovery_media_sec"
+  mark_recovery "resubscribe-$i" "$before"
   echo "PASS publish/subscribe cycle $i"
 done
 
@@ -139,13 +150,18 @@ assert_stopped "$pcm"
 before=$(size "$pcm")
 start_sender 2
 wait_growth "$pcm" "$before"
+sleep "$recovery_media_sec"
+mark_recovery sender-rejoin "$before"
 echo 'PASS sender leave/rejoin with same UID'
 
 stop_process "$receiver_pid" receiver
 receiver_pid=
 start_receiver 2
 wait_log "$receiver_log" "onUserAudioTrackSubscribed: userId $sender_uid" 1 "$receiver_pid"
-wait_growth "$pcm" 0
+before=0
+wait_growth "$pcm" "$before"
+sleep "$recovery_media_sec"
+mark_recovery receiver-rejoin "$before"
 echo 'PASS receiver leave/rejoin with same UID'
 
 # Exit immediately after a control signal to exercise concurrent teardown.

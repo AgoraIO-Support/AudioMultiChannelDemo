@@ -92,3 +92,15 @@
 - 生命周期发布/取消发布、订阅/取消订阅 **2 轮**通过，双方同 UID 重进和快速控制/退出信号均通过。
 
 本轮没有失败样本。结果、日志、媒体证据和独立 FFT 复核 `numpy-verification.json` 保存在本机 `/private/tmp/agora-linux-x86_64-peer.JNI33I/`，远端原始目录为 `/home/ubuntu/agora-x86_64-results/`。x86_64 的 48/48 只代表该次主机和网络条件，不能抵消 ARM64 修正后 44/48 中的四个 startup 异常；NetEq/PLC 内部调查仍保持开放。
+
+## 2026-11-23 N/M 与内容语义扩展回归
+
+在完整 48 项之外，新增全部 30 个有序 N≠M 组合及混音、PCM/AV 连续性、MKV 映射检查：
+
+- N/M 内容：ARM64 **0/30** 通过；x86_64 首轮 `8to6` 的 `rejected` 经日志复核实际为 **SIGSEGV（-11）**，分类器已改为崩溃记 `error` 而非安全拒绝。定向复跑 `8to6` 仍有 `mixed_source_channels`，所以两架构均无组合通过一对一内容门禁。`degraded_to_requested_channels` 只保留 transport 结论。
+- 混音：stereo 奇偶隔离和 mono 的全部 8 个源频率在双架构均通过。
+- PCM/AV：x86_64 的时间戳连续性和频谱通过；ARM64 的时间戳连续性通过，重复/非均匀 RTP 时间戳被单独记录，但 startup 频谱失败、steady 通过，整例仍失败。
+- MKV：x86_64 的合成 4×stereo→8ch 映射通过；ARM64 的 steady 映射通过、startup 出现跨声道 300Hz，整例仍失败。
+- 生命周期：ARM64 10 轮流程成功，恢复内容 **16/23**；x86_64 **23/23**。
+
+43 项相关离线测试（18 项基础回归、9 项 N/M 内容、5 项生命周期内容、11 项语义分析）通过。完整证据索引和分阶段结果见 [Linux 多声道 Demo 测试覆盖评估](comments_for_linux_demo.md) 与 [生命周期回归记录](linux_lifecycle_regression_2026-11-19.md)。

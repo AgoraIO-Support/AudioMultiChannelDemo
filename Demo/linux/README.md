@@ -230,6 +230,10 @@ docker run --rm -it agora-multichannel-linux \
     --numOfChannels 8 --sampleRate 48000 --audioFile received_8ch.pcm
 ```
 
+PCM/AV 连续性回归可显式添加 `--traceFrames 1`，逐帧输出 `PCM_FRAME_TRACE`（RTP 时间戳和
+`renderTimeMs`），用于检查回退及异常间隔。重复或非均匀 RTP 时间戳不直接视为丢帧；该选项默认关闭，
+长时间运行时应评估日志量。
+
 ### 5. 接收编码帧（OPUSMC 裸帧落盘）
 
 ```bash

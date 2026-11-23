@@ -80,6 +80,23 @@ class EncodedLogAssertionTest(unittest.TestCase):
         self.assertFalse(passed)
 
 
+class MismatchBehaviorTest(unittest.TestCase):
+    def test_explicit_metadata_mismatch_is_safe_rejection(self):
+        behavior = regression.classify_mismatch_behavior(
+            "PCM_FRAME_METADATA_MISMATCH user=86001 gotChannels=8", 1, False, [], 6)
+        self.assertEqual(behavior, "rejected")
+
+    def test_nonzero_exit_without_metadata_mismatch_is_error(self):
+        behavior = regression.classify_mismatch_behavior("onDisconnected", -11, True,
+                                                         [("6", "48000")], 6)
+        self.assertEqual(behavior, "error")
+
+    def test_requested_channels_with_clean_exit_is_degradation(self):
+        behavior = regression.classify_mismatch_behavior("PCM_FRAME_METADATA", 0, True,
+                                                         [("6", "48000")], 6)
+        self.assertEqual(behavior, "degraded_to_requested_channels")
+
+
 class ToneSpectrumAssertionTest(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

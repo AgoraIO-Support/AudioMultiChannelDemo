@@ -243,6 +243,11 @@ carries either a token or an appId (pass the appId when no certificate is enable
     --numOfChannels 8 --sampleRate 48000 --audioFile received_8ch.pcm
 ```
 
+For PCM/AV continuity regression, explicitly add `--traceFrames 1` to emit `PCM_FRAME_TRACE` with
+RTP timestamps and `renderTimeMs`, allowing timestamp regressions and abnormal intervals to be checked.
+Duplicate or non-uniform RTP timestamps are not treated as packet loss by themselves. This option is
+off by default; assess log volume before enabling it for long runs.
+
 ### 5. Receive encoded frames (raw OPUSMC dump)
 
 ```bash

@@ -123,6 +123,37 @@ Linux Demo 的功能入口比较完整，已经覆盖 4 类发送路径和 4 类
 
 x86_64 全绿只代表该次主机、架构和网络条件。ARM64 的四个 startup 强 300Hz 仍作为独立 NetEq/PLC 调查项保留，不能用本次 48/48 将其关闭。
 
+### 扩展生命周期、N/M 与内容语义回归
+
+本轮增加 `lifecycle_content_regression.py`、`mismatch_content_regression.py` 和 `semantic_regression.py`，并将 PCM/AV 的可选逐帧时间戳日志用于连续性检查。相关 **43 项离线测试**（18 项基础回归、9 项 N/M 内容、5 项生命周期内容、11 项语义分析）均通过。
+
+#### 长生命周期和其他接收路径
+
+- ARM64 的 PCM 发布/订阅及重进流程执行 10 轮，脚本和进程退出均成功；23 个初始/恢复/重进分析点中 **16/23 通过**。7 个失败均为实际频谱异常：6 个 startup 失败、1 个 steady 失败，没有采样不足。每次恢复保留 2 秒媒体，不能只凭文件增长或退出码判为内容恢复。
+- x86_64 同样执行 10 轮，**23/23 恢复点的 startup/steady 全部通过**。
+- ARM64 的 PCM、encoded、mixed、AV 四接收路径同时恢复时，取消发布/订阅期间 PCM 停止、其他接收端继续、重新发布后的内容均通过；但重新订阅后的 steady 第 2 声道出现约 24.1% 的 300Hz 比例，因此该矩阵整例仍失败。
+
+#### N/M 声道错配内容
+
+已覆盖 3～8 声道全部 **30 个有序 N≠M 组合**，不再只检查接收端请求的声道数：
+
+- ARM64 **0/30** 通过；x86_64 首轮也只有 `8to6` 被标为 `rejected`，其余组合均出现混音、未匹配内容、声道缺失或重排。
+- 对 x86_64 `8to6` 的日志复核发现当时接收端退出码为 **-11（SIGSEGV）**，并非安全拒绝。分类器已修正为只有显式 `PCM_FRAME_METADATA_MISMATCH` 才记 `rejected`，崩溃和其他非零退出记为 `error`。
+- 定向复跑 `8to6` 时接收端退出码为 0，但仍有 `mixed_source_channels`，内容门禁失败。首轮的 SIGSEGV 属于间歇性异常，仍需单独调查，不能用本轮未崩溃关闭。
+- 因此“按请求声道数输出”只代表 transport 行为，不能证明一对一内容映射、无复制或无错序。原有 8→3、3→8 也只能保留该传输层结论。
+
+#### 混音、PCM/AV 连续性和 MKV 映射
+
+- stereo 混音的奇偶声道隔离和 mono 的全部 8 个源频率检查在 **ARM64 和 x86_64 均通过**。
+- ARM64 的 PCM/AV 时间戳连续性均通过：无回退、无异常大间隔，重复/非均匀 RTP 时间戳被单独记录，不把重复时间戳误判为丢帧；但两路 startup 频谱均失败，steady 通过，整例仍不能标为通过。
+- x86_64 的 PCM/AV 连续性和频谱均通过。
+- 合成 4 条独立 stereo 音轨的 MKV 实测中，x86_64 的 4×stereo→8ch 映射全部通过；ARM64 的 steady 映射通过，但 startup 出现跨声道 300Hz 异常，整例仍失败。文件非空不再作为 MKV 映射验收依据。
+
+扩展证据位于：
+
+- ARM64：`/private/tmp/agora-linux-mismatch-arm64.MICdXE/`、`/private/tmp/agora-linux-pcm-lifecycle-arm64-r4.qb8CJQ/`、`/private/tmp/agora-linux-lifecycle-arm64.LMLBfK/`、`/private/tmp/agora-linux-semantic-arm64-r2.Ffq5wo/`、`/private/tmp/agora-linux-mkv-mapping-arm64.LOKpDb/`。
+- x86_64：`/private/tmp/agora-linux-mismatch-x86_64.iXEP5v/`、`/private/tmp/agora-linux-lifecycle-x86_64.Ug28zt/`、`/private/tmp/agora-linux-semantic-x86_64.MysvGk/`；`8to6` 定向复核另存于 `/private/tmp/agora-linux-mismatch-x86_64.iXEP5v/8to6-fixed/`。
+
 现有汇总文档还记录过 Linux→Linux 34/34 通过，包含 4 类发送端、4 类接收端基础矩阵，以及格式、声道、顺序和非法参数扩展。该结果属于历史实测记录，尚未在 `Demo/linux/tests/` 中形成同等范围的可重跑测试套件。
 
 ### 已有自动化测试
@@ -136,7 +167,10 @@ x86_64 全绿只代表该次主机、架构和网络条件。ARM64 的四个 sta
 - [run_pcm_channel_analysis_tests.sh](../Demo/linux/tests/run_pcm_channel_analysis_tests.sh)：无需 Agora SDK 即可运行逐声道分析合成测试。
 - [mkv_exit_regression.sh](../Demo/linux/tests/mkv_exit_regression.sh)：在提供 `APP_TOKEN` 后重复运行正常退出、sender SIGINT、sender SIGTERM、receiver 先退出，并分别覆盖真实临时文件和 `/dev/null`。
 - [lifecycle_regression.sh](../Demo/linux/tests/lifecycle_regression.sh)：编排 PCM 发布/取消发布、订阅/取消订阅、双方同 UID 重进及快速退出，检查 API、回调、PCM 文件增长和退出码；ARM64 Ubuntu 的 8 声道真实回归已通过，见 [回归记录](linux_lifecycle_regression_2026-11-19.md)。
-- [full_regression_test.py](../Demo/linux/tests/full_regression_test.py)：共 15 项单测，其中 7 项编码日志断言覆盖 monitor/strict、warmup、非单调时间戳和 codec 错配，8 项频谱门禁测试覆盖局部主峰、频率容差、强/弱 300Hz、短时突发、启动/稳定阶段和短文件。
+- [full_regression_test.py](../Demo/linux/tests/full_regression_test.py)：共 18 项单测，其中 7 项编码日志断言覆盖 monitor/strict、warmup、非单调时间戳和 codec 错配，8 项频谱门禁测试覆盖局部主峰、频率容差、强/弱 300Hz、短时突发、启动/稳定阶段和短文件，3 项错配行为分类测试区分安全拒绝与崩溃。
+- [lifecycle_content_regression.py](../Demo/linux/tests/lifecycle_content_regression.py) 及对应 5 项单测：执行 10 轮生命周期并逐点验收恢复内容，覆盖四接收路径。
+- [mismatch_content_regression.py](../Demo/linux/tests/mismatch_content_regression.py) 及对应 9 项单测：覆盖全部 30 个有序 N≠M 组合，检查混音、复制、缺失、重排和未匹配内容。
+- [semantic_regression.py](../Demo/linux/tests/semantic_regression.py) 及对应 11 项单测：验证 stereo 奇偶混音隔离、mono 全源、PCM/AV 连续性和合成 4×stereo MKV 映射。
 - 本轮全量 C/C++ 回归见 [Linux 全量回归记录](linux_full_regression_2026-11-19.md)：主工程 9 个目标和 4 个独立解析器均编译通过，4×4 真实收发矩阵、生命周期、MKV teardown、N→M 降级和扩展非法输入通过；2026-11-23 的 24bit 和 codec 定向复跑结果见上节。
 
 ## 部分覆盖
@@ -149,7 +183,7 @@ x86_64 全绿只代表该次主机、架构和网络条件。ARM64 的四个 sta
 
 ### 4×stereo 到 8ch 的布局
 
-MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧。真实 4×4 矩阵中的 MKV→AV 组合已收到 22 个完整的 1920×1080 I420 帧，前两帧内容不同；但目前只断言文件非空、视频尺寸和推进，没有针对 4×stereo 到 8ch 的逐声道内容映射门禁，仍需保存接收文件并执行分析器。
+MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧。真实 4×4 矩阵中的 MKV→AV 组合已收到完整 I420 帧并验证前两帧不同。新增合成 4 条独立 stereo 音轨的映射门禁后，x86_64 的 4×stereo→8ch 映射通过，ARM64 的 steady 映射通过、startup 仍有 300Hz 异常。文件非空和视频推进不再单独作为映射验收依据。
 
 ### 24bit 转换
 
@@ -157,7 +191,7 @@ MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧。真实 4×4 �
 
 ### 混音和编码帧
 
-混音路径已在 4×4 矩阵中验证文件有数据、输出格式和 RMS 非零；混音隔离和逐声道内容仍缺。编码帧路径已按 UID 分文件并验证普通 Opus `codec=1`、OPUSMC `codec=13`。默认 monitor 模式检查时间戳单调性、codec、输出和退出码，传输缺口记录 warning；`--strictTimestampContinuity 1` 与回归脚本 `--strict-timestamp-continuity` 才将后续缺口判为失败。AV 路径已验证音频输出及完整 I420 帧、前两帧差异和视频时间戳递增；音频连续性和完整内容语义仍缺。
+混音路径已验证 stereo 奇偶声道隔离和 mono 的全部 8 个源频率，双架构均通过。编码帧路径已按 UID 分文件并验证普通 Opus `codec=1`、OPUSMC `codec=13`。PCM/AV 新增可选逐帧时间戳日志，允许重复及非均匀 RTP 时间戳，但拒绝回退和异常大间隔；x86_64 的连续性和频谱均通过，ARM64 的时间戳连续性通过、startup 频谱仍失败。AV 视频路径继续检查完整 I420 帧、前两帧差异和视频时间戳递增。
 
 ### 生命周期和架构
 
@@ -177,18 +211,18 @@ ARM64 与 x86_64 均已有实际容器回归：x86_64 完整 48/48，ARM64 修�
 | P0 | MKV 音视频退出稳定性 | `mkv_exit_regression.sh` 的 normal、sender SIGINT、sender SIGTERM、receiver 先退出在 ARM64 和 x86_64 均通过，覆盖真实临时文件和 `/dev/null` | 在更多收发路径和长稳中复测，继续确认无卡死、残留线程、未关闭文件和异常子进程 |
 | P0（条件） | ARM64/x86_64 对等回归 | 两架构均已执行相同修正版媒体、输入校验和退出矩阵：x86_64 48/48，ARM64 44/48 且四个失败均为 startup 异常 | 保留分架构结果，继续调查 ARM64 NetEq/PLC 瞬态；新增架构或网络条件时复跑同一矩阵 |
 | P1 | codec fallback / `codec_unfallback` | 2026-11-23 monitor 定向 13/13 项断言通过，普通流保持 `codec=1`、多声道流保持 `codec=13`，未观察整体回退；严格连续性在当前网络为 9/13 | 在可控无丢包网络执行严格连续性门禁，并补 capability/远端媒体证据，明确 SDK 实际协商行为 |
-| P1 | 生命周期和订阅竞态 | ARM64 和 x86_64 均完成 PCM 发布/取消发布、订阅/取消订阅、双方同 UID 重进及快速信号退出的 2 轮真实回归并通过 | 在更多收发路径复测，进一步验证逐声道内容及长时间竞态 |
-| P1 | 接收端声道数错配 | ARM64 和 x86_64 均已实测 8→3 和 3→8：均按接收端请求输出 3/8 声道，metadata 与文件帧大小一致 | 增加更多 N/M 组合和逐声道内容断言，确认降级不会复制或错序 |
+| P1 | 生命周期和订阅竞态 | 已扩至 10 轮及逐点内容验收：x86_64 23/23 恢复点通过，ARM64 16/23 通过且 7 个失败均为实际频谱异常；ARM64 四接收矩阵另有 resubscribe steady 异常 | 继续在更多网络条件和长时间竞态下复测，保留每次恢复的 PCM、频谱和日志，不能只检查文件增长 |
+| P1 | 接收端声道数错配 | 已覆盖全部 30 个有序 N≠M 组合：两架构均无组合通过一对一内容门禁；x86_64 `8to6` 首轮还出现 SIGSEGV，已修正分类器避免把崩溃误记为安全拒绝 | 由 SDK 团队调查错配混音/映射和间歇性崩溃；保留每次 PCM、频谱和日志，transport 的 `degraded_to_requested_channels` 不代表内容正确 |
 | P1 | 网络和认证恢复 | 已捕获真实丢包下 NetEq/PLC 产生强 300Hz 瞬态及恢复的码流证据；Token 过期/续期、可控丢包/抖动和完整恢复矩阵仍未覆盖 | 覆盖 Token 过期/续期、断网、受控丢包/抖动和重连，分别记录补偿瞬态与稳定后的声道数、频谱和内容恢复 |
-| P1 | 混音/编码/AV 语义断言 | 已加入输出格式、PCM metadata、编码 codec/timestamp delta、混音输出和 AV 帧尺寸/差异/时间戳断言；编码功能与传输连续性已拆分门禁，混音隔离与音频连续性仍缺 | 增加奇偶声道混音、mono 混音隔离、PCM 连续性和 AV 音频连续性断言 |
+| P1 | 混音/编码/AV 语义断言 | stereo 奇偶隔离和 mono 全源双架构通过；x86_64 PCM/AV 连续性与 MKV 映射通过；ARM64 时间戳连续性及 MKV steady 通过，但 startup 频谱仍失败 | 继续调查 ARM64 启动 NetEq/PLC 异常，并在更多网络条件下验证 PCM/AV 连续性和 MKV 映射 |
 | P2 | 长稳和资源 | 没有长时间自动化记录 | 连续发布订阅至少 2 小时，观察 CPU、内存、线程、文件句柄和 SDK 日志增长 |
 | P2 | 文件输出边界 | 已有部分分片和路径安全逻辑，异常磁盘场景未覆盖 | 覆盖 100MB 分片、磁盘写满、权限不足、UID 特殊字符、输出冲突和多远端并发写盘 |
 | P2 | 解析器和帧边界 fuzz | WAV chunk、Extensible PCM、PCM 尾部和 Opus 非整帧单测已完成 | 增加 parser fuzz/property tests，重点检查任意截断、超大 chunk、奇数对齐和随机扩展 chunk 不崩溃、不越界 |
 
 ## 建议的第一阶段落地顺序
 
-1. 将 `framed-round-05` 的实际编码包，以及 ARM64 四个启动失败的 PCM、频谱和日志交给 SDK 团队调查多声道 NetEq/PLC；在可控无丢包及受控丢包网络复测，并保留失败时的 encoded 包离线解码对照。
+1. 将 `framed-round-05`、ARM64 四个启动失败及扩展回归中的频谱异常交给 SDK 团队调查多声道 NetEq/PLC；同时调查 x86_64 `8to6` 的间歇性 SIGSEGV，保留崩溃日志和后续内容失败证据。
 2. 在可控无丢包网络执行 `--strict-timestamp-continuity`，继续区分网络、容器调度和 SDK transport 排队造成的缺口；若普通 Opus 对端仍不触发回退，补 capability 和远端媒体证据。
-3. 补混音隔离、PCM/AV 音频连续性和 N/M 错配的逐声道内容断言，继续推进 Token/网络恢复、长稳和 parser fuzz 测试。
+3. 在更多网络条件下复测混音、PCM/AV 连续性、MKV 映射和 N/M 内容，继续推进 Token/网络恢复、长稳和 parser fuzz 测试。
 
 验收时应遵守统一口径：join/publish 成功、本端发送统计和日志只能作为辅助证据；Native/Linux PCM 必须检查实际声道数和逐声道内容。对 Opus/NetEq 输出，严格 NCC 只适用于时间和相位已对齐的比较；频谱应检查全频谱局部主峰、跨声道比例和多个时间窗。怀疑编码串音时，应保存实际编码包并离线解码，先确认异常是否已存在于码流。NetEq/PLC 启动或丢包补偿瞬态必须单独记录，既不能因随后恢复而删除异常，也不能用单次短窗口结果认定持续产品缺陷。编码帧、混音文件和音视频文件分别代表不同验证层级，不能互相替代。

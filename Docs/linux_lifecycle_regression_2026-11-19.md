@@ -50,3 +50,24 @@ PCM 文件位于 `/private/tmp/agora-linux-x86_64-peer.JNI33I/tmp/lifecycle/agor
 该结果与 [Linux 全量回归记录](linux_full_regression_2026-11-19.md) 中的 x86_64 **48/48** 和
 MKV **4/4** 结果对应。它仍只覆盖本次 8 声道 PCM 生命周期路径；逐声道频谱由全量回归单独验收，
 不能外推到其他收发路径、长稳或网络故障恢复。
+
+## 2026-11-23 扩展生命周期与恢复内容验收
+
+使用 `lifecycle_content_regression.py` 将流程扩展到 10 轮，并在每个初始、重新发布、重新订阅及重进点
+保留 2 秒媒体，逐点检查 startup/steady 频谱：
+
+| 架构 | 流程结果 | 恢复内容结果 | 说明 |
+| --- | --- | --- | --- |
+| ARM64 | 10 轮脚本和进程退出均成功 | **16/23 通过** | 7 个失败均为实际频谱异常：6 个 startup、1 个 steady；没有采样不足 |
+| x86_64 | 10 轮脚本和进程退出均成功 | **23/23 通过** | 所有恢复点的 startup/steady 均通过 |
+
+ARM64 证据位于 `/private/tmp/agora-linux-pcm-lifecycle-arm64-r4.qb8CJQ/`，x86_64 证据位于
+`/private/tmp/agora-linux-lifecycle-x86_64.Ug28zt/`。每次恢复的字节偏移和分析结果均保留在
+`recovery-offsets.txt` 与 `extended-lifecycle-results.json` 中。
+
+另对 ARM64 的 PCM、encoded、mixed、AV 四接收路径做同时恢复验证：取消发布/订阅时 PCM 停止、
+其他接收端继续、重新发布后的内容均通过；重新订阅后的 steady 第 2 声道出现约 24.1% 的 300Hz 比例，
+因此该矩阵整例仍失败，证据位于 `/private/tmp/agora-linux-lifecycle-arm64.LMLBfK/`。
+
+这些结果继续遵守“文件增长不等于逐声道内容恢复”的口径，不能用流程成功或 x86_64 全绿抵消
+ARM64 的具体异常。

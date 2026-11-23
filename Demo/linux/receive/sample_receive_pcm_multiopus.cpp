@@ -50,6 +50,7 @@ struct SampleOptions {
   std::string remoteUserId;
   std::string audioFile = DEFAULT_AUDIO_FILE;
   int lifecycleControl = 0;
+  bool traceFrames = false;
 
   struct {
     int sampleRate = DEFAULT_SAMPLE_RATE;
@@ -60,11 +61,12 @@ struct SampleOptions {
 class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
  public:
   PcmFrameObserver(const std::string& outputFilePath, bool flushFrames, int expectedChannels,
-                   int expectedSampleRate)
+                   int expectedSampleRate, bool traceFrames)
       : outputFilePath_(outputFilePath),
         flushFrames_(flushFrames),
         expectedChannels_(expectedChannels),
-        expectedSampleRate_(expectedSampleRate) {}
+        expectedSampleRate_(expectedSampleRate),
+        traceFrames_(traceFrames) {}
 
   ~PcmFrameObserver() {
     std::lock_guard<std::mutex> lock(file_mutex_);
@@ -119,6 +121,7 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
   bool flushFrames_;
   int expectedChannels_;
   int expectedSampleRate_;
+  bool traceFrames_;
   std::atomic<bool> metadataMismatch_{false};
   std::map<std::string, UserFileState> files_;
   std::mutex file_mutex_;
@@ -177,6 +180,14 @@ bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
   state.channels = audioFrame.channels;
   state.sampleRate = audioFrame.samplesPerSec;
 
+  if (traceFrames_) {
+    AG_LOG(INFO,
+           "PCM_FRAME_TRACE user=%s frame=%llu samples=%d rtpTimestamp=%u renderTimeMs=%lld",
+           uid.c_str(), static_cast<unsigned long long>(state.frameCount),
+           audioFrame.samplesPerChannel, audioFrame.rtpTimestamp,
+           static_cast<long long>(audioFrame.renderTimeMs));
+  }
+
   if (state.frameCount == 1) {
     AG_LOG(INFO,
            "PCM_FRAME_METADATA user=%s channels=%d samplesPerChannel=%d sampleRate=%d "
@@ -213,6 +224,8 @@ int main(int argc, char* argv[]) {
   optParser.add_long_opt("audioFile", &options.audioFile, "Output audio file");
   optParser.add_long_opt("lifecycleControl", &options.lifecycleControl,
                          "Set to 1 to toggle subscription with SIGUSR1 (regression only)");
+  optParser.add_long_opt("traceFrames", &options.traceFrames,
+                         "Pass 1 to log every PCM frame timestamp for continuity regression");
   optParser.add_long_opt("sampleRate", &options.audio.sampleRate,
                          "Sample rate for received audio (48000)");
   optParser.add_long_opt("numOfChannels", &options.audio.numOfChannels,
@@ -297,7 +310,7 @@ int main(int argc, char* argv[]) {
   // 回调声道数必须与发送端一致才能拿到完整多声道（spec 场景5.1）
   auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(
       options.audioFile, options.lifecycleControl == 1, options.audio.numOfChannels,
-      options.audio.sampleRate);
+      options.audio.sampleRate, options.traceFrames);
   if (connection->getLocalUser()->setPlaybackAudioFrameBeforeMixingParameters(
           options.audio.numOfChannels, options.audio.sampleRate)) {
     AG_LOG(ERROR, "Failed to set audio frame parameters!");

@@ -55,6 +55,7 @@ struct SampleOptions {
   std::string remoteUserId;
   std::string audioFile = DEFAULT_AUDIO_FILE;
   std::string videoFile = DEFAULT_VIDEO_FILE;
+  bool traceFrames = false;
 
   struct {
     int sampleRate = DEFAULT_SAMPLE_RATE;
@@ -65,10 +66,11 @@ struct SampleOptions {
 class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
  public:
   PcmFrameObserver(const std::string& outputFilePath, int expectedChannels,
-                   int expectedSampleRate)
+                   int expectedSampleRate, bool traceFrames)
       : outputFilePath_(outputFilePath),
         expectedChannels_(expectedChannels),
-        expectedSampleRate_(expectedSampleRate) {}
+        expectedSampleRate_(expectedSampleRate),
+        traceFrames_(traceFrames) {}
 
   ~PcmFrameObserver() {
     std::lock_guard<std::mutex> lock(file_mutex_);
@@ -122,6 +124,7 @@ class PcmFrameObserver : public agora::media::IAudioFrameObserverBase {
   std::string outputFilePath_;
   int expectedChannels_;
   int expectedSampleRate_;
+  bool traceFrames_;
   std::atomic<bool> metadataMismatch_{false};
   std::map<std::string, UserFileState> files_;
   std::mutex file_mutex_;
@@ -204,6 +207,14 @@ bool PcmFrameObserver::onPlaybackAudioFrameBeforeMixing(const char* channelId,
   state.lastRtpTimestamp = audioFrame.rtpTimestamp;
   state.channels = audioFrame.channels;
   state.sampleRate = audioFrame.samplesPerSec;
+
+  if (traceFrames_) {
+    AG_LOG(INFO,
+           "PCM_FRAME_TRACE user=%s frame=%llu samples=%d rtpTimestamp=%u renderTimeMs=%lld",
+           uid.c_str(), static_cast<unsigned long long>(state.frameCount),
+           audioFrame.samplesPerChannel, audioFrame.rtpTimestamp,
+           static_cast<long long>(audioFrame.renderTimeMs));
+  }
 
   if (state.frameCount == 1) {
     AG_LOG(INFO,
@@ -322,6 +333,8 @@ int main(int argc, char* argv[]) {
                          "The remote user to receive stream from (default: subscribe all)");
   optParser.add_long_opt("audioFile", &options.audioFile, "Output audio file");
   optParser.add_long_opt("videoFile", &options.videoFile, "Output video file (I420)");
+  optParser.add_long_opt("traceFrames", &options.traceFrames,
+                         "Pass 1 to log every PCM frame timestamp for continuity regression");
   optParser.add_long_opt("sampleRate", &options.audio.sampleRate,
                          "Sample rate for received audio (48000)");
   optParser.add_long_opt("numOfChannels", &options.audio.numOfChannels,
@@ -398,7 +411,7 @@ int main(int argc, char* argv[]) {
       std::make_shared<SampleLocalUserObserver>(connection->getLocalUser());
 
   auto pcmFrameObserver = std::make_shared<PcmFrameObserver>(
-      options.audioFile, options.audio.numOfChannels, options.audio.sampleRate);
+      options.audioFile, options.audio.numOfChannels, options.audio.sampleRate, options.traceFrames);
   auto yuvFrameObserver = std::make_shared<YuvFrameObserver>(options.videoFile);
   bool connectStarted = false;
   auto cleanup = [&]() {

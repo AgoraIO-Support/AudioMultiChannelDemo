@@ -528,6 +528,17 @@ def odd_case(root: Path, public: Path, result_root: Path, app_id: str, channels:
         stop(sender)
 
 
+def classify_mismatch_behavior(text: str, receiver_code: int, output_exists: bool,
+                               metadata: list[tuple[str, str]], received_channels: int) -> str:
+    if "PCM_FRAME_METADATA_MISMATCH" in text:
+        return "rejected"
+    if receiver_code != 0:
+        return "error"
+    if output_exists and metadata and int(metadata[0][0]) == received_channels:
+        return "degraded_to_requested_channels"
+    return "unknown"
+
+
 def mismatch_case(root: Path, result_root: Path, app_id: str, source_channels: int,
                   received_channels: int) -> None:
     case = f"mismatch-{source_channels}to{received_channels}"
@@ -551,12 +562,8 @@ def mismatch_case(root: Path, result_root: Path, app_id: str, source_channels: i
         text = log_text(receiver)
         output = case_dir / "output.uid-86001"
         metadata = re.findall(r"PCM_FRAME_METADATA .*?channels=(\d+) .*?sampleRate=(\d+)", text)
-        if receiver_code != 0 or "PCM_FRAME_METADATA_MISMATCH" in text:
-            behavior = "rejected"
-        elif output.exists() and metadata and int(metadata[0][0]) == received_channels:
-            behavior = "degraded_to_requested_channels"
-        else:
-            behavior = "unknown"
+        behavior = classify_mismatch_behavior(text, receiver_code, output.exists(), metadata,
+                                               received_channels)
         passed = behavior in ("rejected", "degraded_to_requested_channels") and sender_code == 0
         record(case, passed, {"behavior": behavior, "receiver_exit": receiver_code,
                               "sender_exit": sender_code, "metadata": metadata[:2],
