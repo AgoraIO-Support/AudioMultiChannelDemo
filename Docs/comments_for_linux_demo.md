@@ -16,6 +16,8 @@ Linux Demo 的功能入口比较完整，已经覆盖 4 类发送路径和 4 类
 
 频谱门禁修正后又在同一 ARM64 环境实际重跑完整 48 项，结果为 **44/48**：`tone-7ch-16bit`、`odd-3ch`、`odd-5ch`、`odd-7ch` 失败，且四例均为 `startup_pass=false、steady_pass=true`。原 `tone-3ch-16bit`、`tone-8ch-16bit` 本轮通过，`odd-5ch` 仍失败。所有 tone/odd 用例稳定阶段均通过；计数没有被人为改成 48/48，新增门禁继续把真实启动强 300Hz 判为失败。
 
+随后在提交 `8a8536a` 对应的源码上，使用 x86_64 Ubuntu 24.04.5 Docker 和 SDK 4.4.30.149 完成对等回归：完整 **48/48** 通过，所有 startup/steady 通过；MKV 4 个退出场景和 2 轮生命周期回归也通过。x86_64 结果不能抵消 ARM64 的启动异常，两个架构及对应网络/时序条件分别记录。
+
 ## 已覆盖
 
 ### 功能入口
@@ -108,6 +110,19 @@ Linux Demo 的功能入口比较完整，已经覆盖 4 类发送路径和 4 类
 
 本轮产物位于 `/private/tmp/agora-linux-gate-fixed.guwa95/`：`full/results.json`、`full-run.log`、`unit-tests-final.log` 和 `numpy-verification.json`。44/48 是实际执行结果，不能因 steady 全部恢复而改写为 48/48。
 
+### x86_64 对等回归
+
+在独立 x86_64 主机的 Ubuntu 24.04.5 Docker 容器中，使用提交 `8a8536a` 和 Linux SDK 4.4.30.149 执行同一修正版脚本，未使用 ARM64 的二进制或结果替代：
+
+- 全部 sample 和 `pcm_channel_analyzer` 构建通过；15 项单测、输入校验、PCM 分析器测试、生命周期离线 harness 和 shellcheck 均通过。
+- 完整 **48/48** 通过，包含 4×4 媒体矩阵、3～8 声道 16bit、8 声道 24bit、奇数声道、codec、N→M 错配和 14 个非法输入。所有 tone/odd 用例均为 `startup_pass=true、steady_pass=true`。
+- 普通 Opus 为 `codec=1`、OPUSMC 为 `codec=13`，未观察整体回退；`mismatch-8to3` 和 `mismatch-3to8` 均为 `degraded_to_requested_channels`。
+- `mkv_exit_regression.sh` 的 normal、sender SIGINT、sender SIGTERM、receiver 先退出 **4/4** 通过，覆盖真实临时文件和 `/dev/null`。
+- `lifecycle_regression.sh` 的发布/取消发布、订阅/取消订阅 **2 轮**通过，发送端同 UID 重进、接收端同 UID 重进和快速控制/退出信号均通过。
+- 本轮没有失败样本；完整结果、日志、PCM/YUV 和独立 FFT 复核 `numpy-verification.json` 保存在本机 `/private/tmp/agora-linux-x86_64-peer.JNI33I/`，远端原始目录为 `/home/ubuntu/agora-x86_64-results/`。
+
+x86_64 全绿只代表该次主机、架构和网络条件。ARM64 的四个 startup 强 300Hz 仍作为独立 NetEq/PLC 调查项保留，不能用本次 48/48 将其关闭。
+
 现有汇总文档还记录过 Linux→Linux 34/34 通过，包含 4 类发送端、4 类接收端基础矩阵，以及格式、声道、顺序和非法参数扩展。该结果属于历史实测记录，尚未在 `Demo/linux/tests/` 中形成同等范围的可重跑测试套件。
 
 ### 已有自动化测试
@@ -148,7 +163,7 @@ MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧。真实 4×4 �
 
 正常退出、无效凭据清理和生命周期竞态已有 ARM64 真实验证。MKV 发送端和 AV 接收端现已统一使用原子退出标志、SIGINT/SIGTERM 处理、线程失败传播、可中断视频 PTS 等待和完整 teardown；`mkv_exit_regression.sh` 的正常退出、sender SIGINT、sender SIGTERM、receiver 先退出 4 个场景均通过。仍需在 x86_64 复测，并扩大到更多收发路径和长时间竞态，确认无卡死、残留线程和未关闭文件。
 
-当前实际容器回归只覆盖 ARM64；x86_64 仍需要执行同一套回归才能支撑 README 中的双架构支持声明。
+ARM64 与 x86_64 均已有实际容器回归：x86_64 完整 48/48，ARM64 修正后 44/48 且四个失败均为 startup 异常。双架构覆盖已经建立，但 NetEq/PLC 瞬态和更多网络条件仍需单独验证。
 
 ## 缺失场景与优先级
 
@@ -156,14 +171,14 @@ MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧。真实 4×4 �
 
 | 优先级 | 场景 | 当前状态 | 下一步验收 |
 | --- | --- | --- | --- |
-| P0 | 逐声道内容正确性 | 24bit 连续 4/4；频谱门禁已修正并有 15 项单测；实际 OPUSMC 码流 6/6 正常。修正后全量 44/48，4 个失败均为真实启动强 300Hz，steady 全部通过 | 在 x86_64 复测 16/24bit 和完整频谱矩阵；继续由 SDK 团队定位 NetEq/PLC 内部补偿模块，失败时保留码流离线对照 |
-| P0 | 可重复的 Linux 多声道矩阵 | `Demo/linux/tests/full_regression.sh` 和 `full_regression.py` 已固化 4×4 矩阵、内容断言、错配、codec 和非法输入；ARM64 旧门禁复跑 45/48，修正后实际复跑 44/48，结果 JSON、日志和独立 FFT 证据已保留 | 在 x86_64 执行同一修正版脚本，分别记录 startup/steady，不能把 ARM64 的 44/48 或 steady 通过外推为全部通过 |
-| P0 | 非法输入和参数组合 | 输入校验代码与本地单测已完成；14 个 ARM64 真实端到端场景均在 `onConnecting` 前以退出码 255 拒绝 | 在 x86_64 重跑，并继续确认无发布、无远端文件，记录退出码和日志 |
-| P0 | MKV 音视频退出稳定性 | `mkv_exit_regression.sh` 的正常退出、sender SIGINT、sender SIGTERM、receiver 先退出 4 个场景在 ARM64 全部通过，覆盖真实临时文件和 `/dev/null` | 使用有效凭据在 x86_64 复测多轮，确认无卡死、残留线程、未关闭文件和异常子进程 |
-| P0（条件） | ARM64/x86_64 对等回归 | ARM64 已有完整媒体和退出证据；x86_64 尚未执行 | 若两种架构都是支持目标，执行相同媒体、输入校验、逐声道分析和退出矩阵 |
+| P0 | 逐声道内容正确性 | 频谱门禁已修正并有 15 项单测；x86_64 完整 48/48、16/24bit 和 startup/steady 全部通过；ARM64 修正后 44/48，4 个失败均为真实启动强 300Hz，steady 全部通过 | 继续由 SDK 团队定位 ARM64 NetEq/PLC 内部补偿模块，在受控网络复测并保留码流离线对照；不得用 x86_64 全绿抵消 ARM64 异常 |
+| P0 | 可重复的 Linux 多声道矩阵 | 修正版 `full_regression.sh`/`full_regression.py` 已在 x86_64 完成 48/48，在 ARM64 完成 44/48；两边均有 startup/steady、结果 JSON、日志和媒体证据 | 保留双架构独立结果，继续覆盖更多网络条件；不能把 x86_64 的 48/48 或任一架构的 steady 通过外推为所有环境通过 |
+| P0 | 非法输入和参数组合 | 输入校验代码与本地单测已完成；ARM64 和 x86_64 的 14 个真实端到端场景均在 `onConnecting` 前以退出码 255 拒绝 | 继续覆盖更多参数组合、随机截断和 parser fuzz，保持无发布、无远端文件的证据 |
+| P0 | MKV 音视频退出稳定性 | `mkv_exit_regression.sh` 的 normal、sender SIGINT、sender SIGTERM、receiver 先退出在 ARM64 和 x86_64 均通过，覆盖真实临时文件和 `/dev/null` | 在更多收发路径和长稳中复测，继续确认无卡死、残留线程、未关闭文件和异常子进程 |
+| P0（条件） | ARM64/x86_64 对等回归 | 两架构均已执行相同修正版媒体、输入校验和退出矩阵：x86_64 48/48，ARM64 44/48 且四个失败均为 startup 异常 | 保留分架构结果，继续调查 ARM64 NetEq/PLC 瞬态；新增架构或网络条件时复跑同一矩阵 |
 | P1 | codec fallback / `codec_unfallback` | 2026-11-23 monitor 定向 13/13 项断言通过，普通流保持 `codec=1`、多声道流保持 `codec=13`，未观察整体回退；严格连续性在当前网络为 9/13 | 在可控无丢包网络执行严格连续性门禁，并补 capability/远端媒体证据，明确 SDK 实际协商行为 |
-| P1 | 生命周期和订阅竞态 | ARM64 Ubuntu 上 PCM 发布/取消发布、订阅/取消订阅、双方同 UID 重进及快速信号退出已完成 2 轮真实回归并通过 | 在 x86_64 和更多收发路径复测，进一步验证逐声道内容及长时间竞态 |
-| P1 | 接收端声道数错配 | 已实测 8→3 和 3→8：两者均连接成功并按接收端请求输出 3/8 声道，metadata 与文件帧大小一致 | 在 x86_64 和更多 N/M 组合复测，并增加逐声道内容断言，确认降级不会复制或错序 |
+| P1 | 生命周期和订阅竞态 | ARM64 和 x86_64 均完成 PCM 发布/取消发布、订阅/取消订阅、双方同 UID 重进及快速信号退出的 2 轮真实回归并通过 | 在更多收发路径复测，进一步验证逐声道内容及长时间竞态 |
+| P1 | 接收端声道数错配 | ARM64 和 x86_64 均已实测 8→3 和 3→8：均按接收端请求输出 3/8 声道，metadata 与文件帧大小一致 | 增加更多 N/M 组合和逐声道内容断言，确认降级不会复制或错序 |
 | P1 | 网络和认证恢复 | 已捕获真实丢包下 NetEq/PLC 产生强 300Hz 瞬态及恢复的码流证据；Token 过期/续期、可控丢包/抖动和完整恢复矩阵仍未覆盖 | 覆盖 Token 过期/续期、断网、受控丢包/抖动和重连，分别记录补偿瞬态与稳定后的声道数、频谱和内容恢复 |
 | P1 | 混音/编码/AV 语义断言 | 已加入输出格式、PCM metadata、编码 codec/timestamp delta、混音输出和 AV 帧尺寸/差异/时间戳断言；编码功能与传输连续性已拆分门禁，混音隔离与音频连续性仍缺 | 增加奇偶声道混音、mono 混音隔离、PCM 连续性和 AV 音频连续性断言 |
 | P2 | 长稳和资源 | 没有长时间自动化记录 | 连续发布订阅至少 2 小时，观察 CPU、内存、线程、文件句柄和 SDK 日志增长 |
@@ -172,9 +187,8 @@ MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧。真实 4×4 �
 
 ## 建议的第一阶段落地顺序
 
-1. 在 x86_64 执行修正后的同一套矩阵、输入校验、逐声道分析和退出场景，分别验收 startup/steady，不能直接外推 ARM64 的 44/48。
-2. 将 `framed-round-05` 的实际编码包，以及本轮四个启动失败的 PCM、频谱和日志交给 SDK 团队调查多声道 NetEq/PLC；在可控无丢包及受控丢包网络复测，并保留失败时的 encoded 包离线解码对照。
-3. 在可控无丢包网络执行 `--strict-timestamp-continuity`，继续区分网络、容器调度和 SDK transport 排队造成的缺口；若普通 Opus 对端仍不触发回退，补 capability 和远端媒体证据。
-4. 补混音隔离、PCM/AV 音频连续性和 N/M 错配的逐声道内容断言，继续推进 Token/网络恢复、长稳和 parser fuzz 测试。
+1. 将 `framed-round-05` 的实际编码包，以及 ARM64 四个启动失败的 PCM、频谱和日志交给 SDK 团队调查多声道 NetEq/PLC；在可控无丢包及受控丢包网络复测，并保留失败时的 encoded 包离线解码对照。
+2. 在可控无丢包网络执行 `--strict-timestamp-continuity`，继续区分网络、容器调度和 SDK transport 排队造成的缺口；若普通 Opus 对端仍不触发回退，补 capability 和远端媒体证据。
+3. 补混音隔离、PCM/AV 音频连续性和 N/M 错配的逐声道内容断言，继续推进 Token/网络恢复、长稳和 parser fuzz 测试。
 
 验收时应遵守统一口径：join/publish 成功、本端发送统计和日志只能作为辅助证据；Native/Linux PCM 必须检查实际声道数和逐声道内容。对 Opus/NetEq 输出，严格 NCC 只适用于时间和相位已对齐的比较；频谱应检查全频谱局部主峰、跨声道比例和多个时间窗。怀疑编码串音时，应保存实际编码包并离线解码，先确认异常是否已存在于码流。NetEq/PLC 启动或丢包补偿瞬态必须单独记录，既不能因随后恢复而删除异常，也不能用单次短窗口结果认定持续产品缺陷。编码帧、混音文件和音视频文件分别代表不同验证层级，不能互相替代。

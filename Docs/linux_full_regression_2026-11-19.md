@@ -80,3 +80,15 @@
 原 `tone-3ch-16bit`、`tone-8ch-16bit` 本轮通过，`odd-5ch` 仍失败。所有 tone/odd 用例的 steady 阶段均通过。该结果说明旧门禁误报已修正，同时新的双阶段检查捕获了更多真实启动补偿异常；不能把 44/48 改写成 48/48，也不能把 steady 恢复等同于 startup 没有异常。
 
 本轮结果和证据位于 `/private/tmp/agora-linux-gate-fixed.guwa95/`，包括 `full/results.json`、`full-run.log`、`unit-tests-final.log` 和 `numpy-verification.json`。
+
+## 2026-11-23 x86_64 对等回归
+
+在独立 x86_64 主机的 Ubuntu 24.04.5 Docker 容器中，使用提交 `8a8536a` 和 SDK 4.4.30.149 执行同一修正版脚本：
+
+- 全部目标构建通过；15 项单测、输入校验、PCM 分析器测试、生命周期离线 harness 和 shellcheck 通过。
+- 完整 **48/48** 通过，所有 tone/odd 用例均为 `startup_pass=true、steady_pass=true`。4×4 媒体矩阵、16/24bit、奇数声道、codec、N→M 错配和 14 个非法输入均通过。
+- 普通 Opus 为 `codec=1`、OPUSMC 为 `codec=13`；`mismatch-8to3` 和 `mismatch-3to8` 均为 `degraded_to_requested_channels`。
+- MKV normal、sender SIGINT、sender SIGTERM、receiver 先退出 **4/4** 通过，覆盖真实文件和 `/dev/null`。
+- 生命周期发布/取消发布、订阅/取消订阅 **2 轮**通过，双方同 UID 重进和快速控制/退出信号均通过。
+
+本轮没有失败样本。结果、日志、媒体证据和独立 FFT 复核 `numpy-verification.json` 保存在本机 `/private/tmp/agora-linux-x86_64-peer.JNI33I/`，远端原始目录为 `/home/ubuntu/agora-x86_64-results/`。x86_64 的 48/48 只代表该次主机和网络条件，不能抵消 ARM64 修正后 44/48 中的四个 startup 异常；NetEq/PLC 内部调查仍保持开放。

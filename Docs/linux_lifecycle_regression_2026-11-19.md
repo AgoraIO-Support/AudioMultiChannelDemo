@@ -25,5 +25,28 @@ PCM 回调不再恢复；退出时提前注销连接 observer 并释放资源，
 此外，并发进程共用 SDK 日志路径时出现过 `spdlog fatal error`；最终回归为每个进程隔离
 日志目录后未再出现，单独运行 sender 也未复现。
 
-此结果仅覆盖 ARM64、8 声道 PCM sender/receiver 的本次测试；PCM 文件增长不等于逐声道
-内容正确，也没有覆盖 x86_64、其他收发路径、长稳或网络故障恢复。
+上述 ARM64 结果仅覆盖 8 声道 PCM sender/receiver 的对应轮次；PCM 文件增长不等于逐声道
+内容正确，也没有覆盖其他收发路径、长稳或网络故障恢复。
+
+## 2026-11-23 x86_64 对等回归
+
+在独立 x86_64 主机的 Ubuntu 24.04.5 Docker 容器中，使用提交 `8a8536a`、Linux SDK
+4.4.30.149 和真实 RTC 网络执行同一 `Demo/linux/tests/lifecycle_regression.sh`。发送端和接收端
+仍分别使用 UID 71001、71002，`CYCLES=2`。
+
+| 场景 | 结果 |
+| --- | --- |
+| 同一连接取消发布/重新发布，2 轮 | 通过；停止后文件不再增长，恢复后增长 |
+| 同一连接取消订阅/重新订阅，2 轮 | 通过；停止后文件不再增长，恢复后增长 |
+| 发送端退出后以相同 UID 重进 | 通过；收到 `onUserLeft`，重进后 PCM 恢复增长 |
+| 接收端退出后以相同 UID 重进 | 通过；重新订阅并收到 PCM |
+| 控制信号后立即发退出信号 | 双方按时退出且退出码为 0；不保证退出前控制信号一定被处理 |
+
+脚本汇总见本机 `/private/tmp/agora-linux-x86_64-peer.JNI33I/lifecycle.log`，应用日志、SDK 日志和
+PCM 文件位于 `/private/tmp/agora-linux-x86_64-peer.JNI33I/tmp/lifecycle/agora-lifecycle.4oCAGn/`；
+远端原始产物保存在 `/home/ubuntu/agora-x86_64-results/`。本轮没有失败场景，全部退出码和日志
+检查均通过。
+
+该结果与 [Linux 全量回归记录](linux_full_regression_2026-11-19.md) 中的 x86_64 **48/48** 和
+MKV **4/4** 结果对应。它仍只覆盖本次 8 声道 PCM 生命周期路径；逐声道频谱由全量回归单独验收，
+不能外推到其他收发路径、长稳或网络故障恢复。
