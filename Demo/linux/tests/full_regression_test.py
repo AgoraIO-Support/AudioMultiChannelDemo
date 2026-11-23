@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
+import array
+import math
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 
+import full_regression as regression
 from full_regression import assert_encoded_log
 
 
@@ -71,6 +77,90 @@ class EncodedLogAssertionTest(unittest.TestCase):
     def test_codec_mismatch_still_fails(self):
         text = encoded_log(1000, 1960, 2920, codec=1)
         passed, _ = assert_encoded_log(text, USER, 13)
+        self.assertFalse(passed)
+
+
+class ToneSpectrumAssertionTest(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.directory = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def write_tone(self, frequencies, seconds=2.0, hz300_amplitude=0, hz300_since=0, hz300_until=0):
+        path = self.directory / "tone.pcm"
+        values = array.array("h")
+        frames = int(regression.SAMPLE_RATE * seconds)
+        for frame in range(frames):
+            for channel, frequency in enumerate(frequencies):
+                sample = int(5000 * math.sin(2 * math.pi * frequency * frame / regression.SAMPLE_RATE))
+                if (channel > 0 and hz300_since * regression.SAMPLE_RATE <= frame <
+                        hz300_until * regression.SAMPLE_RATE):
+                    sample += int(hz300_amplitude * math.sin(
+                        2 * math.pi * 300 * frame / regression.SAMPLE_RATE))
+                values.append(sample)
+        if sys.byteorder != "little":
+            values.byteswap()
+        path.write_bytes(values.tobytes())
+        return path
+
+    def test_full_spectrum_local_peak_allows_neteq_frequency_shift(self):
+        path = self.write_tone([300, 475, 633, 808, 983, 1158, 1317, 1492])
+        passed, detail = regression.tone_spectrum(path, 8)
+        self.assertTrue(passed)
+        self.assertAlmostEqual(detail[1]["frequency"], 475, delta=3)
+        self.assertAlmostEqual(detail[2]["frequency"], 633, delta=3)
+
+    def test_strong_300hz_crosstalk_fails_even_when_expected_tone_dominates(self):
+        path = self.write_tone(regression.FREQUENCIES, hz300_amplitude=3000, hz300_until=2)
+        passed, detail = regression.tone_spectrum(path, 8)
+        self.assertFalse(passed)
+        self.assertFalse(detail[1]["crosstalk_ok"])
+        self.assertGreater(detail[1]["hz300_ratio"], 0.2)
+
+    def test_small_300hz_codec_residual_is_allowed(self):
+        path = self.write_tone(regression.FREQUENCIES, hz300_amplitude=100, hz300_until=2)
+        passed, detail = regression.tone_spectrum(path, 8)
+        self.assertTrue(passed)
+        self.assertTrue(all(item["crosstalk_ok"] for item in detail[1:]))
+
+    def test_short_300hz_burst_fails_even_when_full_window_dilutes_it(self):
+        path = self.write_tone(regression.FREQUENCIES[:3], hz300_amplitude=3000,
+                               hz300_until=0.375)
+        passed, detail = regression.tone_spectrum(path, 3)
+        self.assertFalse(passed)
+        self.assertLess(detail[1]["hz300_ratio"], 0.2)
+        self.assertTrue(detail[1]["crosstalk_violations"])
+
+    def test_startup_and_steady_windows_are_reported_separately(self):
+        self.assertTrue(hasattr(regression, "tone_spectrum_stages"))
+        path = self.write_tone(regression.FREQUENCIES[:3], hz300_amplitude=3000,
+                               hz300_until=0.75)
+        passed, detail = regression.tone_spectrum_stages(path, 3)
+        self.assertFalse(passed)
+        self.assertFalse(detail["startup_pass"])
+        self.assertTrue(detail["steady_pass"])
+
+    def test_steady_300hz_burst_fails_even_when_startup_is_clean(self):
+        path = self.write_tone(regression.FREQUENCIES[:3], hz300_amplitude=3000,
+                               hz300_since=1.0, hz300_until=1.25)
+        passed, detail = regression.tone_spectrum_stages(path, 3)
+        self.assertFalse(passed)
+        self.assertTrue(detail["startup_pass"])
+        self.assertFalse(detail["steady_pass"])
+
+    def test_steady_window_requires_enough_samples(self):
+        self.assertTrue(hasattr(regression, "tone_spectrum_stages"))
+        path = self.write_tone(regression.FREQUENCIES[:3], seconds=1)
+        passed, detail = regression.tone_spectrum_stages(path, 3)
+        self.assertFalse(passed)
+        self.assertFalse(detail["steady_pass"])
+        self.assertIn("not enough samples", detail["steady"][0]["error"])
+
+    def test_tone_outside_frequency_tolerance_fails(self):
+        path = self.write_tone([300, 550, 640])
+        passed, _ = regression.tone_spectrum(path, 3)
         self.assertFalse(passed)
 
 

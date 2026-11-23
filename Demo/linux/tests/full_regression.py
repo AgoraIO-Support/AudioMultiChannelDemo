@@ -148,32 +148,175 @@ def pcm_samples(path: Path) -> array.array:
     return samples
 
 
-def tone_spectrum(path: Path, channels: int, seconds: int = 1) -> tuple[bool, list[dict]]:
-    values = pcm_samples(path)
+TONE_WINDOW_SAMPLES = SAMPLE_RATE // 2
+TONE_STARTUP_START = SAMPLE_RATE // 4
+TONE_STEADY_START = SAMPLE_RATE
+TONE_CROSSTALK_MAX_RATIO = 0.2
+_FFT_PLANS = {}
+_HANN_WINDOWS = {}
+
+
+def fft_plan(size: int):
+    if size in _FFT_PLANS:
+        return _FFT_PLANS[size]
+    reversed_indices = []
+    for index in range(size):
+        reversed_index = 0
+        value = index
+        bits = size.bit_length() - 1
+        for _ in range(bits):
+            reversed_index = (reversed_index << 1) | (value & 1)
+            value >>= 1
+        reversed_indices.append(reversed_index)
+    stages = []
+    length = 2
+    while length <= size:
+        half = length // 2
+        twiddles = [complex(math.cos(-2 * math.pi * index / length),
+                            math.sin(-2 * math.pi * index / length))
+                    for index in range(half)]
+        stages.append((length, half, twiddles))
+        length *= 2
+    _FFT_PLANS[size] = (reversed_indices, stages)
+    return _FFT_PLANS[size]
+
+
+def fft(values: list[complex]) -> list[complex]:
+    size = len(values)
+    reversed_indices, stages = fft_plan(size)
+    transformed = [values[index] for index in reversed_indices]
+    for length, half, twiddles in stages:
+        for block in range(0, size, length):
+            for offset in range(half):
+                even = block + offset
+                odd = even + half
+                first = transformed[even]
+                second = transformed[odd] * twiddles[offset]
+                transformed[even] = first + second
+                transformed[odd] = first - second
+    return transformed
+
+
+def hann_spectrum(values: list[int]) -> tuple[list[float], int]:
+    count = len(values)
+    size = 1 << (count - 1).bit_length()
+    if count not in _HANN_WINDOWS:
+        _HANN_WINDOWS[count] = [0.5 - 0.5 * math.cos(2 * math.pi * index / (count - 1))
+                                for index in range(count)]
+    window = _HANN_WINDOWS[count]
+    padded = [values[index] * window[index] for index in range(count)] + [0j] * (size - count)
+    scale = 2 / sum(window)
+    amplitudes = [abs(value) * scale for value in fft(padded)]
+    return amplitudes, size
+
+
+def spectral_peak(amplitudes: list[float], fft_size: int, center: float,
+                  tolerance: float) -> tuple[float, float]:
+    lower = max(100, center - tolerance)
+    upper = min(2000, center + tolerance)
+    first = max(1, int(math.floor(lower * fft_size / SAMPLE_RATE)))
+    last = min(len(amplitudes) - 1, int(math.ceil(upper * fft_size / SAMPLE_RATE)))
+    peak = max(range(first, last + 1), key=lambda index: amplitudes[index])
+    return peak * SAMPLE_RATE / fft_size, amplitudes[peak]
+
+
+def crosstalk_violations(values: array.array, channels: int, start: int,
+                         count: int, channel: int) -> list[dict]:
+    if channel == 0:
+        return []
+    violations = []
+    subwindow = min(SAMPLE_RATE // 4, count)
+    for substart in range(start, start + count - subwindow + 1, subwindow):
+        channel_values = [values[(substart + index) * channels + channel]
+                          for index in range(subwindow)]
+        amplitudes, fft_size = hann_spectrum(channel_values)
+        expected = FREQUENCIES[channel]
+        _, level = spectral_peak(amplitudes, fft_size, expected, max(6, expected * 0.02))
+        _, hz300_level = spectral_peak(amplitudes, fft_size, 300, 6)
+        ratio = hz300_level / max(level, 1e-9)
+        if ratio > TONE_CROSSTALK_MAX_RATIO:
+            violations.append({"start_ms": round(substart * 1000 / SAMPLE_RATE, 1),
+                               "hz300_ratio": round(ratio, 4),
+                               "level": round(level, 1),
+                               "hz300_level": round(hz300_level, 1)})
+    return violations
+
+
+def tone_spectrum_samples(values: array.array, channels: int, start: int,
+                          count: int) -> tuple[bool, list[dict]]:
     frames = len(values) // channels
-    count = min(SAMPLE_RATE * seconds, frames - SAMPLE_RATE // 2)
-    if count < SAMPLE_RATE // 2:
-        return False, [{"error": "not enough samples", "frames": frames}]
-    start = SAMPLE_RATE // 4
+    if start < 0 or count <= 0 or start + count > frames:
+        return False, [{"error": "not enough samples", "frames": frames,
+                        "start_ms": round(start * 1000 / SAMPLE_RATE, 1),
+                        "window_ms": round(count * 1000 / SAMPLE_RATE, 1)}]
     result = []
     for channel in range(channels):
-        channel_values = [values[(start + i) * channels + channel] for i in range(count)]
-        powers = []
-        for frequency in FREQUENCIES[:channels]:
-            cosine = sum(value * math.cos(2 * math.pi * frequency * i / SAMPLE_RATE)
-                         for i, value in enumerate(channel_values))
-            sine = sum(value * math.sin(2 * math.pi * frequency * i / SAMPLE_RATE)
-                       for i, value in enumerate(channel_values))
-            powers.append(math.hypot(cosine, sine) * 2 / count)
-        strongest = max(range(channels), key=lambda index: powers[index])
-        result.append({"channel": channel + 1, "frequency": FREQUENCIES[strongest],
-                       "level": round(powers[strongest], 1),
-                       "next_level": round(max(powers[:strongest] + powers[strongest + 1:]), 1)})
-    passed = all(item["frequency"] == FREQUENCIES[index]
-                 and item["level"] > 20
-                 and item["level"] > max(1, item["next_level"]) * 1.5
-                 for index, item in enumerate(result))
-    return passed, result
+        channel_values = [values[(start + index) * channels + channel] for index in range(count)]
+        amplitudes, fft_size = hann_spectrum(channel_values)
+        expected = FREQUENCIES[channel]
+        tolerance = max(6, expected * 0.02)
+        frequency, level = spectral_peak(amplitudes, fft_size, expected, tolerance)
+        dominant_frequency, dominant_level = spectral_peak(amplitudes, fft_size, 1100, 1000)
+        other_levels = []
+        for other in range(channels):
+            if other == channel:
+                continue
+            other_expected = FREQUENCIES[other]
+            _, other_level = spectral_peak(amplitudes, fft_size, other_expected,
+                                           max(6, other_expected * 0.02))
+            other_levels.append(other_level)
+        next_level = max(other_levels, default=0)
+        hz300_frequency, hz300_level = spectral_peak(amplitudes, fft_size, 300, 6)
+        hz300_ratio = hz300_level / max(level, 1e-9)
+        expected_ok = level > 20
+        dominance_ok = level > max(1, next_level) * 1.5
+        violations = crosstalk_violations(values, channels, start, count, channel)
+        crosstalk_ok = channel == 0 or (hz300_ratio <= TONE_CROSSTALK_MAX_RATIO and not violations)
+        passed = expected_ok and dominance_ok and crosstalk_ok
+        result.append({
+            "channel": channel + 1,
+            "expected_frequency": expected,
+            "frequency": round(frequency, 2),
+            "level": round(level, 1),
+            "next_level": round(next_level, 1),
+            "dominant_frequency": round(dominant_frequency, 2),
+            "dominant_level": round(dominant_level, 1),
+            "hz300_frequency": round(hz300_frequency, 2),
+            "hz300_level": round(hz300_level, 1),
+            "hz300_ratio": round(hz300_ratio, 4),
+            "crosstalk_violations": violations,
+            "expected_ok": expected_ok,
+            "dominance_ok": dominance_ok,
+            "crosstalk_ok": crosstalk_ok,
+            "pass": passed,
+        })
+    return all(item["pass"] for item in result), result
+
+
+def tone_spectrum(path: Path, channels: int, seconds: float = 0.5,
+                  start_ms: int = 250) -> tuple[bool, list[dict]]:
+    values = pcm_samples(path)
+    start = int(SAMPLE_RATE * start_ms / 1000)
+    count = int(SAMPLE_RATE * seconds)
+    return tone_spectrum_samples(values, channels, start, count)
+
+
+def tone_spectrum_stages(path: Path, channels: int) -> tuple[bool, dict]:
+    values = pcm_samples(path)
+    startup_ok, startup = tone_spectrum_samples(values, channels, TONE_STARTUP_START,
+                                                TONE_WINDOW_SAMPLES)
+    steady_ok, steady = tone_spectrum_samples(values, channels, TONE_STEADY_START,
+                                              TONE_WINDOW_SAMPLES)
+    return startup_ok and steady_ok, {
+        "startup_pass": startup_ok,
+        "steady_pass": steady_ok,
+        "startup_start_ms": TONE_STARTUP_START * 1000 // SAMPLE_RATE,
+        "steady_start_ms": TONE_STEADY_START * 1000 // SAMPLE_RATE,
+        "window_ms": TONE_WINDOW_SAMPLES * 1000 // SAMPLE_RATE,
+        "hz300_max_ratio": TONE_CROSSTALK_MAX_RATIO,
+        "startup": startup,
+        "steady": steady,
+    }
 
 
 def assert_encoded_log(text: str, user: str, expected_codec: int | None = None,
@@ -335,10 +478,10 @@ def tone_case(root: Path, result_root: Path, app_id: str, channels: int, bits: i
                         ["--channelId", channel, "--userId", "82001", "--numOfChannels", str(channels),
                          "--sampleRate", "48000", "--audioFile", str(fixture)], app_id)
         output = case_dir / "output.uid-82001"
-        wait_for(lambda: output.exists() and output.stat().st_size >= channels * 2 * SAMPLE_RATE,
+        wait_for(lambda: output.exists() and output.stat().st_size >= channels * 2 * SAMPLE_RATE * 2,
                  [receiver, sender], 45, "tone PCM")
         receiver_code, sender_code = stop(receiver), stop(sender)
-        spectral_ok, spectral = tone_spectrum(output, channels)
+        spectral_ok, spectral = tone_spectrum_stages(output, channels)
         good = spectral_ok and receiver_code == 0 and sender_code == 0
         record(case, good, {"exit_codes": [receiver_code, sender_code], "spectrum": spectral})
     except Exception as exc:
@@ -365,14 +508,14 @@ def odd_case(root: Path, public: Path, result_root: Path, app_id: str, channels:
                         ["--channelId", channel, "--userId", "84001", "--numOfChannels", str(channels),
                          "--sampleRate", "48000", "--audioFile", str(source)], app_id)
         output = case_dir / "output.uid-84001"
-        wait_for(lambda: output.exists() and output.stat().st_size >= channels * 2 * SAMPLE_RATE,
+        wait_for(lambda: output.exists() and output.stat().st_size >= channels * 2 * SAMPLE_RATE * 2,
                  [receiver, sender], 45, "odd PCM")
         receiver_code, sender_code = stop(receiver), stop(sender)
         analyzer = subprocess.run(
             [str(root / "pcm_channel_analyzer"), "--source", str(source), "--received", str(output),
              "--channels", str(channels), "--sample-rate", "48000", "--max-seconds", "5",
              "--min-correlation", "0.2"], capture_output=True, text=True, timeout=30)
-        spectral_ok, spectral = tone_spectrum(output, channels)
+        spectral_ok, spectral = tone_spectrum_stages(output, channels)
         aligned = output.stat().st_size % (channels * 2) == 0
         good = spectral_ok and aligned and receiver_code == 0 and sender_code == 0
         record(case, good, {"exit_codes": [receiver_code, sender_code], "aligned": aligned,
