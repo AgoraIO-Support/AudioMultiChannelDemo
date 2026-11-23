@@ -1,5 +1,7 @@
 # Linux 生命周期回归：2026-11-19
 
+> 版本说明：仓库当前携带 SDK 已更新为 4.4.30.152 ZIP；本文结果为对应历史版本 4.4.30.149 的回归，不把包升级视为新 SDK 已验证。
+
 在 Podman Ubuntu 24.04 ARM64 容器中，使用 Agora Linux SDK 4.4.30.149、未开启证书的
 App ID 和真实 RTC 网络运行 `Demo/linux/tests/lifecycle_regression.sh`。样例为 8 声道、
 48 kHz PCM sender 与按 UID 接收的 PCM receiver；发送端 UID 71001，接收端 UID 71002。

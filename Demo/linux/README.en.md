@@ -1,7 +1,7 @@
 # Agora Linux SDK Multi-Channel Audio (multiopus) Demo
 
 A standalone C++ demo for multi-channel audio send/receive with the Agora Linux SDK
-(v4.4.30.149, x86_64 / aarch64), written against the requirements in
+(v4.4.30.152, x86_64 / aarch64), written against the requirements in
 `Docs/audio_multichannel_spec.md`. It covers 4 send paths and 4 receive paths.
 Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) and
 **supports 48 kHz only**.
@@ -30,7 +30,7 @@ Multi-channel encoding uses Opus multistream (OPUSMC, payload type 123/124/125) 
 Demo/linux/
 ├── CMakeLists.txt            # Top level; SDK path set via AGORA_SDK_DIR
 ├── build.sh                  # Helper script: ./build.sh [x86_64|aarch64] [clean]
-├── common/                   # Copied from LinuxSDKFolder/X86_64 example/common (matches SDK v4.4.30.149)
+├── common/                   # Project-maintained shared code derived from SDK example/common, including project fixes and assertions
 ├── multiopus/                # 4 sender samples
 ├── receive/                  # 4 receiver samples
 ├── tools/                    # Per-channel PCM content analysis tool
@@ -41,9 +41,9 @@ Demo/linux/
 └── out/                      # Build output (binaries + copy of public assets)
 ```
 
-> Note: `common/` is kept byte-identical to the SDK's own example code for easy comparison
-> and future syncing. The following **upstream issues found by static analysis are recorded
-> only, intentionally not fixed**:
+> Note: `common/` is derived from the SDK's example/common but also contains project-maintained
+> lifecycle fixes, input validation, and the PCM analyzer. Do not overwrite it with a newer SDK package.
+> The following **upstream issues found by static analysis are recorded only, intentionally not fixed**:
 >
 > 1. `sample_local_user_observer.h/.cpp` uses `std::string` without including `<string>`
 >    itself (relies on transitive includes; fails on libc++ variants with a different
@@ -63,18 +63,30 @@ Demo/linux/
 ### SDK preparation: automatic extraction during builds
 
 `LinuxSDKFolder/X86_64/` and `LinuxSDKFolder/Aarch64/` now contain only the original SDK
-archives (`Agora-RTC-<arch>-linux-gnu-*.tgz`). Extracted `agora_rtc_sdk/` directories are
+archives (currently `Agora_Native_SDK_for_Linux_*.zip`, with legacy
+`Agora-RTC-<arch>-linux-gnu-*.tgz` also supported). Extracted `agora_rtc_sdk/` directories are
 not tracked in Git. Both `build.sh` and the Dockerfile locate and extract the appropriate
-archive for the target architecture, then verify `agora_rtc_sdk/agora_sdk/libagora_rtc_sdk.so`
-and the headers. No manual preprocessing is required. The extracted directories are excluded
-by both `.gitignore` and `.dockerignore` to keep them out of commits and Docker contexts.
+archive for the target architecture. The ARM64 ZIP's `Agora_Native_SDK_for_Linux_SERVER/sdk`
+and the x86_64 ZIP's `Agora_Native_SDK_for_Linux_SERVER/rtc/sdk` are linked as
+`agora_rtc_sdk/agora_sdk` for compatibility. Their respective `sdk/include` and
+`rtc/sdk/low_level_api/include` directories are normalized to `agora_sdk/include` before
+`libagora_rtc_sdk.so` and the headers are verified. No manual preprocessing is required. A `.sdk_package` marker forces re-extraction when
+the package changes, preventing an older SDK from being reused. The extracted directories are
+excluded by both `.gitignore` and `.dockerignore` to keep them out of commits and Docker contexts.
 
-Manual CMake still requires extracting the archive first:
+Manual CMake still requires extracting the archive and normalizing the layout first:
 
 ```bash
-# x86_64 example; same for aarch64, using the package under LinuxSDKFolder/Aarch64/
+# x86_64
 cd LinuxSDKFolder/X86_64
-tar -xzf Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
+unzip Agora_Native_SDK_for_Linux_x64_rel.v4.4.30.152_29065_SERVER_20261117_1137_ubuntu14_04_5_1392522_external.zip
+mkdir -p agora_rtc_sdk
+ln -s ../Agora_Native_SDK_for_Linux_SERVER/rtc/sdk agora_rtc_sdk/agora_sdk
+ln -s low_level_api/include agora_rtc_sdk/agora_sdk/include
+
+# For aarch64, extract its package under LinuxSDKFolder/Aarch64/, then run:
+# ln -s ../Agora_Native_SDK_for_Linux_SERVER/sdk agora_rtc_sdk/agora_sdk
+# This package already has agora_sdk/include; no additional header link is needed.
 ```
 
 ### Helper script (recommended)
@@ -85,8 +97,8 @@ cd Demo/linux
 ./build.sh clean      # remove build/ and out/
 ```
 
-The script selects the SDK directory, extracts the archive when needed, and verifies that
-`agora_sdk/libagora_rtc_sdk.so` exists.
+The script selects the SDK directory, extracts ZIP/TGZ archives when needed, normalizes the
+layout, and verifies that `agora_sdk/libagora_rtc_sdk.so` exists.
 
 To check the MKV temporary file permissions, symlink protection, and cleanup independently:
 
@@ -369,7 +381,7 @@ Safari/Firefox behavior is undefined.
 
 Output is a per-user raw OPUSMC frame stream (640 bytes per frame), suitable for forwarding or
 custom decoding. Files are named `<audioFile>.uid-<UID>`. The callback `info` carries only
-`codec` and `sendTs` (in SDK v4.4.30.149,
+`codec` and `sendTs` (in SDK v4.4.30.152,
 `AudioEncodedFrameInfo` in `AgoraMediaBase.h` has no channel-count or sample-rate fields).
 
 Timestamp validation separates codec behavior from transport continuity. The default monitor mode

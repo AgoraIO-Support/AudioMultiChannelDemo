@@ -29,7 +29,7 @@
 | `Demo/iOS/` | iOS 验证 app（SwiftUI + AgoraRtcEngine_iOS 4.7.0，CocoaPods，iOS 14.0+）：`MultiChannelAudioReceiverApp` 与 `MultiChannelAudioSenderApp`，由 macOS 双 app 移植（功能逐项对齐；iOS 平台多声道行为以实测为准） |
 | `Demo/docs/` | 多声道接入文档站（随 Web 构建发布到 `dist/docs/`） |
 | `Docs/` | 音频多声道集成规格与跨端测试汇总 |
-| `LinuxSDKFolder/` | Agora Linux SDK v4.4.30.149 原始 tgz（X86_64 / Aarch64，构建时自动解压） |
+| `LinuxSDKFolder/` | Agora Linux SDK v4.4.30.152 原始 ZIP（X86_64 / Aarch64，构建时自动解压并归一化目录；兼容旧 TGZ） |
 | `References/` | 多声道设计文档与 Chromium/WebRTC 技术参考资料（不入 Docker 构建上下文） |
 
 ## 快速开始

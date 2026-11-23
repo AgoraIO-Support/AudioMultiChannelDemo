@@ -1,5 +1,7 @@
 # Linux 全量 C/C++ 回归：2026-11-19
 
+> 版本说明：仓库当前携带 SDK 已更新为 4.4.30.152 ZIP；本文及后续章节中的 4.4.30.149 为对应回归时的历史版本，不把包升级视为已完成新 SDK 媒体验证。
+
 本轮在 Podman 的 Ubuntu 24.04.5 ARM64 容器中执行，使用 Linux SDK 4.4.30.149 和未启用电子证书的 App ID `43f818097c124394821bd44598b7ca9d`（无需 token）。测试镜像为 `localhost/agora-ubuntu-regression:24.04`。
 
 ## 编译覆盖

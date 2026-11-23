@@ -2,6 +2,10 @@
 
 评估日期：2026-11-19；最近定向复跑更新：2026-11-23
 
+当前包版本说明：`LinuxSDKFolder/` 中的两种架构 SDK 已由 4.4.30.149 TGZ 更新为 4.4.30.152 ZIP。ARM64 的 SDK 位于 `Agora_Native_SDK_for_Linux_SERVER/sdk`，x86_64 位于 `Agora_Native_SDK_for_Linux_SERVER/rtc/sdk`。构建脚本和 Dockerfile 已适配这两种 ZIP 布局及旧 TGZ，将库目录归一化到 `agora_rtc_sdk/agora_sdk`，并将 ARM64 的 `sdk/include` 或 x86_64 的 `rtc/sdk/low_level_api/include` 映射为 `agora_sdk/include`。除非另有明确说明，本文中的媒体回归结果仍使用 4.4.30.149，不能据此推断 4.4.30.152 的行为或 NetEq/PLC 问题已修复。
+
+4.4.30.152 构建适配验证（2026-11-23）：ARM64 Podman 和独立 x86_64 Docker 均使用 Debian bookworm-slim，完成 `build.sh` 解包复用及连续两次构建，9 个检查目标生成成功；完整运行时镜像的 SDK 动态库和素材检查、PCM/MKV 二进制的动态链接检查、镜像内 8 声道 PCM 分析器对照均通过。双架构输入校验、PCM 内容分析和私有 PCM 文件 C++ 测试通过；43 项 Python 离线单测、3 项生命周期工具正反例及 Web 文档站构建也通过。这些是构建、离线和本地内容检查，**没有使用 4.4.30.152 重跑完整 RTC 媒体矩阵**，历史 44/48、48/48 及其他媒体结果仍属于 4.4.30.149。
+
 评估范围：`Demo/linux/` 下的发送端、接收端、测试脚本、素材和现有回归记录。本文区分“代码提供了测试入口”“已有实际回归证据”和“已形成可重复自动化测试”，避免把 sample 存在误认为功能已经完整验证。
 
 ## 结论

@@ -29,7 +29,7 @@ Delivery repository for the multi-channel audio (multiopus) project, including:
 | `Demo/iOS/` | iOS verification apps (SwiftUI + AgoraRtcEngine_iOS 4.7.0, CocoaPods, iOS 14.0+): `MultiChannelAudioReceiverApp` and `MultiChannelAudioSenderApp`, ported from the macOS pair (feature-parity; multi-channel behavior on iOS is subject to verification) |
 | `Demo/docs/` | Multi-channel integration documentation site (built with the Web app and published to `dist/docs/`) |
 | `Docs/` | Multi-channel integration specification and cross-platform test summary |
-| `LinuxSDKFolder/` | Original Agora Linux SDK v4.4.30.149 tgz archives (X86_64 / Aarch64, extracted automatically during builds) |
+| `LinuxSDKFolder/` | Original Agora Linux SDK v4.4.30.152 ZIP archives (X86_64 / Aarch64, extracted and normalized automatically during builds; legacy TGZ supported) |
 | `References/` | Multi-channel design documents and Chromium/WebRTC technical references (excluded from the Docker build context) |
 
 ## Quick Start

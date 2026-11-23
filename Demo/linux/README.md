@@ -1,6 +1,6 @@
 # Agora Linux SDK 音频多声道（multiopus）Demo
 
-本工程是 Agora Linux SDK（v4.4.30.149，x86_64 / aarch64）音频多声道收发的独立 C++ demo，
+本工程是 Agora Linux SDK（v4.4.30.152，x86_64 / aarch64）音频多声道收发的独立 C++ demo，
 依据需求规格 `Docs/audio_multichannel_spec.md` 编写，覆盖发送 4 路径与接收 4 路径。
 多声道编码基于 Opus 多流（OPUSMC，payload type 123/124/125），**仅支持 48 kHz 采样率**。
 
@@ -27,7 +27,7 @@
 Demo/linux/
 ├── CMakeLists.txt            # 顶层，通过 AGORA_SDK_DIR 指定 SDK 路径
 ├── build.sh                  # 便捷脚本：./build.sh [x86_64|aarch64] [clean]
-├── common/                   # 拷贝自 LinuxSDKFolder/X86_64 example/common（与 SDK v4.4.30.149 匹配）
+├── common/                   # 项目维护的公共代码，源自 SDK example/common，含项目修复与断言
 ├── multiopus/                # 发送端 4 个 sample
 ├── receive/                  # 接收端 4 个 sample
 ├── tools/                    # 逐声道 PCM 内容分析工具
@@ -38,8 +38,8 @@ Demo/linux/
 └── out/                      # 构建产物（二进制 + public 素材副本）
 ```
 
-> 注：`common/` 与 SDK 自带 example 保持逐字一致，便于对照与后续同步。静态分析发现的以下
-> **上游原始问题仅记录、不修改**：
+> 注：`common/` 源自 SDK 自带 example/common，但包含项目维护的生命周期修复、输入校验和
+> PCM 分析器，不能用新版 SDK 包直接覆盖。静态分析发现的以下**上游原始问题仅记录、不修改**：
 >
 > 1. `sample_local_user_observer.h/.cpp` 使用 `std::string` 但未自包含 `<string>`（依赖传递
 >    include；在 include 图不同的 libc++ 环境下会编译失败，Linux GCC/当前 SDK 组合不受影响）；
@@ -55,17 +55,28 @@ Demo/linux/
 ### SDK 包准备：构建时自动解压
 
 `LinuxSDKFolder/X86_64/` 与 `LinuxSDKFolder/Aarch64/` 只保留原始 SDK 压缩包
-（`Agora-RTC-<arch>-linux-gnu-*.tgz`），解压后的 `agora_rtc_sdk/` 目录不纳入 Git。
-`build.sh` 与 Dockerfile 会按目标架构自动定位并解压对应 tgz，再检查
-`agora_rtc_sdk/agora_sdk/libagora_rtc_sdk.so` 和头文件是否存在，无需手工预处理。
+（当前为 `Agora_Native_SDK_for_Linux_*.zip`，同时兼容旧 `Agora-RTC-<arch>-linux-gnu-*.tgz`），
+解压后的 `agora_rtc_sdk/` 目录不纳入 Git。`build.sh` 与 Dockerfile 会按目标架构自动定位并解压
+对应 ZIP/TGZ；ARM64 ZIP 内的 `Agora_Native_SDK_for_Linux_SERVER/sdk` 和 x86_64 ZIP 内的
+`Agora_Native_SDK_for_Linux_SERVER/rtc/sdk` 会链接为兼容的 `agora_rtc_sdk/agora_sdk`；
+头文件分别使用 `sdk/include` 和 `rtc/sdk/low_level_api/include`，统一映射为 `agora_sdk/include`。
+脚本检查 `libagora_rtc_sdk.so` 和头文件，无需手工预处理。
+脚本用 `.sdk_package` 标记包版本，包变化时重新解压，避免继续复用旧 SDK。
 解压目录同时被 `.gitignore` 与 `.dockerignore` 排除，避免重复入库或增大构建上下文。
 
-只有手动执行 CMake 时才需要先自行解压：
+只有手动执行 CMake 时才需要先自行解压并归一化目录：
 
 ```bash
-# x86_64 为例；aarch64 同理，用 LinuxSDKFolder/Aarch64/ 下的压缩包
+# x86_64
 cd LinuxSDKFolder/X86_64
-tar -xzf Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
+unzip Agora_Native_SDK_for_Linux_x64_rel.v4.4.30.152_29065_SERVER_20261117_1137_ubuntu14_04_5_1392522_external.zip
+mkdir -p agora_rtc_sdk
+ln -s ../Agora_Native_SDK_for_Linux_SERVER/rtc/sdk agora_rtc_sdk/agora_sdk
+ln -s low_level_api/include agora_rtc_sdk/agora_sdk/include
+
+# aarch64 在 LinuxSDKFolder/Aarch64/ 解压对应包后：
+# ln -s ../Agora_Native_SDK_for_Linux_SERVER/sdk agora_rtc_sdk/agora_sdk
+# 该包已有 agora_sdk/include，无需另建头文件链接。
 ```
 
 ### 便捷脚本（推荐）
@@ -76,7 +87,7 @@ cd Demo/linux
 ./build.sh clean      # 清理 build/ 与 out/
 ```
 
-脚本会自动选择 SDK 目录、按需解压 tgz，并校验 `agora_sdk/libagora_rtc_sdk.so` 是否存在。
+脚本会自动选择 SDK 目录、按需解压 ZIP/TGZ 并归一化布局，再校验 `agora_sdk/libagora_rtc_sdk.so` 是否存在。
 
 可单独验证 MKV 临时文件的权限、符号链接防护与清理：
 
@@ -342,7 +353,7 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm.uid-8899   # 8 声道�
 
 输出为按 UID 分开的 OPUSMC 裸帧流（640 字节/帧），可用于转发或自行解码。文件名为
 `<audioFile>.uid-<UID>`，回调 `info` 仅携带
-`codec` 与 `sendTs`（SDK v4.4.30.149 头文件 `AgoraMediaBase.h` 中
+`codec` 与 `sendTs`（SDK v4.4.30.152 头文件 `AgoraMediaBase.h` 中
 `AudioEncodedFrameInfo` 无声道数/采样率字段）。
 
 编码时间戳检查分为 codec 功能门禁和传输连续性门禁。默认 monitor 模式要求 `sendTs`

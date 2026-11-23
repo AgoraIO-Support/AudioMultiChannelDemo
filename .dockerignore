@@ -5,4 +5,5 @@ Demo/web
 Demo/linux/build
 Demo/linux/out
 LinuxSDKFolder/*/agora_rtc_sdk
+LinuxSDKFolder/*/Agora_Native_SDK_for_Linux_SERVER
 **/.DS_Store

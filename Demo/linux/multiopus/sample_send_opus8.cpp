@@ -7,7 +7,7 @@
 //     （参考素材 public/8ch_2.opus）
 //   - 20 ms pacer 调用 sendEncodedAudioFrame，EncodedAudioFrameInfo 为
 //     codec=AUDIO_CODEC_OPUSMC、numberOfChannels=8、sampleRateHz=48000、samplesPerChannel=960
-//     （注：spec 写作 AUDIO_CODEC_OPUS8C，SDK v4.4.30.149 头文件中对应枚举为
+//     （注：spec 写作 AUDIO_CODEC_OPUS8C，SDK v4.4.30.152 头文件中对应枚举为
 //      AgoraBase.h 中的 AUDIO_CODEC_OPUSMC = 13，本 demo 以头文件为准）
 //   - custom audio track 以 MIX_DISABLED 创建（不经 3A / 混音）
 //   - 读到 EOF 后关闭并重新打开文件，循环发送直至退出

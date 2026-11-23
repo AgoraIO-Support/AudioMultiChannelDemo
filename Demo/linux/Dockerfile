@@ -12,7 +12,7 @@ ARG TARGETARCH
 # ffmpeg 开发包仅 sample_send_mkv_multiopus 需要（pkg-config + libav*）
 # hadolint ignore=DL3008
 RUN apt-get update \
- && apt-get install -y --no-install-recommends build-essential cmake \
+ && apt-get install -y --no-install-recommends build-essential cmake unzip \
     pkg-config libavformat-dev libavcodec-dev libavutil-dev \
     libswresample-dev libswscale-dev \
  && rm -rf /var/lib/apt/lists/*
@@ -21,8 +21,8 @@ WORKDIR /src
 COPY LinuxSDKFolder ./LinuxSDKFolder
 COPY Demo/linux ./Demo/linux
 
-# 按目标架构选择 SDK 目录，若尚未解压则自动提取对应 tgz，再编译 sample，
-# 并把 SDK 动态库收集到固定目录 /sdk-libs，供运行阶段拷贝
+# 按目标架构选择 SDK 目录，若尚未解压则自动提取对应 ZIP/TGZ 并归一化布局，
+# 再把 SDK 动态库收集到固定目录 /sdk-libs，供运行阶段拷贝
 RUN set -eux; \
     arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
     case "$arch" in \
@@ -31,13 +31,46 @@ RUN set -eux; \
       *) echo "unsupported arch: $arch"; exit 1 ;; \
     esac; \
     SDK_DIR="$SDK_PARENT/agora_rtc_sdk"; \
-    if [ ! -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so" ]; then \
-      SDK_TGZ=""; \
-      for candidate in "$SDK_PARENT"/Agora-RTC-*-linux-gnu-*.tgz; do \
-        if [ -f "$candidate" ]; then SDK_TGZ="$candidate"; break; fi; \
+    if [ ! -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so" ] || \
+       [ ! -f "$SDK_DIR/agora_sdk/include/IAgoraService.h" ]; then \
+      SDK_PACKAGE=""; \
+      for candidate in "$SDK_PARENT"/Agora_Native_SDK_for_Linux_*.zip; do \
+        if [ -f "$candidate" ]; then SDK_PACKAGE="$candidate"; break; fi; \
       done; \
-      if [ -z "$SDK_TGZ" ]; then echo "SDK package not found in $SDK_PARENT"; exit 1; fi; \
-      tar -xzf "$SDK_TGZ" -C "$SDK_PARENT"; \
+      if [ -z "$SDK_PACKAGE" ]; then \
+        for candidate in "$SDK_PARENT"/Agora-RTC-*-linux-gnu-*.tgz; do \
+          if [ -f "$candidate" ]; then SDK_PACKAGE="$candidate"; break; fi; \
+        done; \
+      fi; \
+      if [ -z "$SDK_PACKAGE" ]; then echo "SDK package not found in $SDK_PARENT"; exit 1; fi; \
+      echo "extracting SDK package: $SDK_PACKAGE"; \
+      case "$SDK_PACKAGE" in \
+        *.zip) \
+          rm -rf "$SDK_DIR" "$SDK_PARENT/Agora_Native_SDK_for_Linux_SERVER"; \
+          mkdir -p "$SDK_DIR"; \
+          unzip -q "$SDK_PACKAGE" -d "$SDK_PARENT"; \
+          SDK_SOURCE_DIR="$SDK_PARENT/Agora_Native_SDK_for_Linux_SERVER/sdk"; \
+          if [ ! -f "$SDK_SOURCE_DIR/libagora_rtc_sdk.so" ]; then \
+            SDK_SOURCE_DIR="$SDK_PARENT/Agora_Native_SDK_for_Linux_SERVER/rtc/sdk"; \
+          fi; \
+          if [ ! -f "$SDK_SOURCE_DIR/libagora_rtc_sdk.so" ]; then \
+            echo "SDK library not found in $SDK_PACKAGE"; exit 1; \
+          fi; \
+          SDK_INCLUDE_DIR="$SDK_SOURCE_DIR/include"; \
+          if [ ! -f "$SDK_INCLUDE_DIR/IAgoraService.h" ]; then \
+            SDK_INCLUDE_DIR="$SDK_SOURCE_DIR/low_level_api/include"; \
+          fi; \
+          if [ ! -f "$SDK_INCLUDE_DIR/IAgoraService.h" ]; then \
+            echo "SDK headers not found in $SDK_PACKAGE"; exit 1; \
+          fi; \
+          ln -s "$SDK_SOURCE_DIR" "$SDK_DIR/agora_sdk"; \
+          ln -s "$SDK_INCLUDE_DIR" "$SDK_DIR/agora_sdk/include" \
+          ;; \
+        *.tgz) \
+          rm -rf "$SDK_DIR"; \
+          tar -xzf "$SDK_PACKAGE" -C "$SDK_PARENT" \
+          ;; \
+      esac; \
     fi; \
     test -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so"; \
     cmake -S /src/Demo/linux -B /build \

@@ -21,7 +21,7 @@
 | --- | --- | --- |
 | Web SDK | 4.20.1-200、4.24.9、4.24.9-dev.2 | 构成主要媒体实测证据；限制是否已在后续主线修复需重新验证 |
 | 当前 Web SDK | `agora-rtc-sdk-ng@4.24.10` 主线版 | 2026-11-17 已确认 `npm install`、实际安装版本和 `npm run build` 通过；尚无全量媒体回归结果 |
-| Linux SDK | 4.4.30.149，ARM64 Ubuntu/Podman，另有 AWS x86_64 历史验证 | Linux sample 与跨端互通主基线 |
+| Linux SDK | 当前包为 4.4.30.152；历史媒体回归使用 4.4.30.149，ARM64 Ubuntu/Podman，另有 AWS x86_64 历史验证 | 4.4.30.152 已通过双架构构建和离线/运行时打包检查，但未重跑全量媒体矩阵；不把升级视为行为已验证 |
 | macOS SDK | 4.5.2、4.5.3、4.6.0、4.6.2、4.7.0 | 发送侧修复边界和 Native 接收能力已覆盖 |
 | iOS SDK | 4.7.0，iPhone 16 Pro 模拟器，iOS 18.3 | 覆盖 Web→iOS；不等于真机验证 |
 | 浏览器 | macOS Chrome 154～157，另有 headless Chrome | Safari、Firefox、iOS WebKit 不在已通过范围内 |

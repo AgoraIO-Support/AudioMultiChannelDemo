@@ -28,7 +28,7 @@
     <!-- ==================== 中文 ==================== -->
     <div data-lang="zh">
       <h1>Linux SDK 音频多声道（multiopus）</h1>
-      <p class="subtitle">适用版本：Agora Linux SDK v4.4.30.x（x86_64 与 aarch64，C++；验证版本 v4.4.30.149。旧参考代码基于 v4.2.32，差异见 1.2 注）</p>
+      <p class="subtitle">适用版本：Agora Linux SDK v4.4.30.x（x86_64 与 aarch64，C++；当前包 v4.4.30.152，历史媒体验证 v4.4.30.149。旧参考代码基于 v4.2.32，差异见 1.2 注）</p>
 
       <!-- ================= 功能说明 ================= -->
       <h2>一、功能说明</h2>
@@ -316,22 +316,13 @@ cd out                   # 以下命令在 out/ 目录内执行
 
       <h2>三、SDK 下载</h2>
       <p>
-        多声道验证推荐使用 <code>v4.4.30.149</code>（x86_64 / aarch64），与 Demo/linux 当前适配版本一致：
+        当前仓库携带的 SDK 为 <code>v4.4.30.152</code>（x86_64 / aarch64，ZIP），位于：
       </p>
       <ul>
-        <li>
-          x86_64：
-          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz" target="_blank" rel="noopener">
-            Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
-          </a>
-        </li>
-        <li>
-          aarch64：
-          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz" target="_blank" rel="noopener">
-            Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz
-          </a>
-        </li>
+        <li><code>LinuxSDKFolder/X86_64/Agora_Native_SDK_for_Linux_x64_rel.v4.4.30.152_29065_SERVER_20261117_1137_ubuntu14_04_5_1392522_external.zip</code></li>
+        <li><code>LinuxSDKFolder/Aarch64/Agora_Native_SDK_for_Linux_aarch64-linux-gnu_v4.4.30.152_20261120_103006_1397089.zip</code></li>
       </ul>
+      <p>历史多声道验证使用 <code>v4.4.30.149</code> TGZ；当前 ZIP 的包名和内部布局已变化：ARM64 SDK 位于 <code>Agora_Native_SDK_for_Linux_SERVER/sdk</code>，x86_64 SDK 位于 <code>Agora_Native_SDK_for_Linux_SERVER/rtc/sdk</code>。构建脚本会归一化库和头文件目录，包升级不代表新行为已验证。</p>
       <p>
         注：本仓库发送 sample 已移除参考 sample（<code>sample_send_h264_pcm_multiopus*.cpp</code>）中的 H264 视频发送逻辑，仅保留音频多声道演示。
       </p>
@@ -340,7 +331,7 @@ cd out                   # 以下命令在 out/ 目录内执行
     <!-- ==================== English ==================== -->
     <div data-lang="en">
       <h1>Linux SDK Audio Multi-Channel (multiopus)</h1>
-      <p class="subtitle">Applies to: Agora Linux SDK v4.4.30.x (x86_64 and aarch64, C++; verified on v4.4.30.149. The legacy reference code was based on v4.2.32 — see the note in 1.2)</p>
+      <p class="subtitle">Applies to: Agora Linux SDK v4.4.30.x (x86_64 and aarch64, C++; current package v4.4.30.152, historical media verification on v4.4.30.149. The legacy reference code was based on v4.2.32 — see the note in 1.2)</p>
 
       <!-- ================= Feature description ================= -->
       <h2>1. Feature Description</h2>
@@ -641,23 +632,13 @@ cd out                   # run the commands below inside out/
 
       <h2>3. SDK Download</h2>
       <p>
-        For multi-channel verification we recommend <code>v4.4.30.149</code> (x86_64 / aarch64), which is
-        the version currently matched by <code>Demo/linux</code>:
+        The repository currently carries <code>v4.4.30.152</code> (x86_64 / aarch64, ZIP):
       </p>
       <ul>
-        <li>
-          x86_64:
-          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz" target="_blank" rel="noopener">
-            Agora-RTC-x86_64-linux-gnu-v4.4.30.149-20260127_144108-1004142.tgz
-          </a>
-        </li>
-        <li>
-          aarch64:
-          <a href="https://download.agora.io/rtsasdk/release/Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz" target="_blank" rel="noopener">
-            Agora-RTC-aarch64-linux-gnu-v4.4.30.149-20260127_144949-1004143.tgz
-          </a>
-        </li>
+        <li><code>LinuxSDKFolder/X86_64/Agora_Native_SDK_for_Linux_x64_rel.v4.4.30.152_29065_SERVER_20261117_1137_ubuntu14_04_5_1392522_external.zip</code></li>
+        <li><code>LinuxSDKFolder/Aarch64/Agora_Native_SDK_for_Linux_aarch64-linux-gnu_v4.4.30.152_20261120_103006_1397089.zip</code></li>
       </ul>
+      <p>Historical multi-channel verification used <code>v4.4.30.149</code> TGZ. The package name and internal layout have changed: ARM64 uses <code>Agora_Native_SDK_for_Linux_SERVER/sdk</code>, while x86_64 uses <code>Agora_Native_SDK_for_Linux_SERVER/rtc/sdk</code>. Build scripts normalize the library and header layouts, but the upgrade itself does not validate changed behavior.</p>
       <p>
         Note: the sender samples in this repo have removed the H264 video-sending logic that exists in
         the reference samples (<code>sample_send_h264_pcm_multiopus*.cpp</code>) and keep only the

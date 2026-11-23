@@ -31,20 +31,66 @@ case "$arch" in
 esac
 
 SDK_PACKAGE_DIR=$(dirname "$SDK_DIR")
-if [ ! -d "$SDK_DIR/agora_sdk" ] || [ ! -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so" ]; then
-  SDK_TGZ=""
+SDK_PACKAGE=""
+for candidate in "$SDK_PACKAGE_DIR"/Agora_Native_SDK_for_Linux_*.zip; do
+  if [ -f "$candidate" ]; then
+    SDK_PACKAGE="$candidate"
+    break
+  fi
+done
+if [ -z "$SDK_PACKAGE" ]; then
   for candidate in "$SDK_PACKAGE_DIR"/Agora-RTC-*-linux-gnu-*.tgz; do
     if [ -f "$candidate" ]; then
-      SDK_TGZ="$candidate"
+      SDK_PACKAGE="$candidate"
       break
     fi
   done
-  if [ -z "$SDK_TGZ" ]; then
-    echo "error: SDK package not found in $SDK_PACKAGE_DIR"
+fi
+if [ -z "$SDK_PACKAGE" ]; then
+  echo "error: SDK package not found in $SDK_PACKAGE_DIR"
+  exit 1
+fi
+
+package_name=$(basename "$SDK_PACKAGE")
+if [ ! -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so" ] ||
+   [ ! -f "$SDK_DIR/agora_sdk/include/IAgoraService.h" ] ||
+   [ ! -f "$SDK_DIR/.sdk_package" ] ||
+   [ "$(cat "$SDK_DIR/.sdk_package")" != "$package_name" ]; then
+  if [[ "$SDK_PACKAGE" == *.zip ]] && ! command -v unzip >/dev/null 2>&1; then
+    echo "error: unzip is required to extract $SDK_PACKAGE"
     exit 1
   fi
-  echo "extracting SDK package: $SDK_TGZ"
-  tar -xzf "$SDK_TGZ" -C "$SDK_PACKAGE_DIR"
+  echo "extracting SDK package: $SDK_PACKAGE"
+  rm -rf "$SDK_DIR"
+  mkdir -p "$SDK_DIR"
+  case "$SDK_PACKAGE" in
+    *.zip)
+      rm -rf "$SDK_PACKAGE_DIR/Agora_Native_SDK_for_Linux_SERVER"
+      unzip -q "$SDK_PACKAGE" -d "$SDK_PACKAGE_DIR"
+      SDK_SOURCE_DIR="$SDK_PACKAGE_DIR/Agora_Native_SDK_for_Linux_SERVER/sdk"
+      if [ ! -f "$SDK_SOURCE_DIR/libagora_rtc_sdk.so" ]; then
+        SDK_SOURCE_DIR="$SDK_PACKAGE_DIR/Agora_Native_SDK_for_Linux_SERVER/rtc/sdk"
+      fi
+      if [ ! -f "$SDK_SOURCE_DIR/libagora_rtc_sdk.so" ]; then
+        echo "error: SDK library not found in $SDK_PACKAGE"
+        exit 1
+      fi
+      SDK_INCLUDE_DIR="$SDK_SOURCE_DIR/include"
+      if [ ! -f "$SDK_INCLUDE_DIR/IAgoraService.h" ]; then
+        SDK_INCLUDE_DIR="$SDK_SOURCE_DIR/low_level_api/include"
+      fi
+      if [ ! -f "$SDK_INCLUDE_DIR/IAgoraService.h" ]; then
+        echo "error: SDK headers not found in $SDK_PACKAGE"
+        exit 1
+      fi
+      ln -s "$SDK_SOURCE_DIR" "$SDK_DIR/agora_sdk"
+      ln -s "$SDK_INCLUDE_DIR" "$SDK_DIR/agora_sdk/include"
+      ;;
+    *.tgz)
+      tar -xzf "$SDK_PACKAGE" -C "$SDK_PACKAGE_DIR"
+      ;;
+  esac
+  printf '%s\n' "$package_name" > "$SDK_DIR/.sdk_package"
 fi
 
 if [ ! -f "$SDK_DIR/agora_sdk/libagora_rtc_sdk.so" ]; then
