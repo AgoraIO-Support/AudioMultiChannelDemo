@@ -176,7 +176,8 @@ def tone_spectrum(path: Path, channels: int, seconds: int = 1) -> tuple[bool, li
     return passed, result
 
 
-def assert_encoded_log(text: str, user: str, expected_codec: int | None = None) -> tuple[bool, dict]:
+def assert_encoded_log(text: str, user: str, expected_codec: int | None = None,
+                       strict_continuity: bool = False) -> tuple[bool, dict]:
     pattern = re.compile(
         rf"Received encoded audio frame: user={re.escape(user)} .*?codec=(\d+) "
         rf"sendTs=(\d+) delta=(\d+)"
@@ -185,18 +186,31 @@ def assert_encoded_log(text: str, user: str, expected_codec: int | None = None) 
     if not frames:
         return False, {"error": "no encoded frame metadata", "user": user}
     codecs = sorted(set(codec for codec, _, _ in frames))
+    timestamps = [ts for _, ts, _ in frames]
     intervals = [delta for _, _, delta in frames[1:]]
-    # A subscription can deliver the first two packets together, producing a
-    # one-time 2880-tick startup gap. All subsequent callbacks must be
-    # monotonic and no more than one 20 ms Opus timestamp step apart.
+    order_error = re.search(rf"ENCODED_TIMESTAMP_ORDER user={re.escape(user)} ", text) is not None
+    monotonic_ok = (not order_error and
+                    all(current > previous for previous, current in zip(timestamps, timestamps[1:])))
+    gap_pattern = re.compile(
+        rf"ENCODED_TIMESTAMP_GAP user={re.escape(user)} previous=\d+ current=\d+ delta=(\d+)"
+    )
+    delivery_gaps = [int(delta) for delta in gap_pattern.findall(text)]
+    # Only the strict transport gate requires gap-free pacing. The codec gate
+    # still requires increasing timestamps but tolerates delivery gaps caused
+    # by loss, reordering, or delayed packets.
     warmup_ok = not intervals or 0 < intervals[0] <= 3840
     steady_intervals = intervals[1:] if intervals else []
     steady_ok = all(0 < delta <= 1920 for delta in steady_intervals)
-    passed = ((expected_codec is None or codecs == [expected_codec]) and
-              warmup_ok and steady_ok)
+    continuity_ok = warmup_ok and steady_ok and not delivery_gaps
+    codec_ok = expected_codec is None or codecs == [expected_codec]
+    passed = codec_ok and monotonic_ok and (continuity_ok if strict_continuity else True)
     return passed, {"frames_logged": len(frames), "codecs": codecs,
-                    "intervals": intervals[:10], "warmup_ok": warmup_ok,
-                    "steady_ok": steady_ok}
+                    "intervals": intervals[:10], "monotonic_ok": monotonic_ok,
+                    "warmup_ok": warmup_ok, "steady_ok": steady_ok,
+                    "continuity_ok": continuity_ok,
+                    "delivery_gap_count": len(delivery_gaps),
+                    "max_delivery_delta": max(delivery_gaps, default=0),
+                    "strict_continuity": strict_continuity}
 
 
 def assert_video(path: Path, text: str, user: str) -> tuple[bool, dict]:
@@ -221,7 +235,8 @@ def assert_video(path: Path, text: str, user: str) -> tuple[bool, dict]:
 
 
 def matrix_case(root: Path, public: Path, result_root: Path, app_id: str,
-                sender: str, source: Path, video: bool = False) -> None:
+                sender: str, source: Path, video: bool = False,
+                strict_continuity: bool = False) -> None:
     case = f"matrix-{sender}"
     channel = f"full-reg-{sender}-{int(time.time())}"
     sender_uid = "81001"
@@ -238,6 +253,9 @@ def matrix_case(root: Path, public: Path, result_root: Path, app_id: str,
                "--numOfChannels", "8", "--sampleRate", "48000", "--audioFile", str(case_dir / "avpcm"),
                "--videoFile", str(case_dir / "video")]),
     }
+    if strict_continuity:
+        binary, args = receivers["encoded"]
+        receivers["encoded"] = (binary, args + ["--strictTimestampContinuity", "1"])
     binaries = {"pcm": "sample_send_pcm_multiopus", "wav": "sample_send_wav_multiopus",
                 "opus": "sample_send_opus8", "mkv": "sample_send_mkv_multiopus"}
     send_args = ["--userId", sender_uid]
@@ -280,7 +298,8 @@ def matrix_case(root: Path, public: Path, result_root: Path, app_id: str,
                 metadata = log_text(running[name])
                 good = good and "FRAME_METADATA" in metadata
             if name == "encoded":
-                encoded_ok, encoded_detail = assert_encoded_log(log_text(running[name]), sender_uid, 13)
+                encoded_ok, encoded_detail = assert_encoded_log(
+                    log_text(running[name]), sender_uid, 13, strict_continuity)
                 details["encoded"] = encoded_detail
                 good = good and encoded_ok
             if name == "av" and video:
@@ -406,7 +425,8 @@ def mismatch_case(root: Path, result_root: Path, app_id: str, source_channels: i
         stop(sender)
 
 
-def fallback_case(root: Path, public: Path, result_root: Path, app_id: str, unfallback: bool) -> None:
+def fallback_case(root: Path, public: Path, result_root: Path, app_id: str, unfallback: bool,
+                  strict_continuity: bool = False) -> None:
     mode = "unfallback" if unfallback else "fallback"
     case = f"codec-{mode}"
     case_dir = result_root / case
@@ -416,8 +436,12 @@ def fallback_case(root: Path, public: Path, result_root: Path, app_id: str, unfa
     channel = f"codec-{mode}-{int(time.time())}"
     processes = []
     try:
+        encoded_args = ["--channelId", channel, "--userId", "96001",
+                        "--audioFile", str(case_dir / "encoded")]
+        if strict_continuity:
+            encoded_args += ["--strictTimestampContinuity", "1"]
         encoded = launch(root, result_root, case, "encoded", "sample_receive_encoded_audio",
-                         ["--channelId", channel, "--userId", "96001", "--audioFile", str(case_dir / "encoded")], app_id)
+                         encoded_args, app_id)
         processes.append(encoded)
         wait_for(lambda: "Start receiving" in log_text(encoded), processes, 30, "encoded receiver")
         ordinary_sender = launch(root, result_root, case, "ordinary", "sample_send_pcm_opus",
@@ -436,8 +460,10 @@ def fallback_case(root: Path, public: Path, result_root: Path, app_id: str, unfa
                  "ordinary and multi encoded frames")
         time.sleep(3)
         codes = stop_all(processes)
-        ordinary_ok, ordinary_detail = assert_encoded_log(log_text(encoded), "96002", 1)
-        multi_ok, multi_detail = assert_encoded_log(log_text(encoded), "96003", 13)
+        ordinary_ok, ordinary_detail = assert_encoded_log(
+            log_text(encoded), "96002", 1, strict_continuity)
+        multi_ok, multi_detail = assert_encoded_log(
+            log_text(encoded), "96003", 13, strict_continuity)
         setting_seen = "Set che.audio.codec_unfallback=[123,124,125]" in log_text(multi_sender)
         passed = ordinary_ok and multi_ok and (setting_seen if unfallback else True) and all(code == 0 for code in codes)
         record(case, passed, {"ordinary": ordinary_detail, "multi": multi_detail,
@@ -520,29 +546,40 @@ def main() -> int:
     parser.add_argument("--app-id", required=True)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-mkv", action="store_true")
+    parser.add_argument("--strict-timestamp-continuity", action="store_true",
+                        help="fail on encoded timestamp gaps after subscription warmup; "
+                             "use only on a controlled no-loss network")
     args = parser.parse_args()
     root = args.sample_dir.resolve()
     public = (root / "public") if (root / "public").exists() else (root.parent / "public")
     result_root = args.output_dir.resolve() if args.output_dir else Path(tempfile.mkdtemp(prefix="agora-linux-full."))
     result_root.mkdir(parents=True, exist_ok=True)
     print(json.dumps({"architecture": platform.machine(), "sample_dir": str(root),
-                      "public_dir": str(public), "results": str(result_root)}, ensure_ascii=False), flush=True)
+                      "public_dir": str(public), "results": str(result_root),
+                      "strict_timestamp_continuity": args.strict_timestamp_continuity},
+                     ensure_ascii=False), flush=True)
     try:
         matrix_case(root, public, result_root, args.app_id, "pcm",
-                    public / "8_Channel_ID_signed_16_bit_pcm.raw.pcm")
+                    public / "8_Channel_ID_signed_16_bit_pcm.raw.pcm",
+                    strict_continuity=args.strict_timestamp_continuity)
         matrix_case(root, public, result_root, args.app_id, "wav",
-                    public / "8_Channel_ID_signed_16_bit_pcm.wav")
-        matrix_case(root, public, result_root, args.app_id, "opus", public / "8ch_2.opus")
+                    public / "8_Channel_ID_signed_16_bit_pcm.wav",
+                    strict_continuity=args.strict_timestamp_continuity)
+        matrix_case(root, public, result_root, args.app_id, "opus", public / "8ch_2.opus",
+                    strict_continuity=args.strict_timestamp_continuity)
         if not args.skip_mkv:
             matrix_case(root, public, result_root, args.app_id, "mkv",
-                        public / "VictoriaMulti.mkv", True)
+                        public / "VictoriaMulti.mkv", True,
+                        strict_continuity=args.strict_timestamp_continuity)
         for channels in range(3, 9):
             tone_case(root, result_root, args.app_id, channels, 16)
         tone_case(root, result_root, args.app_id, 8, 24)
         for channels in (3, 5, 7):
             odd_case(root, public, result_root, args.app_id, channels)
-        fallback_case(root, public, result_root, args.app_id, False)
-        fallback_case(root, public, result_root, args.app_id, True)
+        fallback_case(root, public, result_root, args.app_id, False,
+                      args.strict_timestamp_continuity)
+        fallback_case(root, public, result_root, args.app_id, True,
+                      args.strict_timestamp_continuity)
         mismatch_case(root, result_root, args.app_id, 8, 3)
         mismatch_case(root, result_root, args.app_id, 3, 8)
         invalid_cases(root, public, result_root, args.app_id)

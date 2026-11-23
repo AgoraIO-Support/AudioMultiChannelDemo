@@ -43,12 +43,14 @@ struct SampleOptions {
   std::string channelId;
   std::string userId;
   std::string audioFile = DEFAULT_AUDIO_FILE;
+  bool strictTimestampContinuity = false;
 };
 
 class EncodedAudioReceiver : public agora::rtc::IAudioEncodedFrameReceiver {
  public:
-  EncodedAudioReceiver(const std::string& outputFilePath)
-      : outputFilePath_(outputFilePath) {}
+  EncodedAudioReceiver(const std::string& outputFilePath, bool strictTimestampContinuity)
+      : outputFilePath_(outputFilePath),
+        strictTimestampContinuity_(strictTimestampContinuity) {}
 
   ~EncodedAudioReceiver() {
     std::lock_guard<std::mutex> lock(file_mutex_);
@@ -86,6 +88,7 @@ class EncodedAudioReceiver : public agora::rtc::IAudioEncodedFrameReceiver {
   };
 
   std::string outputFilePath_;
+  bool strictTimestampContinuity_ = false;
   std::map<std::string, UserFileState> files_;
   std::mutex file_mutex_;
 };
@@ -117,17 +120,29 @@ bool EncodedAudioReceiver::onEncodedAudioFrameReceivedForUser(
                                       : 0;
   // The first callback after subscription may cover packets accumulated while
   // the remote track was being subscribed (for example, a 2880-tick gap).
-  // Starting with the second interval, enforce monotonic 20 ms Opus pacing;
-  // later gaps indicate a real timestamp discontinuity.
   const bool afterSubscriptionWarmup = state.frameCount > 1;
-  if (hasPreviousTimestamp && afterSubscriptionWarmup &&
-      (info.sendTs <= state.lastSendTs || timestampDelta > 1920)) {
+  if (hasPreviousTimestamp && info.sendTs <= state.lastSendTs) {
     state.timestampIssue = true;
     AG_LOG(ERROR,
-           "ENCODED_TIMESTAMP_GAP user=%s previous=%llu current=%llu delta=%llu",
+           "ENCODED_TIMESTAMP_ORDER user=%s previous=%llu current=%llu delta=%llu",
            userId.c_str(), static_cast<unsigned long long>(state.lastSendTs),
            static_cast<unsigned long long>(info.sendTs),
            static_cast<unsigned long long>(timestampDelta));
+  } else if (hasPreviousTimestamp && afterSubscriptionWarmup && timestampDelta > 1920) {
+    state.timestampIssue = state.timestampIssue || strictTimestampContinuity_;
+    if (strictTimestampContinuity_) {
+      AG_LOG(ERROR,
+             "ENCODED_TIMESTAMP_GAP user=%s previous=%llu current=%llu delta=%llu",
+             userId.c_str(), static_cast<unsigned long long>(state.lastSendTs),
+             static_cast<unsigned long long>(info.sendTs),
+             static_cast<unsigned long long>(timestampDelta));
+    } else {
+      AG_LOG(WARNING,
+             "ENCODED_TIMESTAMP_GAP user=%s previous=%llu current=%llu delta=%llu",
+             userId.c_str(), static_cast<unsigned long long>(state.lastSendTs),
+             static_cast<unsigned long long>(info.sendTs),
+             static_cast<unsigned long long>(timestampDelta));
+    }
   }
   ++state.frameCount;
 
@@ -169,6 +184,9 @@ int main(int argc, char* argv[]) {
   optParser.add_long_opt("channelId", &options.channelId, "Channel Id");
   optParser.add_long_opt("userId", &options.userId, "User Id / default is 0");
   optParser.add_long_opt("audioFile", &options.audioFile, "Output audio file");
+  optParser.add_long_opt("strictTimestampContinuity", &options.strictTimestampContinuity,
+                         "Pass 1 to fail on encoded timestamp gaps after subscription warmup; "
+                         "default monitors gaps as warnings");
 
   if ((argc <= 1) || !optParser.parse_opts(argc, argv)) {
     std::ostringstream strStream;
@@ -186,6 +204,8 @@ int main(int argc, char* argv[]) {
     AG_LOG(ERROR, "Must provide channelId!");
     return -1;
   }
+  AG_LOG(INFO, "Encoded timestamp continuity mode: %s",
+         options.strictTimestampContinuity ? "strict" : "monitor");
 
   std::signal(SIGQUIT, SignalHandler);
   std::signal(SIGABRT, SignalHandler);
@@ -226,7 +246,8 @@ int main(int argc, char* argv[]) {
   auto localUserObserver =
       std::make_shared<SampleLocalUserObserver>(connection->getLocalUser());
 
-  auto audioReceiver = std::make_shared<EncodedAudioReceiver>(options.audioFile);
+  auto audioReceiver =
+      std::make_shared<EncodedAudioReceiver>(options.audioFile, options.strictTimestampContinuity);
   localUserObserver->setEncodedAudioFrameCallback(
       [audioReceiver](const std::string& userId, const uint8_t* packet, size_t length,
                       const agora::media::base::AudioEncodedFrameInfo& info) {

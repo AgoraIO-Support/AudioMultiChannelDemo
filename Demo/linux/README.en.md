@@ -367,6 +367,27 @@ custom decoding. Files are named `<audioFile>.uid-<UID>`. The callback `info` ca
 `codec` and `sendTs` (in SDK v4.4.30.149,
 `AudioEncodedFrameInfo` in `AgoraMediaBase.h` has no channel-count or sample-rate fields).
 
+Timestamp validation separates codec behavior from transport continuity. The default monitor mode
+requires strictly increasing `sendTs` values. A gap above 1920 ticks is logged as
+`APP_LOG_WARNING` so packet loss, reordering, and late delivery can be observed without directly
+failing the codec case or changing the process exit code. Non-monotonic timestamps always log
+`APP_LOG_ERROR` and produce exit code 1.
+
+Enable the strict transport gate only on a controlled, no-loss network:
+
+```bash
+./sample_receive_encoded_audio --channelId <name> --token <token> \
+    --audioFile received.opus --strictTimestampContinuity 1
+```
+
+Strict mode allows one subscription-warmup interval. Later gaps log `APP_LOG_ERROR` and produce
+exit code 1. `tests/full_regression.sh` uses monitor mode by default; apply the strict gate to all
+encoded-frame scenarios with:
+
+```bash
+APP_ID='<credential>' bash tests/full_regression.sh --strict-timestamp-continuity
+```
+
 ### Mixed audio dump (sample_receive_mixed_audio)
 
 This callback contains the SDK's global mix and has no remote-UID dimension, so it remains one

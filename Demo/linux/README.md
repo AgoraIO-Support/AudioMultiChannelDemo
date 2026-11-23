@@ -341,6 +341,26 @@ ffplay -f s16le -ar 48000 -ch_layout 7.1 received_8ch.pcm.uid-8899   # 8 声道�
 `codec` 与 `sendTs`（SDK v4.4.30.149 头文件 `AgoraMediaBase.h` 中
 `AudioEncodedFrameInfo` 无声道数/采样率字段）。
 
+编码时间戳检查分为 codec 功能门禁和传输连续性门禁。默认 monitor 模式要求 `sendTs`
+严格递增；大于 1920 tick 的缺口记录为 `APP_LOG_WARNING`，用于观察丢包、乱序或迟到包，
+不直接判定 codec 失败，也不影响进程退出码。非单调时间戳始终记录 `APP_LOG_ERROR`
+并以退出码 1 结束。
+
+只在可控、无丢包网络中验证严格连续性时，显式开启严格模式：
+
+```bash
+./sample_receive_encoded_audio --channelId <name> --token <token> \
+    --audioFile received.opus --strictTimestampContinuity 1
+```
+
+严格模式允许一次订阅启动 warmup 间隔，后续缺口会记录 `APP_LOG_ERROR` 并使进程以
+退出码 1 结束。`tests/full_regression.sh` 默认使用 monitor 模式；对全部编码帧场景启用
+同样的严格门禁时，使用：
+
+```bash
+APP_ID='<凭据>' bash tests/full_regression.sh --strict-timestamp-continuity
+```
+
 ### 混音落盘（sample_receive_mixed_audio）
 
 该回调提供 SDK 的全局混音结果，没有远端 UID 维度，因此仍写入一个聚合文件。
