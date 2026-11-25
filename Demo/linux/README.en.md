@@ -137,6 +137,47 @@ mode. This checks file growth, not channel content, and does not replace long-du
 renewal, or network recovery testing. Run `python3 tests/lifecycle_harness_test.py` for the
 offline positive and negative tests of the script itself.
 
+### Targeted teardown-race reproduction
+
+`tests/audio_teardown_race.py` sends a normal SIGINT after `Start receiving`, repeatedly exercising
+real `disconnect → release` paths to expose races among callback unregistration, device playout and
+object destruction. It uses no debugger, does not modify SDK memory, and requires neither a sender
+nor an N/M channel mismatch. Build against 4.4.30.152 and run on Linux:
+
+```bash
+ulimit -c unlimited
+APP_TOKEN='<credential>'
+SDK_LIB_DIR='/path/to/agora_sdk'
+python3 tests/audio_teardown_race.py \
+  --sample-dir "$(pwd)/out" \
+  --binary sample_receive_pcm_multiopus \
+  --artifact-dir "$(pwd)/out/teardown-race" \
+  --library-dir "$SDK_LIB_DIR" \
+  --app-id "$APP_TOKEN" \
+  --expected-build 1397089 \
+  --iterations 1 --workers 4 --batches 20 \
+  --hold-ms 20 --keep-going --timeout 45
+```
+
+Use the exact 152 build: 1397089 for the tested ARM64 package and 1392522 for x86_64.
+For the join-timeout scenario, add `--expect-join-timeout` to require the actual
+`Wait for connection timeout or failure!` log; an unexpected successful join invalidates the case.
+Podman `--network none` or `unshare --user --map-root-user --net` can create that window without
+changing host firewall rules. `join_timeouts` records real timeout cases, so
+`completed_iterations` being zero when no join succeeds is expected and does not mean no attempts.
+`--hold-ms` sets the post-connect delay, `--workers` sets concurrency, and `--keep-going` completes
+all planned batches after a crash. `summary.json` records actual attempts, SIGSEGV, connection
+failures, timeouts and version mismatches. Runner exit `10` means at least one natural SIGSEGV;
+the receiver's own exit is `-11`. Successful SDK logs are removed by default; use
+`--keep-success-logs` to retain them. A failed receiver's `receiver-sdk/` may contain a native
+`<crashId>.dmp`, a readable `<crashId>.log`, and `agorasdk.log`. System core location is controlled
+by the OS; `ulimit -c unlimited` only enables core generation.
+
+The new `audio_teardown_race` C++ target also supports multiple connections per service and
+`--noConnect 1` for isolated destruction tests. The real reproduction above uses the stock receiver
+without application changes. Run `python3 tests/audio_teardown_race_test.py -v` for offline checks
+of exit classification, version checks, timeouts and completing all batches after a crash.
+
 ### Per-channel PCM content analysis
 
 The build also produces `out/pcm_channel_analyzer`. It reads a source WAV (16/24-bit integer PCM)

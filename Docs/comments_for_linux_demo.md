@@ -1,10 +1,10 @@
 # Linux 多声道 Demo 测试覆盖评估
 
-评估日期：2026-11-19；最近定向复跑更新：2026-11-23
+评估日期：2026-11-19；最近定向复跑更新：2026-11-24
 
 当前包版本说明：`LinuxSDKFolder/` 中的两种架构 SDK 已由 4.4.30.149 TGZ 更新为 4.4.30.152 ZIP。ARM64 的 SDK 位于 `Agora_Native_SDK_for_Linux_SERVER/sdk`，x86_64 位于 `Agora_Native_SDK_for_Linux_SERVER/rtc/sdk`。构建脚本和 Dockerfile 已适配这两种 ZIP 布局及旧 TGZ，将库目录归一化到 `agora_rtc_sdk/agora_sdk`，并将 ARM64 的 `sdk/include` 或 x86_64 的 `rtc/sdk/low_level_api/include` 映射为 `agora_sdk/include`。除非另有明确说明，本文中的媒体回归结果仍使用 4.4.30.149，不能据此推断 4.4.30.152 的行为或 NetEq/PLC 问题已修复。
 
-4.4.30.152 构建适配验证（2026-11-23）：ARM64 Podman 和独立 x86_64 Docker 均使用 Debian bookworm-slim，完成 `build.sh` 解包复用及连续两次构建，9 个检查目标生成成功；完整运行时镜像的 SDK 动态库和素材检查、PCM/MKV 二进制的动态链接检查、镜像内 8 声道 PCM 分析器对照均通过。双架构输入校验、PCM 内容分析和私有 PCM 文件 C++ 测试通过；43 项 Python 离线单测、3 项生命周期工具正反例及 Web 文档站构建也通过。这些是构建、离线和本地内容检查，**没有使用 4.4.30.152 重跑完整 RTC 媒体矩阵**，历史 44/48、48/48 及其他媒体结果仍属于 4.4.30.149。
+4.4.30.152 构建适配验证（2026-11-23）：ARM64 Podman 和独立 x86_64 Docker 均使用 Debian bookworm-slim，完成 `build.sh` 解包复用及连续两次构建，9 个检查目标生成成功；完整运行时镜像的 SDK 动态库和素材检查、PCM/MKV 二进制的动态链接检查、镜像内 8 声道 PCM 分析器对照均通过。双架构输入校验、PCM 内容分析和私有 PCM 文件 C++ 测试通过；43 项 Python 离线单测、3 项生命周期工具正反例及 Web 文档站构建也通过。这些当时仅是构建、离线和本地内容检查；**2026-11-24 已补 4.4.30.152 的真实 RTC 媒体矩阵和专项诊断，见文末最新章节**。此前历史 44/48、48/48 及其他媒体结果仍属于 4.4.30.149。
 
 评估范围：`Demo/linux/` 下的发送端、接收端、测试脚本、素材和现有回归记录。本文区分“代码提供了测试入口”“已有实际回归证据”和“已形成可重复自动化测试”，避免把 sample 存在误认为功能已经完整验证。
 
@@ -199,7 +199,7 @@ MKV sample 实现了 4×stereo 重采样、重排和 10ms 拆帧。真实 4×4 �
 
 ### 生命周期和架构
 
-正常退出、无效凭据清理和生命周期竞态已有 ARM64 真实验证。MKV 发送端和 AV 接收端现已统一使用原子退出标志、SIGINT/SIGTERM 处理、线程失败传播、可中断视频 PTS 等待和完整 teardown；`mkv_exit_regression.sh` 的正常退出、sender SIGINT、sender SIGTERM、receiver 先退出 4 个场景均通过。仍需在 x86_64 复测，并扩大到更多收发路径和长时间竞态，确认无卡死、残留线程和未关闭文件。
+正常退出、无效凭据清理和生命周期竞态已有 ARM64 真实验证。MKV 发送端和 AV 接收端现已统一使用原子退出标志、SIGINT/SIGTERM 处理、线程失败传播、可中断视频 PTS 等待和完整 teardown；`mkv_exit_regression.sh` 的正常退出、sender SIGINT、sender SIGTERM、receiver 先退出 4 个场景在 ARM64 和 x86_64 均已通过。仍需扩大到更多收发路径和长时间竞态，确认无卡死、残留线程和未关闭文件。
 
 ARM64 与 x86_64 均已有实际容器回归：x86_64 完整 48/48，ARM64 修正后 44/48 且四个失败均为 startup 异常。双架构覆盖已经建立，但 NetEq/PLC 瞬态和更多网络条件仍需单独验证。
 
@@ -209,14 +209,14 @@ ARM64 与 x86_64 均已有实际容器回归：x86_64 完整 48/48，ARM64 修�
 
 | 优先级 | 场景 | 当前状态 | 下一步验收 |
 | --- | --- | --- | --- |
-| P0 | 逐声道内容正确性 | 频谱门禁已修正并有 15 项单测；x86_64 完整 48/48、16/24bit 和 startup/steady 全部通过；ARM64 修正后 44/48，4 个失败均为真实启动强 300Hz，steady 全部通过 | 继续由 SDK 团队定位 ARM64 NetEq/PLC 内部补偿模块，在受控网络复测并保留码流离线对照；不得用 x86_64 全绿抵消 ARM64 异常 |
-| P0 | 可重复的 Linux 多声道矩阵 | 修正版 `full_regression.sh`/`full_regression.py` 已在 x86_64 完成 48/48，在 ARM64 完成 44/48；两边均有 startup/steady、结果 JSON、日志和媒体证据 | 保留双架构独立结果，继续覆盖更多网络条件；不能把 x86_64 的 48/48 或任一架构的 steady 通过外推为所有环境通过 |
+| P0 | 逐声道内容正确性 | 频谱门禁已修正并有 15 项单测；4.4.30.149 为 x86_64 48/48、ARM64 44/48，4.4.30.152 为 x86_64 48/48、ARM64 45/48；新包三项失败均为 startup 强 300Hz、steady 恢复 | 继续由 SDK 团队定位首声道启动补偿/同步泄漏，在受控网络复测并保留码流离线对照；不得用 x86_64 全绿抵消 ARM64 异常 |
+| P0 | 可重复的 Linux 多声道矩阵 | 修正版 `full_regression.sh`/`full_regression.py` 已在 4.4.30.152 的 x86_64 完成 48/48、ARM64 完成 45/48；两边均有 startup/steady、结果 JSON、日志和媒体证据 | 保留双架构独立结果，继续覆盖更多网络条件；不能把 x86_64 的 48/48 或任一架构的 steady 通过外推为所有环境通过 |
 | P0 | 非法输入和参数组合 | 输入校验代码与本地单测已完成；ARM64 和 x86_64 的 14 个真实端到端场景均在 `onConnecting` 前以退出码 255 拒绝 | 继续覆盖更多参数组合、随机截断和 parser fuzz，保持无发布、无远端文件的证据 |
 | P0 | MKV 音视频退出稳定性 | `mkv_exit_regression.sh` 的 normal、sender SIGINT、sender SIGTERM、receiver 先退出在 ARM64 和 x86_64 均通过，覆盖真实临时文件和 `/dev/null` | 在更多收发路径和长稳中复测，继续确认无卡死、残留线程、未关闭文件和异常子进程 |
-| P0（条件） | ARM64/x86_64 对等回归 | 两架构均已执行相同修正版媒体、输入校验和退出矩阵：x86_64 48/48，ARM64 44/48 且四个失败均为 startup 异常 | 保留分架构结果，继续调查 ARM64 NetEq/PLC 瞬态；新增架构或网络条件时复跑同一矩阵 |
+| P0（条件） | ARM64/x86_64 对等回归 | 两架构均已执行相同修正版媒体、输入校验和退出矩阵：4.4.30.152 为 x86_64 48/48、ARM64 45/48，三项失败均为 startup 异常 | 保留分架构结果，继续调查 ARM64 首声道启动泄漏；新增架构或网络条件时复跑同一矩阵 |
 | P1 | codec fallback / `codec_unfallback` | 2026-11-23 monitor 定向 13/13 项断言通过，普通流保持 `codec=1`、多声道流保持 `codec=13`，未观察整体回退；严格连续性在当前网络为 9/13 | 在可控无丢包网络执行严格连续性门禁，并补 capability/远端媒体证据，明确 SDK 实际协商行为 |
 | P1 | 生命周期和订阅竞态 | 已扩至 10 轮及逐点内容验收：x86_64 23/23 恢复点通过，ARM64 16/23 通过且 7 个失败均为实际频谱异常；ARM64 四接收矩阵另有 resubscribe steady 异常 | 继续在更多网络条件和长时间竞态下复测，保留每次恢复的 PCM、频谱和日志，不能只检查文件增长 |
-| P1 | 接收端声道数错配 | 已覆盖全部 30 个有序 N≠M 组合：两架构均无组合通过一对一内容门禁；x86_64 `8to6` 首轮还出现 SIGSEGV，已修正分类器避免把崩溃误记为安全拒绝 | 由 SDK 团队调查错配混音/映射和间歇性崩溃；保留每次 PCM、频谱和日志，transport 的 `degraded_to_requested_channels` 不代表内容正确 |
+| P1 | 接收端声道数错配 | 4.4.30.152 双架构均覆盖全部 30 个有序 N≠M 组合：N>M 呈确定折叠混音，N<M 有重复/频移，无一满足一对一内容门禁；旧 x86_64 `8to6` 和新 ARM64 `7to4` 均有 SIGSEGV | 由 SDK 团队调查安全拒绝和间歇性崩溃；保留每次 PCM、频谱和日志，transport 的 `degraded_to_requested_channels` 不代表内容正确 |
 | P1 | 网络和认证恢复 | 已捕获真实丢包下 NetEq/PLC 产生强 300Hz 瞬态及恢复的码流证据；Token 过期/续期、可控丢包/抖动和完整恢复矩阵仍未覆盖 | 覆盖 Token 过期/续期、断网、受控丢包/抖动和重连，分别记录补偿瞬态与稳定后的声道数、频谱和内容恢复 |
 | P1 | 混音/编码/AV 语义断言 | stereo 奇偶隔离和 mono 全源双架构通过；x86_64 PCM/AV 连续性与 MKV 映射通过；ARM64 时间戳连续性及 MKV steady 通过，但 startup 频谱仍失败 | 继续调查 ARM64 启动 NetEq/PLC 异常，并在更多网络条件下验证 PCM/AV 连续性和 MKV 映射 |
 | P2 | 长稳和资源 | 没有长时间自动化记录 | 连续发布订阅至少 2 小时，观察 CPU、内存、线程、文件句柄和 SDK 日志增长 |
@@ -229,8 +229,8 @@ ARM64 与 x86_64 均已有实际容器回归：x86_64 完整 48/48，ARM64 修�
 
 ### 需要 SDK 团队定位
 
-1. **P0：NetEq/PLC 内部补偿机制。** 将 `framed-round-05`、ARM64 四个启动失败及扩展回归中的频谱异常交给 SDK 团队，明确具体产生模块和触发条件；在可控无丢包及受控丢包环境复测，并保留 encoded 包离线解码对照。不能用 x86_64 的 48/48 抵消 ARM64 的 44/48 异常。
-2. **N/M 错配映射和间歇性 SIGSEGV。** 全部 30 个有序 N≠M 组合均未通过一对一内容验收，需要继续调查混音、复制、缺失和重排；x86_64 `8to6` 首轮还出现 SIGSEGV，后续未复现不能关闭问题，必须保留原始崩溃日志和后续内容失败证据。
+1. **P0：首声道启动补偿/同步泄漏。** 将 `framed-round-05`、4.4.30.152 的 ARM64 三项启动失败及新增码流对照交给 SDK 团队，明确首声道基频泄漏到其他声道的具体模块和触发条件；首声道静音与 400Hz 对照已缩小范围，但函数级归因仍需解密日志、NetEq dump 或带符号二进制。不能用 x86_64 的 48/48 抵消 ARM64 的 45/48 异常。
+2. **N/M 安全拒绝和间歇性 SIGSEGV。** 全部 30 个有序 N≠M 组合均不满足一对一内容验收，N>M 已确认折叠混音，N<M 有重复/频移，需明确为不支持并争取安全拒绝。旧 x86_64 `8to6` 和新 ARM64 `7to4` 均有 SIGSEGV；100 轮 N/M ASan 对照及 20 轮连接超时对照未复现。真实 core 与研发反馈已确认清理置空与在途任务的顺序，但具体修复方式和引入版本仍需 SDK 团队确认；历史 x86_64 仍缺 core，不能关闭。
 
 ### 继续验证和扩大覆盖
 
@@ -246,3 +246,105 @@ ARM64 与 x86_64 均已有实际容器回归：x86_64 完整 48/48，ARM64 修�
 非测试待办：`Resource/` 仍为未跟踪目录，未包含在提交中；如需长期保留在本机，应评估是否加入 `.gitignore`，避免误提交其中的凭据。
 
 验收时应遵守统一口径：join/publish 成功、本端发送统计和日志只能作为辅助证据；Native/Linux PCM 必须检查实际声道数和逐声道内容。对 Opus/NetEq 输出，严格 NCC 只适用于时间和相位已对齐的比较；频谱应检查全频谱局部主峰、跨声道比例和多个时间窗。怀疑编码串音时，应保存实际编码包并离线解码，先确认异常是否已存在于码流。NetEq/PLC 启动或丢包补偿瞬态必须单独记录，既不能因随后恢复而删除异常，也不能用单次短窗口结果认定持续产品缺陷。编码帧、混音文件和音视频文件分别代表不同验证层级，不能互相替代。
+
+
+## 2026-11-24：SDK 4.4.30.152 P0 回归与专项诊断
+
+### 当前版本全量媒体结果
+
+本轮首次使用 4.4.30.152 重跑真实 RTC 媒体矩阵，不再只引用构建和离线检查：
+
+- ARM64 Ubuntu/Podman：**45/48**。失败为 `tone-4ch-16bit`、`tone-5ch-16bit`、`tone-7ch-16bit`，均为 startup 强 300Hz、steady 恢复。其余 4×4 收发、24bit、奇数声道、codec 和非法输入通过。产物：`/private/tmp/agora-sdk152-p0-20261124/arm64-full/full/`。
+- 独立 x86_64 Ubuntu 24.04 Docker：**48/48**，startup/steady 全部通过。结果已复制到 `/private/tmp/agora-sdk152-p0-20261124/x86_64-full-results.json`，远端原始产物在 `/home/ubuntu/agora-x86_64-sdk152-20261124/results-sdk152-x86_64/full/`。
+- ARM64 首轮曾因未设置 `LD_LIBRARY_PATH` 出现无效 0/32，已单独保留在 `arm64-full/full-invalid-loader/`，不计媒体结果。x86_64 的 48/48 仍不能抵消 ARM64 异常。
+
+### 首声道相关的启动泄漏：码流对照新证据
+
+诊断时每轮同时启动 PCM receiver 和 encoded receiver，为每个编码包增加 4 字节长度前缀并用 libopus 离线解码。诊断源码、解码器和结果均在 `/private/tmp/agora-sdk152-p0-20261124/neteq/`，默认仓库接收行为未修改。
+
+| 对照组 | 双路径通过 | 关键结果 |
+| --- | ---: | --- |
+| 300Hz 未注入丢包基线 | 8/12 | 4 轮仅 NetEq startup 失败，12 轮离线码流全部通过 |
+| 300Hz 基线复跑 | 9/12 | 3 轮仅 NetEq 失败，离线码流全部通过；两轮合计 17/24 |
+| service 级 `enable_time_stretching=false` | 5/12 | 12 次设置均返回 0，但没有改善；实际配置日志仍需解密确认，不能据此排除或坐实时间拉伸模块 |
+| 容器 eth0 注入 5% 丢包 | 12/12 | 重传后无编码时间戳缺口；不能据此宣称丢包有益，需保留启动时序差异 |
+| 首声道静音，其余声道不变 | 12/12 | 其他声道 300Hz 比例约 0.01，首声道内容是异常的必要条件 |
+| 首声道改为 400Hz | 11/12 | 失败轮串入频率为 399.9Hz，异常跟随首声道频率而非固定 300Hz |
+
+异常窗口内其他声道与首声道的直接相关系数只有约 0.13～0.29，不是简单的逐样本复制。当前最窄根因边界是：**实际 OPUSMC 码流正常，首声道基频在接收端启动补偿/同步阶段泄漏到其他声道**。具体是 NetEq、PLC、后续 PCM 处理中的哪个内部模块，仍需解密日志、NetEq dump 或 SDK 团队源码/带符号二进制确认；本轮不将该项写成已闭环。
+
+### N/M 映射规则重新解释
+
+4.4.30.152 的 x86_64 与 ARM64 各执行了 30 个有序 N≠M 组合，均没有组合满足旧的一对一内容门禁，但结果不是随机串音：
+
+- N > M 时基本遵循折叠混音：输出第 `j` 路包含 `source[j] + source[j+M] + source[j+2M]…`。例如 8→6 为 `[1+7, 2+8, 3, 4, 5, 6]`，8→3 为 `[1+4+7, 2+5+8, 3+6]`。
+- N < M 时出现重复声道和频移，不能视为独立多声道扩展或可用 up-mix。
+- 因此“30 组必须一对一通过”的旧判据不适合定义所有 N/M 的预期行为。当前产品行为应归类为**不支持错配且未安全拒绝**，必须继续要求发送/接收声道数一致；`degraded_to_requested_channels` 只描述 transport，不能写成内容通过。
+- x86_64 结果：`/private/tmp/agora-sdk152-p0-20261124/x86-sdk152-mismatch-30.json`；ARM64 结果：`/private/tmp/agora-sdk152-p0-20261124/arm64-mismatch30/`。
+
+### SIGSEGV 与 ASan/UBSan 复现
+
+- ARM64 全 30 组中的 `7to4` 出现 receiver **-11（SIGSEGV）**，日志停在连接超时后的 `onDisconnected`，尚未启动 sender，说明崩溃不能在缺乏堆栈时归因于某种声道映射。`7to5` 为连接超时退出 1，`7to6` 另有低电平异常输出。
+- 新 4.4.30.152 x86_64 的 20 轮 `8to6` ASan/UBSan 均退出 0，无内存错误报告。
+- 新 4.4.30.152 ARM64 的 30 轮 `7to4` 中 29 轮退出 0、1 轮连接超时退出 1；另有 20 轮强制连接超时。以上均未出现 ASan/UBSan 内存错误或崩溃。
+- 从 Git 历史恢复完整 4.4.30.149 TGZ 后，旧版 x86_64 又执行 50 轮 `8to6` ASan/UBSan，全部退出 0，无内存错误报告。
+- 初次 UBSan vptr 在未插桩 SDK 边界报错，属于边界误报，后续统一使用 `-fno-sanitize=vptr`，仍检查地址越界、use-after-free 和其他未定义行为。
+
+因此当前结论是：**历史及新发生的 SIGSEGV 均保持开放；100 轮 N/M ASan 对照和 20 轮连接超时对照未复现，不证明修复，也没有足够证据修改应用 teardown。** 后续必须保留 core/ASan 堆栈或由 SDK 团队使用带符号二进制定位，不能再用后续退出 0 关闭历史崩溃。
+
+### 更新后的工作顺序
+
+1. 由 SDK 团队定位首声道基频在启动补偿/同步阶段的泄漏路径，并确认 `enable_time_stretching` 的实际配置；补解密日志和 NetEq dump。
+2. 由 SDK 团队检查 `AudioTransportWrapper::UnregisterPlaybackAudioCallback()` 与 `NeedMorePlayData()` 的同步及 wrapper 生命周期，确认实际清零调用并修复空指针访问；保留可复用 core 采集，覆盖连接超时和正常断开，不能用 ASan 未复现关闭。
+3. 明确 N/M 为不支持场景并争取安全拒绝，文档保留实际折叠混音/频移证据，不再用一对一门禁或 transport metadata 混写结论。
+4. Web 4.24.10 的真实声道数校验和源/声明一致性仍需集成层处理，详见 `audio_multichannel_test_summary.md` 的 2026-11-24 更新。
+
+
+### 解密日志、离线 PLC 与实际 coredump 补充
+
+#### NetEq/OPUSMC 补偿路径
+
+2026-11-24 后续解密进一步收紧了根因边界：
+
+- service 级 `enable_time_stretching=false` 在 SDK 日志中确认实际生效：配置为 `enable_time_stretching=false`。异常轮仍出现 `expand=180ms` 和强首声道频谱泄漏，因此时间拉伸不是异常的必要条件，应重点检查 **NetEq expand / OPUSMC 解码补偿路径**。
+- 失败与通过轮都存在 expand/preemptive，不能只用补偿次数作判据。失败日志同时包含 `audio_decoder_multi_channel_opus.cc` 的 `MultistreamDecoder` 初始化记录。
+- 使用同一组 OPUSMC 包，在 Ubuntu libopus 1.4 中跳过第 20～24 帧并调用 `opus_multistream_decode(..., nullptr, 0, ...)`，离线 PLC 的 startup/steady 均通过，没有复现首声道泄漏。结果：`neteq/offline-plc-result.json`。这倾向于 Agora 的 OPUSMC 接收/NetEq 补偿封装路径，而不是 libopus 标准 PLC 的固有串音。
+- `che.audio.neteq.dump_level=1`、`predump=1` 和 `dump_path` 均被接受并进入实际 NetEq config，但本轮没有生成可读 dump 文件，不把该路径当成已取得的有效证据。
+- 解密对照日志位于 `neteq/decrypted/`。当前可以交给 SDK 团队的最窄问题是：**Agora OPUSMC/NetEq expand 补偿路径在启动时序下将首声道基频泄漏到其他声道**；具体函数名仍需源码或带符号包确认，不再把时间拉伸开关当成修复方案。
+
+#### SIGSEGV 的实际堆栈与符号对照
+
+Podman VM 的 `systemd-coredump` 已捕获本次 ARM64 `7to4` SIGSEGV：PID 28637、线程 987，命令与 `mismatch-content-7to4` 完全对应。原始 `.zst` core 已归档；它是系统生成的 ELF core，不是 SDK 原生 Breakpad `.dmp`，未纳入本仓库。
+
+- 堆栈顶部五帧依次为：`libagora_rtc_sdk.so + 0xcbc81c`、`+0x12e2ccc`、`+0x4aedd4`、`+0x12e3164`、`+0x3df180`，随后进入 `libaosl.so + 0x23a4c` 等队列调用。真实寄存器与销毁线程回溯已随 core 归档。
+- 本次 `x0 = 0`，故障指令 `ldr x0, [x0, #16]` 访问不可读的 `0x10`，**直接故障是空指针解引用，不是已经证明的 use-after-free**。调用者 `x19 = 0xffffb05f2510`，其 `+1176` 成员同样为零。
+- 149 ARM64 符号的 `AudioTransportWrapper::NeedMorePlayData()` 与 152 ARM64 的调用者逐段吻合。该函数在末尾从这个成员取 `AudioTransportImpl*`，无判空调用 `GetDownlinkProcessingAverageTime()`；getter 再读取 `this + 16` 的 `DownlinkAudioProcessingProxy*`。下一层与 `AudioDeviceBuffer::RequestPlayoutData()` 相符，说明设备取流在 teardown 中继续执行，并非 `LocalUserImpl::onPollingTimer()`。
+- `AudioTransportWrapper::UnregisterPlaybackAudioCallback()` 在 149 ARM64 中会把同一 transport 指针清零，而取流末尾 getter 调用没有判空。x86_64 152 符号也证实：注销在 `0xaf1509` 清零，取流在 `0xaf32ae` 读取后无判空调用 getter，后者在 `0x13e8470` 继续解引用。该同型风险不等于历史 x86_64 崩溃已精确还原。
+- 销毁线程的回溯中出现相同的 `0xffffb05f2510`，并进入 `operator delete`，其清理顺序与 `AudioTransportWrapper::~AudioTransportWrapper()` 相符，支持取流与 wrapper 销毁并发。因此修复不能只加判空，还需处理回调停止、注销和对象销毁的同步。
+- 两份日志都经过 `SetPlayout(0)` 和 `AgoraService::release` → `LocalUserImpl destroying`，与上述方向吻合。但历史 x86_64 149 没有 core 或匹配符号，ARM64 152 也没有匹配符号包；本次函数名来自 149 ARM64 的逐段对照和 x86_64 152 符号实现，不能写成已经证明两起崩溃完全相同。
+
+当前应交给 SDK 团队的最窄问题是：**`UnregisterPlaybackAudioCallback()` 清零 transport 指针后，设备回调仍可能进入 `NeedMorePlayData()`，随后空指针进入 `GetDownlinkProcessingAverageTime()`。** 真实 core 与研发反馈共同确认了清理与在途任务的顺序；具体修复方式和引入版本仍需源码及提交历史确认，不能直接据此修改应用 teardown。
+
+后续修复验证必须重新覆盖 ARM64 startup 频谱，以及连接超时和正常断开 teardown；历史 x86_64 再次发生时必须保留系统 core。
+
+#### x86_64 152 自然复现与原生 dmp
+
+新增定向 runner 在 `Start receiving` 后发送正常 SIGINT，反复执行原 receiver 的 `disconnect → release`，不使用 debugger、内存修改或伪造信号，不要求 sender 或 N/M 错配。
+
+- 第 **84** 次真实 join/teardown 出现 SIGSEGV，频道 `audio-race-1795508775062900818-b21-w2`，SID `2D47781173174F3EA6AFE15763A4A3CE`，PID 168838、故障线程 168904，时间为 `2026-11-24 08:26:21.958 UTC`。
+- 同时取得原生 `7C66F755D0144CFFE67CF7B796AB9720.dmp` 和 Apport 系统 ELF core，匹配符号直接还原为 `audio_transport_impl.cc:300` → `audio_transport_wrapper.cpp:1103` → `audio_device_buffer.cc:583` → `audio_transport_wrapper.cpp:737`。`rdi = 0`，wrapper 的 `+0x490` transport 成员为零，证实注销/取流/销毁竞态的空指针路径。
+- 20ms 完整批次另三次崩溃也取得独立原生 dmp，其中 PID 175787 的符号堆栈与上述源码行完全相同。
+- x86_64 共执行 400 次真实 RTC 尝试，记录 9 次 SIGSEGV；20ms 为 **5/104**，5ms 为 **2/136**，10ms 为 **0/40**。仍不是 100% 复现，不能用前置小样本推断固定概率。
+- ARM64 无媒体 1000 次未复现；真实 RTC 200 次未出现 SIGSEGV，但有 38 次连接失败。连接失败与崩溃分开计数，不关闭此前 ARM64 core 问题。
+
+测试入口为 `Demo/linux/tests/audio_teardown_race.py`；构建新增 `audio_teardown_race` target，真实复现可直接使用原 receiver。runner 退出 `10` 只表示检测到自然 SIGSEGV；10 个离线单元测试通过。`--expected-build` 阻止误用旧 SDK，`--keep-going` 已修正并完成计划批次。复现命令见 `Demo/linux/README.md`，每批实际执行次数和分类记录在对应的 `summary.json`。
+
+#### 研发反馈与入会超时专项
+
+研发反馈确认了清理阶段先置空 `audio_transport_`、但内部自动拉音频任务尚未退出的顺序，与符号化结果一致。其“分支长期存在、主要影响退出阶段”的判断可作为修复和版本调查方向；具体引入版本仍需提交历史确认，退出时 `-11`、core 生成及自动化不稳定也不能视为无影响。
+
+为验证“等待入会超时容易导致”，runner 新增 `--expect-join-timeout`，只有实际出现 `Wait for connection timeout or failure!` 才计入超时场景。隔离网络下双架构各执行 40 次，全部确实发生入会超时：ARM64 build 1397089 **3/40 SIGSEGV**，x86_64 build 1392522 **1/40 SIGSEGV**。ARM64 代表频道 `audio-race-1795512233351085696-b7-w4` 的故障点仍为 `+0xcbc81c`；x86_64 频道 `audio-race-1795512238619761392-b6-w1` 的故障点为 `+0x13e8470`，两次均有原生 dmp 并与既有空指针路径一致。
+
+这支持研发线索，但不是 100% 复现，也不是唯一触发条件：成功入会后立即退出也已有自然 core。隔离网络是受控环境，不与公网自然超时混写；对应批次的 `summary.json` 记录实际执行次数与崩溃分类。
+
+两场独立 x86_64 崩溃的原生 dmp、日志、系统 core 和符号化输出均已按 PID 归档；这些原始二进制证据未纳入本仓库。

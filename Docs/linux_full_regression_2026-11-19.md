@@ -106,3 +106,15 @@
 - 生命周期：ARM64 10 轮流程成功，恢复内容 **16/23**；x86_64 **23/23**。
 
 43 项相关离线测试（18 项基础回归、9 项 N/M 内容、5 项生命周期内容、11 项语义分析）通过。完整证据索引和分阶段结果见 [Linux 多声道 Demo 测试覆盖评估](comments_for_linux_demo.md) 与 [生命周期回归记录](linux_lifecycle_regression_2026-11-19.md)。
+
+
+## 2026-11-24 SDK 4.4.30.152 对等复跑
+
+- ARM64：45/48，失败为 `tone-4ch-16bit`、`tone-5ch-16bit`、`tone-7ch-16bit`，均为 startup 强 300Hz、steady 恢复。产物在 `/private/tmp/agora-sdk152-p0-20261124/arm64-full/full/`。首轮动态库路径错误造成的无效 0/32 已单独归档，不计媒体结果。
+- 独立 x86_64：48/48，所有 startup/steady 通过。结果在 `/private/tmp/agora-sdk152-p0-20261124/x86_64-full-results.json`，远端原始产物在 `/home/ubuntu/agora-x86_64-sdk152-20261124/results-sdk152-x86_64/full/`。
+- 双架构各补 30 个 N≠M 内容组合。N>M 呈确定折叠混音，N<M 有重复/频移；不再把这些结果简单称为随机映射失败，而是统一归为“不支持错配且未安全拒绝”。ARM64 `7to4` 新发生一次连接超时后的 SIGSEGV。
+- 新旧共 100 轮 N/M ASan/UBSan 对照和 20 轮连接超时对照未复现内存错误，不能据此关闭历史或本次崩溃。
+- NetEq 专项新增首声道静音、首声道 400Hz、受控丢包和离线码流对照，当前已收敛为“首声道基频在接收端启动补偿/同步阶段泄漏”，函数级模块仍待 SDK 团队确认。详见 [Linux 多声道 Demo 测试覆盖评估](comments_for_linux_demo.md) 的 2026-11-24 章节。
+- 定向 teardown 复测中，x86_64 共执行 400 次真实 RTC 尝试并记录 9 次 SIGSEGV，20ms 为 5/104；第 84 次首次取得完整原生 dmp 和系统 core，另一场独立崩溃也还原为同一空指针调用链。隔离网络下双架构各执行 40 次实际入会超时，ARM64 为 3/40、x86_64 为 1/40。成功入会后立即退出也能复现，因此超时是高风险窗口而非必要条件，当前仍非 100% 复现。
+- 真实 core 与研发反馈确认：清理先将 `audio_transport_` 置空，在途音频任务仍进入 `NeedMorePlayData()` 并调用 `GetDownlinkProcessingAverageTime()`，最终空指针崩溃。该问题不能归因于 N/M 映射算法，修复和引入版本仍待 SDK 团队确认。runner 的 10 个离线单元测试已在本地和 AWS 通过。
+- 两场独立崩溃的原生 dmp、日志、系统 core 和符号化输出均已按 PID 归档；这些原始二进制证据未纳入本仓库。复现入口和命令见 `Demo/linux/tests/audio_teardown_race.py` 与 `Demo/linux/README.md`。

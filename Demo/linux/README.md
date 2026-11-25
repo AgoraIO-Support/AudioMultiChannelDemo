@@ -128,6 +128,45 @@ API 返回值、连接与订阅回调、停止后 PCM 不再增长、恢复后 P
 此测试不检查逐声道内容，也不替代长稳、Token 续期或网络恢复测试。
 无需 SDK 和网络的脚本编排正反例可运行 `python3 tests/lifecycle_harness_test.py`。
 
+### teardown 竞态定向复现
+
+`tests/audio_teardown_race.py` 在 receiver 出现 `Start receiving` 后发送正常 SIGINT，反复执行真实
+`disconnect → release`，用于覆盖音频回调注销、设备取流和对象销毁之间的竞态。它不使用
+debugger、不修改 SDK 内存，也不要求 sender 或 N/M 声道错配。先构建并确认实际库为
+4.4.30.152，再在 Linux 环境执行：
+
+```bash
+ulimit -c unlimited
+APP_TOKEN='<凭据>'
+SDK_LIB_DIR='/path/to/agora_sdk'
+python3 tests/audio_teardown_race.py \
+  --sample-dir "$(pwd)/out" \
+  --binary sample_receive_pcm_multiopus \
+  --artifact-dir "$(pwd)/out/teardown-race" \
+  --library-dir "$SDK_LIB_DIR" \
+  --app-id "$APP_TOKEN" \
+  --expected-build 1397089 \
+  --iterations 1 --workers 4 --batches 20 \
+  --hold-ms 20 --keep-going --timeout 45
+```
+
+`--expected-build` 必须与实际 152 包一致：本次 ARM64 为 1397089，x86_64 为 1392522。
+针对等待入会超时场景，增加 `--expect-join-timeout`，要求日志实际包含
+`Wait for connection timeout or failure!`；意外成功入会将判为场景无效。可用 Podman
+`--network none` 或 `unshare --user --map-root-user --net` 创建该窗口，无需修改宿主机防火墙。
+`join_timeouts` 记录真实超时次数；全部未成功入会时 `completed_iterations` 为 0 属于预期，
+不代表没有执行。`--hold-ms` 控制连接后的停留时间，`--workers` 控制并发，`--keep-going` 在出现崩溃后仍完成
+计划批次；输出 `summary.json` 按实际执行次数统计 SIGSEGV、连接失败、超时和版本不匹配。
+运行器退出 `10` 表示至少一次自然 SIGSEGV，不是运行器自身崩溃；receiver 本身应以 `-11`
+判定。成功轮的 SDK 日志默认清理以节省空间，可用 `--keep-success-logs` 保留。崩溃轮的
+`receiver-sdk/` 可能同时包含原生 `<crashId>.dmp`、可读 `<crashId>.log` 和 `agorasdk.log`；
+系统 core 的位置由 OS 配置决定，`ulimit -c unlimited` 只是允许生成。
+
+新增的 `audio_teardown_race` C++ target 还支持单 service 多 connection 和 `--noConnect 1`
+纯销毁模式，适合细分场景。上述真实复现使用原 receiver 即可，不要求额外修改应用代码。
+运行 `python3 tests/audio_teardown_race_test.py -v` 可无网络验证运行器，包括正常退出、
+SIGSEGV 分类、版本检查、超时和崩溃后继续完整批次。
+
 ### 逐声道 PCM 内容分析
 
 构建会生成 `out/pcm_channel_analyzer`。它读取发送源 WAV（支持 16/24bit PCM）或裸 16bit

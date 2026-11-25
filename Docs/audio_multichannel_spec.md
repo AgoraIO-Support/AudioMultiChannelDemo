@@ -36,7 +36,7 @@
 
 - Web 音频多声道自 **4.24.10** 起并入主线包，可直接使用 `agora-rtc-sdk-ng@4.24.10`，不再需要单独的多声道定制构建。
 - 4.20.1-100 / 4.20.1-200、4.24.9 等 Web 特殊版本只用于历史验证。历史实测限制不能在未复测的情况下视为已被 4.24.10 修复。
-- Linux 当前包为 4.4.30.152 ZIP（ARM64 位于 `Agora_Native_SDK_for_Linux_SERVER/sdk`，x86_64 位于 `Agora_Native_SDK_for_Linux_SERVER/rtc/sdk`），构建脚本同时兼容旧 TGZ。此前多声道回归主要使用 4.4.30.149，包名、压缩格式和目录结构变化不代表行为发生变化，正式集成前仍应完成目标版本冒烟验证。
+- Linux 当前包为 4.4.30.152 ZIP（ARM64 位于 `Agora_Native_SDK_for_Linux_SERVER/sdk`，x86_64 位于 `Agora_Native_SDK_for_Linux_SERVER/rtc/sdk`），构建脚本同时兼容旧 TGZ。2026-11-24 已补真实媒体回归：x86_64 为 48/48，ARM64 为 45/48，三项均为 startup 强 300Hz、steady 恢复；不能把包升级或 x86_64 全绿视为 ARM64 问题已修复。历史多声道回归主要使用 4.4.30.149，跨版本结论仍须区分。
 - Native 私参名称和行为具有版本与平台依赖性，不应根据其他平台的经验直接推断可用性。正式集成前应在目标 SDK 上完成冒烟验证。
 - 生产环境应从业务服务器签发 RTC Token，并确保 Token 中的频道和 UID 与客户端一致。无证书测试项目的空 Token 仅用于测试。
 
@@ -409,3 +409,11 @@ dump 可用于逐声道 RMS、峰值和源声道相关性分析。macOS 已验�
 - 大量媒体证据来自 Web 4.20.1 / 4.24.9 及 Linux、macOS 的指定版本；这些结果用于说明能力边界，不构成所有后续版本的自动保证。
 - Web→iOS 的间歇性 1ch、Web→macOS 的部分集成失败、MS-16 / MS-28 等测试缺口仍需单独跟踪。
 - 弱网、真实 Token 过期、iOS 真机、跨浏览器、2 小时以上长稳、主观试听和严格 lipsync 未包含在已有通过结论中。
+
+
+## 11. 2026-11-24 当前版本验收状态补充
+
+- Web 4.24.10 已完成 4/6/8ch 的 Web→Web、Web→Linux、Web→macOS/iOS、Linux→Web P0 媒体回归及主要清理场景；`selectChannels` 真实声道数越界和源/声明不匹配仍未闭环，不能以本章集成要求代替实际实现。
+- Linux 4.4.30.152 已补双架构媒体矩阵，但 ARM64 首声道启动泄漏、N/M 未安全拒绝和 receiver 间歇性 SIGSEGV 仍开放。
+- receiver SIGSEGV 已确认是清理置空 `audio_transport_` 与在途音频任务之间的竞态，双架构均已取得原生 dmp 和符号化证据。等待入会超时是高风险窗口但不是必要条件，成功入会后立即退出也能复现；当前仍非 100% 复现，修复方式和引入版本待 SDK 团队确认。
+- 最新结果与证据索引见 `Docs/audio_multichannel_test_summary.md` 第 9 节和 `Docs/comments_for_linux_demo.md` 的 2026-11-24 章节。正式交付仍应按目标架构、目标网络和目标 Native 设备执行本章门禁。
